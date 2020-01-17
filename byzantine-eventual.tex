@@ -32,7 +32,50 @@
 
 \section{Introduction}
 
-\emph{Strong Eventual Consistency}~\cite{Shapiro:2011un}
+Byzantine Consensus requires that less than 1/3 of processes are byzantine-faulty [TODO make this more precise].
+With more faulty processes than this, neither safety nor liveness can be guaranteed.
+This is a problem because the 1/3-faulty assumption is not always a realistic threat model: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes, since they are likely to all be running the same software.
+Moreover, in some systems, the adversary may be able to spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002jr}).
+
+This raises the question: if consensus cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model can we achieve?
+
+\emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011un} is a consistency model in which replicas eventually converge towards the same state as they communicate.
+SEC is defined in a non-Byzantine model, and we define \emph{Byzantine Eventual Consistency} (BEC) is a generalisation of SEC to a Byzantine model.
+BEC can be achieved regardless of the number of Byzantine-faulty processes.
+
+Define the safety and liveness properties of BEC, in analogy to the correctness properties for consensus.
+The idea is: whenever any two correct processes communicate, they converge towards the same state, regardless of what communication with Byzantine-faulty processes may have taken place.
+
+We can implement BEC as follows. First define the state of a replica to be a deterministic function of the set of updates that has occurred (where the set has no order).
+Thus, any two replicas that have seen the same set of updates must also be in the same state, regardless of the order in which the replicas received the updates. This is exactly what a CRDT does.
+We can prove that CRDTs achieve SEC in a non-Byzantine model.
+
+For example, say we want the state to be a totally ordered log of values.
+Each update adds a value to the log; assume that each update contains a value, a timestamp, and the unique ID of the process that produced the update.
+We can define the log to be simply the set of values appearing in the updates, sorted by timestamp, breaking ties based on ordering of process IDs.
+
+Thus, achieving BEC boils down to ensuring that whenever two correct processes communicate, they end up with the same set of updates.
+The simplest way of achieving this is with the trivial reconciliation algorithm: each replica stores the set of all updates it has seen; whenever two replicas communicate, they send each other their entire sets of updates; on receiving such a set, a replica computes the union of existing and incoming updates, and stores that set.
+
+That reconciliation is obviously inefficient. To avoid redundant network traffic, we want replicas to send each other only those updates that the other replica is missing.
+How do we do this?
+Some systems do this using vector clocks, but vector clocks don't work well in a Byzantine system, because a Byzantine-faulty node could send different updates to different recipient processes under the same vector timestamp, causing two replicas to have the same vector timestamps, but different sets of updates, causing them to become inconsistent.
+
+To improve the reconciliation protocol, we first add hash chaining.
+That is: whenever a replica produces an update, it includes in the update the hashes of all existing updates whose hashes have not already been included in another update (in the replica's local set of updates).
+The result is a DAG of updates referencing other updates, much like a Git commit history.
+We use a cryptographic (collision-free) hash function so that it is not feasible for an adversary to generate two different updates with the same hash.
+
+The updated reconciliation protocol now looks like this: when two replicas connect, they first send each other the hashes of all updates in their local set that are not referenced by another update (the ``heads'' in Git terminology).
+On receiving a hash, if the recipient knows an update with that hash, it sends back all updates that reference the received hash, directly or indirectly (since it knows that the other side doesn't have these updates).
+If the recipient does not have an update with that hash, it sends back its heads.
+In this case, the protocol will have to run for several rounds, gradually working from the heads backwards until the replicas find an update that they have in common.
+
+If the communication is between a correct and a Byzantine-faulty replica, the faulty replica can obviously add updates to the set or omit updates from those sent to the correct replica.
+But the faulty replica cannot corrupt the correct replica's state in a way that would prevent the correct replica from later synchronising its set of updates with another correct replica.
+
+To reduce the number of rounds of communication in this protocol, perhaps the replicas can send Bloom filters to each other, summarising the set of updates they know about.
+Need to think carefully about how Bloom filter false positives are handled, though. TODO
 
 \begin{acks}
 Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and by the Isaac Newton Trust.
