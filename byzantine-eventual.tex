@@ -82,6 +82,29 @@ But the faulty replica cannot corrupt the correct replica's state in a way that 
 To reduce the number of rounds of communication in this protocol, perhaps the replicas can send Bloom filters to each other, summarising the set of updates they know about.
 Need to think carefully about how Bloom filter false positives are handled, though. TODO
 
+\section{Properties}
+
+A frequent use for consensus algorithms is to generate an append-only log of values that can be used for state machine replication.
+When using Byzantine agreement to generate this log, we require that the following properties hold (under the assumption that no more than $f$ processes are faulty, and assuming partial synchrony):
+
+\begin{description}
+\item[Agreement:] When any two correct processes decide a value for a certain position in the log, those decided values are the same.
+\item[Validity:] Any value decided by a correct process must have been proposed by one of the processes.
+\item[Liveness:] For any value proposed, correct processes will eventually decide that value for some position in the log.
+\end{description}
+
+We can define a similar set of properties for Byzantine eventual consistency.
+These properties are weaker, but they hold without making any assumptions about the number of faulty processes:
+
+\begin{description}
+\item[Convergence:] When any two correct processes finish communicating, their logs are the same.
+\item[Ordering:] If the log of two correct processes both contain values A and B, then A and B appear in the same order in both logs.
+\item[Validity:] Any value contained in the log of a correct process must have been proposed by one of the processes.
+\item[Liveness:] Assuming that any two correct processes will eventually finish communicating, a value proposed by one process will eventually be contained in the log of all correct processes.
+\end{description}
+
+\section{Reconciliation Algorithm}
+
 \section{Related Work}
 
 Byzantine agreement has been subject of extensive research since the early 80s~\cite{Lamport:1982} and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
