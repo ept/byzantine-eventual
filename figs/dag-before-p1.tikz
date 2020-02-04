@@ -1,0 +1,17 @@
+\begin{tikzpicture}
+
+% nodes
+\node (a) {A};
+\node (b) [right of=a] {B};
+\node (c) [above right of=b] {C};
+\node (d) [right of=c] {D};
+\node[circle,draw] (e) [right of=d] {E};
+\node[circle,draw] (f) [below right of=b] {F};
+
+% arrows
+\draw[<-] (a) -- (b);
+\draw[<-] (b) -- (c);
+\draw[<-] (c) -- (d);
+\draw[<-] (d) -- (e);
+\draw[<-] (b) -- (f);
+\end{tikzpicture}
