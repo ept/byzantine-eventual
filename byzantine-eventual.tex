@@ -1,9 +1,8 @@
 \documentclass[manuscript]{acmart}
 \usepackage[utf8]{inputenc}
-% for figures
-\usepackage{tikz}
-% for subfigures
-\usepackage{subcaption}
+\usepackage{algorithm,algpseudocode} % for pseudocode
+\usepackage{tikz} % for figures
+\usepackage{subcaption} % for subfigures
 
 \begin{document}
 \title{Brief Announcement: Byzantine Eventual Consistency}
@@ -143,21 +142,58 @@ We define the set of successors $\mathrm{succ}^1(u)$ of an update $u$ to be the 
 \]
 
 \begin{figure}
-    \centering
-    \begin{subfigure}[t]{0.3\textwidth}
+\captionsetup{justification=raggedright,singlelinecheck=false}
+\begin{minipage}{0.5\linewidth}
+    \hrule\vspace{4pt}
+    \algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
+    \begin{algorithmic}[1]
+    \On{connecting to another process}
+        \State $\mathit{received} := \{\}$
+        \State $\mathit{heads} := \{u \in \mathcal{U} \mid \nexists (t, v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}$
+        \State \textbf{send} $\langle\mathsf{updates}: \mathit{heads}\rangle$
+    \EndOn\vspace{10pt}
+    \On{receiving $\langle\mathsf{updates}: \mathit{new}\rangle$}
+        \State $\mathit{received} := \mathit{received} \,\cup\, \mathit{new}$
+        \State $\mathit{reply} := \bigcup_{u \in \mathit{new}} \mathrm{succ}^*(u)$
+        \If{$\mathit{reply} \neq \{\}$}
+            \State \textbf{send} $\langle\mathsf{updates}: \mathit{reply}\rangle$
+        \EndIf
+        \State $\mathit{missing} := \{h \mid \exists (t, v, \mathit{hs}) \in \mathit{received}.\; h \in \mathit{hs} \;\wedge$
+        \State \hspace{55pt}$\; \nexists u \in (\mathcal{U} \cup \mathit{received}).\; H(u) = h\}$
+        \If{$\mathit{missing} = \{\}$}
+            \State $\mathcal{U} := \mathcal{U} \cup \mathit{received}$
+            \State finish protocol
+        \Else
+            \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$
+        \EndIf
+    \EndOn\vspace{10pt}
+    \On{receiving $\langle\mathit{needs}: \mathit{missing}\rangle$}
+        \State \textbf{send} $\langle\mathsf{updates}: \{u \in \mathcal{U} \mid H(u) \in \mathit{missing}\}\rangle$
+    \EndOn
+    \end{algorithmic}
+    \vspace{4pt}\hrule
+    \caption{An optimised reconciliation algorithm.}\label{fig:algorithm}
+\end{minipage}\hfill
+\begin{minipage}{0.4\linewidth}
+    \begin{subfigure}{\textwidth}
     \input{figs/dag-before-p1.tikz}
     \caption{$p_1$ before reconciliation}
-    \end{subfigure}
-    \begin{subfigure}[t]{0.3\textwidth}
+    \end{subfigure}\\[35pt]
+    \begin{subfigure}{\textwidth}
     \input{figs/dag-before-p2.tikz}
     \caption{$p_2$ before reconciliation}
-    \end{subfigure}
-    \begin{subfigure}[t]{0.3\textwidth}
+    \end{subfigure}\\[35pt]
+    \begin{subfigure}{\textwidth}
     \input{figs/dag-after.tikz}
     \caption{$p_1$ and $p_2$ after reconciliation}
     \end{subfigure}
-    \caption{Caption}
-    \label{fig:my_label}
+    \caption{Example DAGs of updates. Arrows represent a newer update referencing the hash of an older update, and heads (updates with no successors) are marked with circles.}
+    \label{fig:example-dags}
+\end{minipage}
+\end{figure}
+
+\begin{figure}
+    \centering
 \end{figure}
 
 \begin{figure}
@@ -168,6 +204,10 @@ We define the set of successors $\mathrm{succ}^1(u)$ of an update $u$ to be the 
 \end{figure}
 
 \subsection{Optimisations}\label{sec:optimisations}
+
+% Prevent unbounded storage growth
+% Find last common ancestor by some kind of binary search; problem: graph of updates is not linear, so definition of half-way point is fiddly.
+% Send multiple layers of predecessors at once, up to the bandwidth-delay product (as a rule of thumb)
 
 \section{Related Work}
 
