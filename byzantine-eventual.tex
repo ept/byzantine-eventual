@@ -1,4 +1,4 @@
-\documentclass[manuscript]{acmart}
+\documentclass[manuscript,anonymous]{acmart}
 \usepackage[utf8]{inputenc}
 \usepackage{algorithm,algpseudocode} % for pseudocode
 \usepackage{tikz} % for figures
@@ -29,65 +29,35 @@
 }
 
 \begin{abstract}
-    TODO
+    If $1/3$ or more processes may be faulty, a Byzantine agreement algorithm cannot make any consistency guarantees.
+    However, in such situations we can still guarantee a weaker consistency model, which we call Byzantine Eventual Consistency (BEC).
+    We define BEC and introduce an algorithm that ensures this consistency model, even in a system with arbitrarily many faulty processes.
 \end{abstract}
 \maketitle
 
 \section{Introduction}
 
-Byzantine agreement assumes that at most $f$ of $n$ processes are byzantine-faulty.
-It is well established that without synchrony, byzantine agreement is impossible if $n\leq3f$~\cite{Lamport:1982,Dwork:1988,Fischer:1985}.
+Byzantine agreement assumes that at most $f$ out of $n$ processes are Byzantine-faulty.
+It is well established that without synchrony, Byzantine agreement is impossible if $n\leq3f$~\cite{Lamport:1982,Dwork:1988,Fischer:1985}.
 If more than $f$ processes are faulty, neither safety nor liveness can be guaranteed.
 This is a problem because the $f$-faulty assumption is not always a realistic threat model.
-Byzantine failures are not necessarily independent, if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes, since they are likely to all be running the same software. 
-% same is true for software bugs
-This issue was acknowledged in the pBFT paper, where it stated that: `... each node should run different implementations of the service code and operating system...'~\cite{Castro:1999}. 
-Clearly, this is infeasible for any system with more than a few processes and thus is seldom true in practice today.
+Byzantine failures are not necessarily independent: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes, since they are likely to all be running the same software. 
+Similarly, non-malicious software bugs are likely to affect many of the processes at once.
+
+This issue was acknowledged in the pBFT paper, which states that: ``{\dots}each node should run different implementations of the service code and operating system{\dots}''~\cite{Castro:1999}~--- an assumption that is unrealistic for any system with more than a few processes, and is seldom true in practice today.
 Moreover, in some systems, the adversary may be able to spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002jr}).
 
-This raises the question: if consensus cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model can we achieve?
+This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model \emph{can} we achieve under that assumption?
 
-\emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011un} is a consistency model in which replicas eventually converge towards the same state as they communicate.
-SEC is defined in a non-Byzantine model, and we define \emph{Byzantine Eventual Consistency} (BEC) is a generalisation of SEC to a Byzantine model.
-BEC can be achieved regardless of the number of Byzantine-faulty processes.
+In this paper we propose \emph{Byzantine Eventual Consistency} (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty processes.
+We define BEC in Section~\ref{sec:properties}, and in Section~\ref{sec:algorithm} we describe an algorithm that achieves BEC.
+The idea behind BEC is that each process acts as a replica of some shared state, and that any two correct replicas converge towards the same state as they communicate.
+This property holds even if replicas also communicate with arbitrarily many Byzantine-faulty processes in the system.
+Essentially, we need to ensure that faulty replicas cannot corrupt the state of correct replicas.
 
-Define the safety and liveness properties of BEC, in analogy to the correctness properties for consensus.
-The idea is: whenever any two correct processes communicate, they converge towards the same state, regardless of what communication with Byzantine-faulty processes may have taken place.
+\section{Defining Byzantine Eventual Consistency}\label{sec:properties}
 
-We can implement BEC as follows. First define the state of a replica to be a deterministic function of the set of updates that has occurred (where the set has no order).
-Thus, any two replicas that have seen the same set of updates must also be in the same state, regardless of the order in which the replicas received the updates. This is exactly what a CRDT does.
-We can prove that CRDTs achieve SEC in a non-Byzantine model.
-
-For example, say we want the state to be a totally ordered log of values.
-Each update adds a value to the log; assume that each update contains a value, a timestamp, and the unique ID of the process that produced the update.
-We can define the log to be simply the set of values appearing in the updates, sorted by timestamp, breaking ties based on ordering of process IDs.
-
-Thus, achieving BEC boils down to ensuring that whenever two correct processes communicate, they end up with the same set of updates.
-The simplest way of achieving this is with the trivial reconciliation algorithm: each replica stores the set of all updates it has seen; whenever two replicas communicate, they send each other their entire sets of updates; on receiving such a set, a replica computes the union of existing and incoming updates, and stores that set.
-
-That reconciliation is obviously inefficient. To avoid redundant network traffic, we want replicas to send each other only those updates that the other replica is missing.
-How do we do this?
-Some systems do this using vector clocks, but vector clocks don't work well in a Byzantine system, because a Byzantine-faulty node could send different updates to different recipient processes under the same vector timestamp, causing two replicas to have the same vector timestamps, but different sets of updates, causing them to become inconsistent.
-
-To improve the reconciliation protocol, we first add hash chaining.
-That is: whenever a replica produces an update, it includes in the update the hashes of all existing updates whose hashes have not already been included in another update (in the replica's local set of updates).
-The result is a DAG of updates referencing other updates, much like a Git commit history.
-We use a cryptographic (collision-free) hash function so that it is not feasible for an adversary to generate two different updates with the same hash.
-
-The updated reconciliation protocol now looks like this: when two replicas connect, they first send each other the hashes of all updates in their local set that are not referenced by another update (the ``heads'' in Git terminology).
-On receiving a hash, if the recipient knows an update with that hash, it sends back all updates that reference the received hash, directly or indirectly (since it knows that the other side doesn't have these updates).
-If the recipient does not have an update with that hash, it sends back its heads.
-In this case, the protocol will have to run for several rounds, gradually working from the heads backwards until the replicas find an update that they have in common.
-
-If the communication is between a correct and a Byzantine-faulty replica, the faulty replica can obviously add updates to the set or omit updates from those sent to the correct replica.
-But the faulty replica cannot corrupt the correct replica's state in a way that would prevent the correct replica from later synchronising its set of updates with another correct replica.
-
-To reduce the number of rounds of communication in this protocol, perhaps the replicas can send Bloom filters to each other, summarising the set of updates they know about.
-Need to think carefully about how Bloom filter false positives are handled, though. TODO
-
-\section{Properties}
-
-A frequent use for consensus algorithms is to generate an append-only log of values that can be used for state machine replication.
+A common use of consensus algorithms is to generate an append-only log of values that can be used for state machine replication~\cite{Schneider:1990}.
 When using Byzantine agreement to generate this log, we require that the following properties hold:
 
 \begin{description}
@@ -96,35 +66,46 @@ When using Byzantine agreement to generate this log, we require that the followi
 \item[Liveness:] For any value proposed, correct processes will eventually decide that value for some position in the log.
 \end{description}
 
-Validity must hold regardless of the number of fault or the synchrony model.
-Agreement must hold provided at most $f$ processes are byzantine-faulty but regardless of the number of crash-faults and synchrony. 
-Liveness must hold provided at most $f$ processes are byzantine-faulty and assuming partial synchrony~\cite{Dwork:1988}.
+Validity must hold regardless of the number of faults or the synchrony model.
+Agreement must hold provided that no more than $f$ processes are Byzantine-faulty, but regardless of the number of crash-faults and synchrony. 
+Liveness must hold provided that no more than $f$ processes are Byzantine-faulty, and assuming partial synchrony~\cite{Dwork:1988}.
 
 We can define a similar set of properties for Byzantine eventual consistency.
-These properties are weaker, but they hold without making any assumptions about the number of faulty processes:
+These properties are weaker, but they can be satisfied without making any assumptions about the number of faulty processes or the synchrony model:
 
 \begin{description}
 \item[Validity:] Any value contained in the log of a correct process must have been proposed by one of the processes.
 \item[Convergence:] When any two correct processes finish communicating, their logs are the same.
-\item[Ordering:] If the log of two correct processes both contain values A and B, then A and B appear in the same order in both logs.
+\item[Total order:] If the logs of two correct processes both contain values A and B, then A and B appear in the same order in both logs.
 \item[Liveness:] Assuming that any two correct processes will eventually finish communicating, a value proposed by one process will eventually be contained in the log of all correct processes.
 \end{description}
 
-\section{Reconciliation Algorithm}
+Similar definitions can be used if the shared state is not a log, but some other data structure.
 
-Assume every process locally maintains a monotonically growing set of updates $\mathcal{U}$.
+% TODO should we say something about how a BEC log can be used? Something like state machine replication is still possible, but you have to have some kind of rollback/rewinding to deal with elements arriving out-of-order.
+
+We can implement such a BEC-consistent log as follows: let each process locally maintain a monotonically growing set of updates $\mathcal{U}$, where each update is a pair $(t, v)$ of a timestamp $t$ and a value $v$.
+Any process may propose a value $v$ to add to the log by generating $t$ and adding $(t, v)$ to $\mathcal{U}$.
+The log is then simply the sequence of values obtained by sorting the elements in $\mathcal{U}$ by their timestamp, breaking ties by ordering on values.
+Now, convergence can be guaranteed by ensuring that when any two correct processes communicate, their sets of updates $\mathcal{U}$ become the same.
+In general, we can ensure convergence for any data structure that is a deterministic function of the set of updates $\mathcal{U}$.
+
+\section{Reconciliation algorithms}\label{sec:algorithm}
+
 When two processes $p$ and $q$ communicate, and each process initially has updates $\mathcal{U}_p$ and $\mathcal{U}_q$ respectively, a reconciliation algorithm should ensure that both processes converge to the same set $\mathcal{U}_q \cup \mathcal{U}_q$.
+The simplest reconciliation algorithm is for $p$ to send the entire set $\mathcal{U}_p$ to $q$, and for $q$ to send $\mathcal{U}_q$ to $p$, so that both processes can compute $\mathcal{U}_q \cup \mathcal{U}_q$.
+However, if the sets have many elements in common, this algorithm transmits a large amount of data unnecessarily.
 
-The simplest reconciliation algorithm is for $p$ to send the entire set $\mathcal{U}_p$ to $q$, and and for $q$ to send $\mathcal{U}_q$ to $p$, so that both processes can compute $\mathcal{U}_q \cup \mathcal{U}_q$.
-However, if the sets already have many elements in common, this algorithm transmits a large amount of data being unnecessarily.
-Thus, in this section we introduce a more efficient algorithm.
+In more efficient reconciliation algorithms, processes often rely on vector clocks to determine which updates to send to each other (TODO reference?).
+However, vector clocks are not suitable in a Byzantine setting, because a faulty node could send contradictory updates to different processes under the same vector timestamp, causing two processes to have the same vector timestamps, but inconsistent sets of updates.
+Therefore we introduce a reconciliation algorithm that cannot be corrupted by faulty processes.
 
-Let the set of updates $\mathcal{U} \subseteq \mathit{Timestamp} \times \mathit{Value} \times \mathcal{P}(\mathit{Hash})$ be a set of triples $(t, v, \mathit{hs})$, where $t$ is a totally ordered timestamp (e.g. a Lamport timestamp~\cite{Lamport:1978}), $v$ is any value, and $\mathit{hs}$ is a set of hashes produced by a hash function $H(\cdot)$.
+Let the set of updates $\mathcal{U}$ be a set of triples $(t, v, \mathit{hs})$, where $t$ is a timestamp as before, $v$ is any value, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
 We assume that $H$ is collision-resistant (i.e.\ it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$).
 
-Say we have updates $A = (t_A, v_A, \mathit{hs}_A)$ and $B = (t_B, v_B, \mathit{hs}_B)$, where $H(A) \in \mathit{hs}_B$.
+Say $\mathcal{U}$ contains updates $A = (t_A, v_A, \mathit{hs}_A)$ and $B = (t_B, v_B, \mathit{hs}_B)$, where $H(A) \in \mathit{hs}_B$.
 Then we call $A$ a \emph{predecessor} of $B$, and $B$ a \emph{successor} of $A$.
-Define a graph with a vertex for each update in $\mathcal{U}$, and a directed edge from each update to each of its predecessors (like a Git commit history).
+Define a graph with a vertex for each update in $\mathcal{U}$, and a directed edge from each update to each of its predecessors.
 We can assume that this graph is acyclic because the presence of a cycle would imply knowledge of a collision in the hash function.
 Fig.~\ref{fig:example-dags} shows examples of such graphs.
 
@@ -142,7 +123,7 @@ Let $\mathrm{succ}^1(u)$ be the set of successors of update $u$, let $\mathrm{su
 When one process connects to another, both processes execute the algorithm in Fig.~\ref{fig:algorithm}.
 We will illustrate the operation of this algorithm using the example in Fig.~\ref{fig:example-dags}; the messages sent in the course of the execution are shown in Fig.~\ref{fig:messages}.
 
-\begin{figure}
+\begin{figure}[p]
 \captionsetup{justification=raggedright,singlelinecheck=false}
 \begin{minipage}{0.5\linewidth}
     \hrule\vspace{4pt}
@@ -193,7 +174,7 @@ We will illustrate the operation of this algorithm using the example in Fig.~\re
 \end{minipage}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[p]
     \centering
     \input{figs/message-exchange.tikz}
     \caption{Messages sent in the course of running the reconciliation algorithm in Fig.~\ref{fig:algorithm} with the example in Fig.~\ref{fig:example-dags}.}
@@ -232,9 +213,9 @@ While this will affect the performance of the algorithm, it will not affect its 
 
 A downside of the algorithm in Fig.~\ref{fig:algorithm} is that the number of round trips required can be up to the length of the longest path in the graph.
 In order to optimise this, we could change line 22 so that it sends not only the immediate updates identified by the hashes in the $\mathsf{needs}$ message, but also all of the predecessors of those updates, several levels deep.
-The number of round-trips is then reduced proportionally to the number of predecessor levels, but the downside is that some of the predecessors may already be known to the recipient, and thus be transmitted unnecessarily.
+The number of round-trips is then reduced proportionally to the number of predecessor levels, but the downside is that some of the predecessors may already be known to the recipient, and are thus transmitted unnecessarily.
 
-To determine the number of predecessor levels to send in each round, as a rule of thumb, the size of the update message should aim to approximately equal the bandwidth-delay product of the connection between the two processes.
+To determine the number of predecessor levels to send in each round, as a rule of thumb, the size of the $\mathsf{updates}$ message should be approximately equal to the bandwidth-delay product of the connection between the two processes.
 Thus, on a connection with low bandwidth and fast round-trips we will prefer to send many small messages, while on a connection with high bandwidth and slow round-trips we will batch the updates into a small number of large messages.
 
 % Prevent unbounded storage growth
@@ -242,10 +223,17 @@ Thus, on a connection with low bandwidth and fast round-trips we will prefer to 
 
 \section{Related Work}
 
-Byzantine agreement has been subject of extensive research since the early 80s~\cite{Lamport:1982} and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
-Most algorithms including PBFT~\cite{Castro:1999}, HQ~\cite{Cowling:2006}, Zyzzyva~\cite{Kotla:2007}, Aliph~\cite{Aublin:2015} and HotStuff~\cite{Yin:2019} assume that $n=3f+1$, whereas Q/U~\cite{Abd:2005} and FaB~\cite{Martin:2006} require that $n=5f+1$.
-Some algorithm take a different approach, for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and byzantine failures ($r$) and assumes $n=2u+r+1$.
+Byzantine agreement~\cite{Lamport:1982} has been subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
+Most Byzantine agreement algorithms assume that $n=3f+1$~\cite{Castro:1999,Cowling:2006,Kotla:2007,Aublin:2015,Yin:2019}, while others require that $n=5f+1$~\cite{Abd:2005,Martin:2006}.
+Some take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and assumes $n=2u+r+1$.
 
+% add paragraph on the other issues with byzantine agreement e.g. high latency (one or more round trips to most processes), poor availability (a process cannot add an update less it can communicate with most other processes), need for cypto keys (the issue of how to securely set these up is seldom discussed) 
+
+Byzantine eventual consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011un}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
+Conflict-free Replicated Data Types (CRDTs) provide SEC by ensuring that whenever any two replicas have seen the same set of updates (possibly in a different order), those replicas are in the same state~\cite{Shapiro:2011un}.
+We can strengthen CRDTs to provide Byzantine Eventual Consistency by making each operation an update, and using the algorithm of Section~\ref{sec:algorithm} to reconcile the sets of operations.
+
+The hash chaining approach of our algorithm in Section~\ref{sec:algorithm} has similarities to a Git commit history (where each commit references the hashes of its predecessor commits), a blockchain~\cite{Bano:2019}, or a Merkle tree~\cite{Merkle:1987}.
 
 % Roy Friedman and Roni Licher. Hardening Cassandra Against Byzantine Failures.
 % https://arxiv.org/pdf/1610.02885.pdf
@@ -287,5 +275,9 @@ The algorithm in Fig.~\ref{fig:algorithm} ensures Byzantine Eventual Consistency
 \end{theorem}
 \begin{proof}[Proof sketch.]
 TODO
+
+% If the communication is between a correct and a Byzantine-faulty replica, the faulty replica can obviously add updates to the set or omit updates from those sent to the correct replica.
+% But the faulty replica cannot corrupt the correct replica's state in a way that would prevent the correct replica from later synchronising its set of updates with another correct replica.
+
 \end{proof}
 \end{document}

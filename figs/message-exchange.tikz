@@ -7,8 +7,8 @@
 \def\startdelay{0.5cm}
 
 % Timelimes
-\node (p1-start) at (0,0) {$p_1$};
-\node (p2-start) at (\width,0) {$p_2$};
+\node (p1-start) at (0,0) {$p$};
+\node (p2-start) at (\width,0) {$q$};
 \node (p1-end) at (0,-\length) {};
 \node (p2-end) at (\width,-\length) {};
 \draw (p1-start) -- (p1-end);
