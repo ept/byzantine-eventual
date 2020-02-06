@@ -6,19 +6,15 @@
 \node (c) [above right of=b] {$C$};
 \node (d) [right of=c] {$D$};
 \node[circle,draw] (e) [right of=d] {$E$};
-\node (f) [right of=b] {$F$};
+\node (f) [below right of=b] {$F$};
 \node[circle,draw] (g) [right of=f] {$G$};
-\node (j) [below right of=b] {$J$};
-\node[circle,draw] (k) [right of=j] {$K$};
 
 % arrows
 \draw[<-] (a) -- (b);
 \draw[<-] (b) -- (c);
 \draw[<-] (c) -- (d);
 \draw[<-] (d) -- (e);
+\draw[<-] (f) -- (e);
 \draw[<-] (b) -- (f);
 \draw[<-] (f) -- (g);
-\draw[<-] (f) -- (e);
-\draw[<-] (b) -- (j);
-\draw[<-] (j) -- (k);
 \end{tikzpicture}

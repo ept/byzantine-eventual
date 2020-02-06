@@ -1,0 +1,13 @@
+\begin{tikzpicture}
+
+% nodes
+\node (a) {$A$};
+\node (b) [right of=a] {$B$};
+\node (j) [right of=b] {$J$};
+\node (k) [circle,draw] [right of=j] {$K$};
+
+% arrows
+\draw[<-] (a) -- (b);
+\draw[<-] (b) -- (j);
+\draw[<-] (j) -- (k);
+\end{tikzpicture}

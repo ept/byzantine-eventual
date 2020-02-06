@@ -113,33 +113,34 @@ These properties are weaker, but they hold without making any assumptions about 
 \section{Reconciliation Algorithm}
 
 Assume every process locally maintains a monotonically growing set of updates $\mathcal{U}$.
-(We discuss in Section~\ref{sec:optimisations} how to prevent unbounded storage growth.)
-When two processes $p$ and $q$ communicate, and each process initially has updates $\mathcal{U}_p$ and $\mathcal{U}_q$ respectively, the purpose of a reconciliation algorithm is that both processes converge to the same set $\mathcal{U}_q \cup \mathcal{U}_q$.
+When two processes $p$ and $q$ communicate, and each process initially has updates $\mathcal{U}_p$ and $\mathcal{U}_q$ respectively, a reconciliation algorithm should ensure that both processes converge to the same set $\mathcal{U}_q \cup \mathcal{U}_q$.
 
-The simplest reconciliation algorithm is for $p$ to send $\mathcal{U}_p$ to $q$, and vice versa, and for both processes to compute the union of the received set of updates with its local set.
-This algorithm works, but if there is a lot of overlap between the two sets, it results in a large amount of data being unnecessarily transmitted.
+The simplest reconciliation algorithm is for $p$ to send the entire set $\mathcal{U}_p$ to $q$, and and for $q$ to send $\mathcal{U}_q$ to $p$, so that both processes can compute $\mathcal{U}_q \cup \mathcal{U}_q$.
+However, if the sets already have many elements in common, this algorithm transmits a large amount of data being unnecessarily.
 Thus, in this section we introduce a more efficient algorithm.
 
-Let the set of updates $\mathcal{U} \subseteq \mathit{Timestamp} \times \mathit{Value} \times \mathcal{P}(\mathit{Hash})$ be a set of triples $(t, v, \mathit{hs})$, where $t$ is any kind of totally ordered timestamp (e.g. a Lamport timestamp~\cite{Lamport:1978}), $v$ is any value, and $\mathit{hs}$ is a set of hashes produced by a hash function $H(\cdot)$.
-We assume that $H$ returns a short, fixed-length bit string (e.g.\ 256 bits in the case of SHA-256), and that $H$ is collision-resistant (i.e.\ it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$).
+Let the set of updates $\mathcal{U} \subseteq \mathit{Timestamp} \times \mathit{Value} \times \mathcal{P}(\mathit{Hash})$ be a set of triples $(t, v, \mathit{hs})$, where $t$ is a totally ordered timestamp (e.g. a Lamport timestamp~\cite{Lamport:1978}), $v$ is any value, and $\mathit{hs}$ is a set of hashes produced by a hash function $H(\cdot)$.
+We assume that $H$ is collision-resistant (i.e.\ it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$).
 
-Whenever a process generates an update $(t, v, \mathit{hs})$, $\mathit{hs}$ is defined to be the set of hashes of all existing updates in $\mathcal{U}$ whose hashes have not already been included in another update:
-\[
-\mathit{hs}_\mathsf{new} = \{H(u) \mid u \in \mathcal{U} \wedge \nexists (t, v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}
-\]
-The result is a directed acyclic graph (DAG) of updates referencing other updates via their hashes, like a Git commit history.
-We can assume that the graph is acyclic because the presence of a cycle would imply knowledge of a collision.
+Say we have updates $A = (t_A, v_A, \mathit{hs}_A)$ and $B = (t_B, v_B, \mathit{hs}_B)$, where $H(A) \in \mathit{hs}_B$.
+Then we call $A$ a \emph{predecessor} of $B$, and $B$ a \emph{successor} of $A$.
+Define a graph with a vertex for each update in $\mathcal{U}$, and a directed edge from each update to each of its predecessors (like a Git commit history).
+We can assume that this graph is acyclic because the presence of a cycle would imply knowledge of a collision in the hash function.
+Fig.~\ref{fig:example-dags} shows examples of such graphs.
 
-We define the set of successors $\mathrm{succ}^1(u)$ of an update $u$ to be the set of updates that reference $H(u)$; we define $\mathrm{succ}^2(u)$ to be the successors of the successors of $u$, and so on, and define $\mathrm{succ}^*(u)$ to be the transitive closure:
+Let $\mathrm{succ}^1(u)$ be the set of successors of update $u$, let $\mathrm{succ}^2(u)$ be the successors of the successors of $u$, and so on, and define $\mathrm{succ}^*(u)$ to be the transitive closure:
 \[
 \mathrm{succ}^i(u) =
 \begin{cases}
 \{(t, v, \mathit{hs}) \in \mathcal{U} \mid H(u) \in \mathit{hs}\} & \text{ for } i=1 \\
 \bigcup_{u' \in \mathrm{succ}^1(u)} \mathrm{succ}^{i-1}(u') & \text{ for } i>1
 \end{cases}
-\quad\quad\quad\quad
+\hspace{60pt}
 \mathrm{succ}^*(u) = \bigcup_{i \ge 1} \mathrm{succ}^i(u)
 \]
+
+When one process connects to another, both processes execute the algorithm in Fig.~\ref{fig:algorithm}.
+We will illustrate the operation of this algorithm using the example in Fig.~\ref{fig:example-dags}; the messages sent in the course of the execution are shown in Fig.~\ref{fig:messages}.
 
 \begin{figure}
 \captionsetup{justification=raggedright,singlelinecheck=false}
@@ -148,7 +149,7 @@ We define the set of successors $\mathrm{succ}^1(u)$ of an update $u$ to be the 
     \algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
     \begin{algorithmic}[1]
     \On{connecting to another process}
-        \State $\mathit{received} := \{\}$
+        \State $\mathit{received} := \{\}$ \Comment{connection-local variable}
         \State $\mathit{heads} := \{u \in \mathcal{U} \mid \nexists (t, v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}$
         \State \textbf{send} $\langle\mathsf{updates}: \mathit{heads}\rangle$
     \EndOn\vspace{10pt}
@@ -162,52 +163,82 @@ We define the set of successors $\mathrm{succ}^1(u)$ of an update $u$ to be the 
         \State \hspace{55pt}$\; \nexists u \in (\mathcal{U} \cup \mathit{received}).\; H(u) = h\}$
         \If{$\mathit{missing} = \{\}$}
             \State $\mathcal{U} := \mathcal{U} \cup \mathit{received}$
-            \State finish protocol
+            \State \textbf{finish protocol}
         \Else
             \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$
         \EndIf
     \EndOn\vspace{10pt}
-    \On{receiving $\langle\mathit{needs}: \mathit{missing}\rangle$}
+    \On{receiving $\langle\mathsf{needs}: \mathit{missing}\rangle$}
         \State \textbf{send} $\langle\mathsf{updates}: \{u \in \mathcal{U} \mid H(u) \in \mathit{missing}\}\rangle$
     \EndOn
     \end{algorithmic}
     \vspace{4pt}\hrule
-    \caption{An optimised reconciliation algorithm.}\label{fig:algorithm}
+    \caption{A reconciliation algorithm that exchanges updates between two processes.}\label{fig:algorithm}
 \end{minipage}\hfill
 \begin{minipage}{0.4\linewidth}
     \begin{subfigure}{\textwidth}
-    \input{figs/dag-before-p1.tikz}
-    \caption{$p_1$ before reconciliation}
+    \input{figs/dag-before-p.tikz}
+    \caption{Graph of updates at $p$ before reconciliation}
     \end{subfigure}\\[35pt]
     \begin{subfigure}{\textwidth}
-    \input{figs/dag-before-p2.tikz}
-    \caption{$p_2$ before reconciliation}
+    \input{figs/dag-before-q.tikz}
+    \caption{Graph of updates at $q$ before reconciliation}
     \end{subfigure}\\[35pt]
     \begin{subfigure}{\textwidth}
     \input{figs/dag-after.tikz}
-    \caption{$p_1$ and $p_2$ after reconciliation}
+    \caption{Graph of updates at $p$ and $q$ after reconciliation}
     \end{subfigure}
-    \caption{Example DAGs of updates. Arrows represent a newer update referencing the hash of an older update, and heads (updates with no successors) are marked with circles.}
+    \caption{Example DAGs of updates. Arrows represent an update referencing the hash of its predecessor, and heads (updates with no successors) are marked with circles.}
     \label{fig:example-dags}
 \end{minipage}
 \end{figure}
 
 \begin{figure}
     \centering
+    \input{figs/message-exchange.tikz}
+    \caption{Messages sent in the course of running the reconciliation algorithm in Fig.~\ref{fig:algorithm} with the example in Fig.~\ref{fig:example-dags}.}
+    \label{fig:messages}
 \end{figure}
 
-\begin{figure}
-    \centering
-    \input{figs/message-exchange.tikz}
-    \caption{Caption}
-    \label{fig:my_label}
-\end{figure}
+Initially, when a connection is established between two processes, they send each other their \emph{heads}: that is, the updates in their local set $\mathcal{U}$ that have no successors (Fig.~\ref{fig:algorithm}, lines 3--4).
+In the example of Fig.~\ref{fig:example-dags}, $p$ sends $E$ and $G$ to $q$, while $q$ sends $K$ to $p$.
+Each process also initialises a variable $\mathit{received}$ to contain the set of updates received from the other process within the scope of this particular connection (lines 2 and 7).
+
+On receiving the set of heads from the other process (line 6), the recipient first checks if its local set $\mathcal{U}$ contains successors for any of the sender's heads; if so, those successors, and any transitive successors, are sent immediately to the other process (lines 8--11).
+By definition of $\mathit{heads}$, these successors are not yet known to the other process.
+
+Next, we examine the hashes contained in the set of updates received from the other process, and identify any hashes for which we do not have a matching update (lines 12--13).
+If there are no such hashes, we merge the set of received updates into $\mathcal{U}$ and conclude the protocol run (lines 14--16).
+If there are unresolved hashes, we send a $\mathsf{needs}$ message to the other process, requesting the updates identified by those hashes (line 18).
+The processes respond to such a $\mathsf{needs}$ message by returning all the matching updates in an $\mathsf{updates}$ message (lines 21--23).
+
+In the example of Figs.~\ref{fig:example-dags} and~\ref{fig:messages}, when $q$ receives $\{E, G\}$, those updates contain hashes $H(D)$ and $H(F)$; since $q$ does not yet know either $D$ or $F$, it sends a $\mathsf{needs}$ message containing those hashes back to $p$.
+In the opposite direction, when $p$ receives $\{K\}$ containing $H(J)$, $p$ needs to request $J$ from $q$.
+In successive rounds of this protocol, the processes work their way from the heads backwards along the paths of predecessors, until they find the updates that are common ancestors of both processes' heads.
+We show in the appendix that this algorithm ensures Byzantine Eventual Consistency.
 
 \subsection{Optimisations}\label{sec:optimisations}
 
+The algorithm in Fig.~\ref{fig:algorithm} is efficient in the sense that it does not send any updates that the other process already has, with the exception of updates sent in the initial $\mathit{heads}$ message.
+Assuming that the number of heads is small compared to the total number of updates in $\mathcal{U}$, this is a performance improvement over sending the whole of $\mathcal{U}$.
+
+In order to keep the number of heads small, whenever a correct process generates a new update $(t, v, \mathit{hs})$, it should set $\mathit{hs}$ to be the set of hashes of the current \emph{heads}:
+$\mathit{hs} = \{H(u) \mid u \in \mathcal{U} \wedge \mathrm{succ}^1(u) = \{\}\,\}$.
+% Alternative notation:
+%$\mathit{hs} = \{H(u) \mid u \in \mathcal{U} \wedge \nexists (t, v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}$
+In this construction, the number of heads is bounded by the number of processes generating updates concurrently.
+When a Byzantine-faulty process generates new updates, we cannot guarantee that it will follow this approach, and thus a faulty process may generate a large number of heads.
+While this will affect the performance of the algorithm, it will not affect its correctness.
+
+A downside of the algorithm in Fig.~\ref{fig:algorithm} is that the number of round trips required can be up to the length of the longest path in the graph.
+In order to optimise this, we could change line 22 so that it sends not only the immediate updates identified by the hashes in the $\mathsf{needs}$ message, but also all of the predecessors of those updates, several levels deep.
+The number of round-trips is then reduced proportionally to the number of predecessor levels, but the downside is that some of the predecessors may already be known to the recipient, and thus be transmitted unnecessarily.
+
+To determine the number of predecessor levels to send in each round, as a rule of thumb, the size of the update message should aim to approximately equal the bandwidth-delay product of the connection between the two processes.
+Thus, on a connection with low bandwidth and fast round-trips we will prefer to send many small messages, while on a connection with high bandwidth and slow round-trips we will batch the updates into a small number of large messages.
+
 % Prevent unbounded storage growth
 % Find last common ancestor by some kind of binary search; problem: graph of updates is not linear, so definition of half-way point is fiddly.
-% Send multiple layers of predecessors at once, up to the bandwidth-delay product (as a rule of thumb)
 
 \section{Related Work}
 
@@ -248,4 +279,13 @@ Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
+
+\appendix
+\section{Correctness of the reconciliation algorithm}
+\begin{theorem}
+The algorithm in Fig.~\ref{fig:algorithm} ensures Byzantine Eventual Consistency.
+\end{theorem}
+\begin{proof}[Proof sketch.]
+TODO
+\end{proof}
 \end{document}
