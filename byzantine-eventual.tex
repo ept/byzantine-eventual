@@ -270,14 +270,73 @@ Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and
 
 \appendix
 \section{Correctness of the reconciliation algorithm}
+
+In this appendix, we show that the reconciliation algorithm (\S\ref{sec:algorithm}) satisfies the convergence property.
+We consider two processes, $p$ and $q$, with initial updates, $\mathcal{U}_p$ and $\mathcal{U}_q$ and final updates, $\mathcal{U}'_p$ and $\mathcal{U}'_q$, after they have finished communicating.
+We assume that the processes $p$ and $q$ do not communicate with any other processes whilst they are communicating nor do they add any local updates.
+We use $\mathit{head}(\mathcal{U})$ to denote the set of elements in $\mathcal{U}$ without successors in $\mathcal{U}$.
+
+\begin{lemma}\label{lemma:no-p-missing}
+$\mathcal{U}_p \subseteq \mathcal{U}'_p$
+\end{lemma}
+\begin{proof}[Proof sketch.]
+The process $p$ only modifies $\mathcal{U}$ by unioning it with the set $\mathit{received}$ thus elements are only added to the set $\mathcal{U}$ (Fig.~\ref{fig:algorithm}, line 15). 
+Therefore $\mathcal{U}_p \subseteq \mathcal{U}'_p$.
+\end{proof}
+
+\begin{lemma}\label{lemma:no-q-missing}
+$\mathcal{U}_q \subseteq \mathcal{U}'_p$
+\end{lemma}
+\begin{proof}[Proof sketch.]
+We will use proof by contradiction.\\
+Assume that $\exists u \in \mathcal{U}_q: u \notin  \mathcal{U}'_p$.\\
+Since $\mathit{received}$ is a subset of $\mathcal{U}'_p$ (Fig.~\ref{fig:algorithm}, line 15) and elements are only added to $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line 7) then $u \notin  \mathcal{U}'_p$ implies that $u \notin \mathit{received}$ on process $p$.\\
+Since $u \in \mathcal{U}_q$ then either $u \in \mathit{head}(\mathcal{U}_q)$ or $u \notin \mathit{head}(\mathcal{U}_q)$, we now consider each case in turn.
+\begin{enumerate}
+    \item\textsc{Case} $u \in head(\mathcal{U}_q)$:\\
+    The first message from process $q$ will be an update with $\mathit{head}(\mathcal{U}_q)$ (Fig.~\ref{fig:algorithm}, line 3-4).\\
+    Therefore $\mathit{head}(\mathcal{U}_q) \subseteq \mathit{received}$ so $u \in \mathit{received}$ (Fig.~\ref{fig:algorithm}, line 7).\\
+    This contradicts our previous finding that $u \notin \mathit{received}$.
+    
+    \item\textsc{Case} $u \notin \mathit{head}(\mathcal{U}_q)$:\\
+    Since $\mathcal{U}_q$ is a DAG and $u \notin \mathit{head}(\mathcal{U}_q)$, there must exists a update $v$ such that $v \in \mathit{head}(\mathcal{U}_q)$ and $v \in \mathrm{succ}^*(u)$ in $\mathcal{U}_q$.\\
+    As in the previous case, $\mathit{head}(\mathcal{U}_q) \subseteq \mathit{received}$ so $v \in \mathit{received}$.\\
+    Note that none of the updates in $\mathrm{succ}^*(u)$ are in $\mathcal{U}_p$ as $u \notin \mathcal{U}'_p$ implies that  $u \notin \mathcal{U}_p$ (Lemma~\ref{lemma:no-p-missing}).\\
+    If $v \in \mathrm{succ}^1(u)$ then it must the case that $u \in \mathit{received}$ by the time that $\mathit{missing} = \emptyset$, otherwise $u \in \mathit{missing}$ (Fig.~\ref{fig:algorithm}, lines 12-13).\\
+    By induction over the path of successors from $v$ to $u$, we observe that $u \in \mathit{received}$.\\
+    This contradicts our previous finding that $u \notin \mathit{received}$.
+\end{enumerate}
+\end{proof}
+
+
+\begin{lemma}\label{lemma:no-extras}
+$\mathcal{U}'_p \subseteq \mathcal{U}_p \cup \mathcal{U}_q$    
+\end{lemma}
+\begin{proof}[Proof sketch.]
+We will use proof by contradiction.\\
+Assume that $\exists u \in \mathcal{U}'_p: u \notin \mathcal{U}_p  \land  u \notin \mathcal{U}_q$.\\
+Since $\exists u \in \mathcal{U}'_p$, the process $p$ must have received an update containing $u$ from process $q$ before it finished the reconciliation algorithm (Fig.~\ref{fig:algorithm}, lines 6,7,15).\\
+The process $q$ will only send an update containing $u$ if $u \in \mathcal{U}_q$ or $u \in \mathcal{U}_q$, depending on whether process $q$ has finished the reconciliation algorithm.
+Since $u \notin \mathcal{U}_q$ then process $q$ must have received an update containing $u$ from process $p$.
+Since $u \notin \mathcal{U}_p$ then process $p$ will not send this message and therefore the update $u$ does not exists.
+\end{proof}
+
 \begin{theorem}
-The algorithm in Fig.~\ref{fig:algorithm} ensures Byzantine Eventual Consistency.
+When two processes, $p$ and $q$, with initial updates, $\mathcal{U}_p$ and $\mathcal{U}_q$, have finished communicating then their final updates, $\mathcal{U}'_p$ and $\mathcal{U}'_q$  are both equal to $\mathcal{U}_q \cup \mathcal{U}_q$.
 \end{theorem}
 \begin{proof}[Proof sketch.]
-TODO
+We can prove that $\mathcal{U}'_p = \mathcal{U}_q \cup \mathcal{U}_q$ by showing the following:
+\begin{enumerate}
+   \item $\mathcal{U}_p \subseteq \mathcal{U}'_p$
+   \item $\mathcal{U}_q \subseteq \mathcal{U}'_p$
+   \item $\mathcal{U}'_p \subseteq \mathcal{U}_p \cup \mathcal{U}_q$
+\end{enumerate}
+
+These have been shown by lemmas \ref{lemma:no-p-missing}, \ref{lemma:no-q-missing} and \ref{lemma:no-extras} respectively.  
+By swapping $p$ and $q$, we can show that the same holds for $\mathcal{U}'_q$.
+\end{proof}
 
 % If the communication is between a correct and a Byzantine-faulty replica, the faulty replica can obviously add updates to the set or omit updates from those sent to the correct replica.
 % But the faulty replica cannot corrupt the correct replica's state in a way that would prevent the correct replica from later synchronising its set of updates with another correct replica.
 
-\end{proof}
 \end{document}
