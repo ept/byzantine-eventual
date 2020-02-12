@@ -48,9 +48,8 @@ Moreover, in some systems, the adversary may be able to spawn a large number of 
 This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model \emph{can} we achieve under that assumption?
 
 In this paper we propose \emph{Byzantine Eventual Consistency} (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty processes.
-We define BEC in Section~\ref{sec:properties}, and in Section~\ref{sec:algorithm} we describe an algorithm that achieves BEC.
-The idea behind BEC is that each process acts as a replica of some shared state, and that any two correct replicas converge towards the same state as they communicate.
-This property holds even if replicas also communicate with arbitrarily many Byzantine-faulty processes in the system.
+We define BEC in \S~\ref{sec:properties}, and in \S~\ref{sec:algorithm} we describe an algorithm that achieves BEC.
+In BEC, each process is a replica of some shared state, and any two correct replicas converge towards the same state as they communicate, even if they also communicate with arbitrarily many Byzantine-faulty processes.
 Essentially, we need to ensure that faulty replicas cannot corrupt the state of correct replicas.
 
 \section{Defining Byzantine Eventual Consistency}\label{sec:properties}
@@ -63,12 +62,11 @@ Byzantine agreement is often used to decide an append-only log of values for sta
 \item[Liveness:] For any value proposed, correct processes will eventually decide that value for some position in the log.
 \end{description}
 
-Agreement and liveness assume that no more than $f$ processes are Byzantine-faulty and liveness also assumes partial synchrony~\cite{Dwork:1988}.
-
+The agreement and liveness properties of Byzantine agreement assume that no more than $f$ processes are Byzantine-faulty, while liveness also assumes partial synchrony~\cite{Dwork:1988}.
 We can define a similar set of properties for Byzantine Eventual Consistency (BEC).
 These properties are weaker, but they can be satisfied without making any assumptions about the number of faulty processes or the synchrony model.
-For generality, we assume each process locally maintain a monotonically growing set of updates $\mathcal{U}$.
-We later discuss how this set of updates can be utilised to implement SMR.
+For generality, we assume each process locally maintains a monotonically growing set of updates $\mathcal{U}$.
+\S~\ref{sec:smr} shows how to implement SMR using this set of updates.
 
 \begin{description}
 \item[Validity:] Any update in the set of updates of a correct process must have been proposed by one of the processes.
@@ -82,9 +80,9 @@ When two processes $p$ and $q$ communicate, and each process initially has updat
 The simplest reconciliation algorithm is for $p$ to send the entire set $\mathcal{U}_p$ to $q$, and for $q$ to send $\mathcal{U}_q$ to $p$, so that both processes can compute $\mathcal{U}_q \cup \mathcal{U}_q$.
 However, if the sets have many elements in common, this algorithm transmits a large amount of data unnecessarily.
 
-In more efficient reconciliation algorithms, processes often rely on vector clocks to determine which updates to send to each other (TODO reference?).
-However, vector clocks are not suitable in a Byzantine setting, because a faulty node could send contradictory updates to different processes under the same vector timestamp, causing two processes to have the same vector timestamps, but inconsistent sets of updates.
-Therefore we introduce a reconciliation algorithm that cannot be corrupted by faulty processes.
+Non-Byzantine reconciliation algorithms often rely on vector clocks to determine which updates to send to each other~\cite{Schwarz:1994gl}.
+However, vector clocks are not suitable in a Byzantine setting, because a faulty node could send contradictory updates to different processes using the same vector timestamp, causing two processes to have the same timestamps, but inconsistent sets of updates.
+Therefore we introduce an algorithm that cannot be corrupted by faulty processes.
 
 Let the set of updates $\mathcal{U}$ be a set of pairs $(v, \mathit{hs})$, where $v$ is any value, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
 We assume that $H$ is collision-resistant (i.e.\ it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$).
@@ -191,8 +189,6 @@ Assuming that the number of heads is small compared to the total number of updat
 
 In order to keep the number of heads small, whenever a correct process generates a new update $(v, \mathit{hs})$, it should set $\mathit{hs}$ to be the set of hashes of the current \emph{heads}:
 $\mathit{hs} = \{H(u) \mid u \in \mathcal{U} \wedge \mathrm{succ}^1(u) = \{\}\,\}$.
-% Alternative notation:
-%$\mathit{hs} = \{H(u) \mid u \in \mathcal{U} \wedge \nexists (t, v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}$
 In this construction, the number of heads is bounded by the number of processes generating updates concurrently.
 When a Byzantine-faulty process generates new updates, we cannot guarantee that it will follow this approach, and thus a faulty process may generate a large number of heads.
 While this will affect the performance of the algorithm, it will not affect its correctness.
@@ -207,17 +203,16 @@ Thus, on a connection with low bandwidth and fast round-trips we will prefer to 
 % Prevent unbounded storage growth
 % Find last common ancestor by some kind of binary search; problem: graph of updates is not linear, so definition of half-way point is fiddly.
 
-\section{State machine replication}
+\section{State machine replication}\label{sec:smr}
 
 BEC can ensure convergence for any data structure that is a deterministic function of the set of updates $\mathcal{U}$.
-We now show that State Machine Replication (SMR) is one such example.
+For example, we can implement Byzantine eventually consistent state machine replication (BEC-SMR) as follows: let each value in $\mathcal{U}$ be a pair $(t, \mathit{op})$, where $t$ is a timestamp and $\mathit{op}$ is a state machine operation.
+Any process may propose an operation $op$ to add to the log by generating $t$ and adding $((t, \mathit{op}), \mathit{hs})$ to $\mathcal{U}$.
+The log is then simply the sequence of operations obtained by sorting the elements of $\mathcal{U}$ by timestamp, breaking ties by ordering on the hash of the respective update.
 
-We can implement such a BEC-SMR as follows: let each value consists of a pairs, $(t, op)$, where $t$ is a timestamp and $op$ is a operation for the state machine.
-Any process may propose an operation $op$ to add to the log by generating $t$ and adding $(t, op)$ to $\mathcal{U}$.
-The log is then simply the sequence of values obtained by sorting the elements in $\mathcal{U}$ by their timestamp, breaking ties by ordering on values.
-
-% TODO should we say something about how a BEC log can be used? Something like state machine replication is still possible, but you have to have some kind of rollback/rewinding to deal with elements arriving out-of-order.
-
+Unlike the log produced by Byzantine agreement (\S~\ref{sec:properties}), the BEC-SMR log does not guarantee that operations are added to the log in increasing timestamp order.
+Thus, if a process receives operations out-of-order, it may need to roll back the state machine to an earlier state, and then replay operations in timestamp order~\cite{Jefferson:1985em}.
+This is the price we have to pay to tolerate arbitrary numbers of Byzantine-faulty processes.
 
 \section{Related Work}
 
@@ -225,13 +220,13 @@ Byzantine agreement~\cite{Lamport:1982} has been subject of extensive research a
 Most Byzantine agreement algorithms assume that $n=3f+1$~\cite{Castro:1999,Cowling:2006,Kotla:2007,Aublin:2015,Yin:2019}, while others require that $n=5f+1$~\cite{Abd:2005,Martin:2006}.
 Some take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and assumes $n=2u+r+1$.
 
-% add paragraph on the other issues with byzantine agreement e.g. high latency (one or more round trips to most processes), poor availability (a process cannot add an update less it can communicate with most other processes), need for cypto keys (the issue of how to securely set these up is seldom discussed) 
+% add paragraph on the other issues with byzantine agreement e.g. high latency (one or more round trips to most processes), poor availability (a process cannot add an update less it can communicate with most other processes), need for crypto keys (the issue of how to securely set these up is seldom discussed) 
 
 Byzantine eventual consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011un}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
 Conflict-free Replicated Data Types (CRDTs) provide SEC by ensuring that whenever any two replicas have seen the same set of updates (possibly in a different order), those replicas are in the same state~\cite{Shapiro:2011un}.
-We can strengthen CRDTs to provide Byzantine Eventual Consistency by making each operation an update, and using the algorithm of Section~\ref{sec:algorithm} to reconcile the sets of operations.
+We can strengthen CRDTs to provide Byzantine Eventual Consistency by making each operation an update, and using the algorithm of \S~\ref{sec:algorithm} to reconcile the sets of operations.
 
-The hash chaining approach of our algorithm in Section~\ref{sec:algorithm} has similarities to a Git commit history (where each commit references the hashes of its predecessor commits), a blockchain~\cite{Bano:2019}, or a Merkle tree~\cite{Merkle:1987}.
+The hash chaining approach of our algorithm in \S~\ref{sec:algorithm} has similarities to a Git commit history (where each commit references the hashes of its predecessor commits), a blockchain~\cite{Bano:2019}, or a Merkle tree~\cite{Merkle:1987}.
 
 % Roy Friedman and Roni Licher. Hardening Cassandra Against Byzantine Failures.
 % https://arxiv.org/pdf/1610.02885.pdf
@@ -271,58 +266,89 @@ Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and
 \appendix
 \section{Correctness of the reconciliation algorithm}
 
-In this appendix, we show that the reconciliation algorithm (\S\ref{sec:algorithm}) satisfies the convergence property.
-We consider two processes, $p$ and $q$, with initial updates, $\mathcal{U}_p$ and $\mathcal{U}_q$ and final updates, $\mathcal{U}'_p$ and $\mathcal{U}'_q$, after they have finished communicating.
-We assume that the processes $p$ and $q$ do not communicate with any other processes whilst they are communicating nor do they add any local updates.
-We use $\mathit{head}(\mathcal{U})$ to denote the set of elements in $\mathcal{U}$ without successors in $\mathcal{U}$.
+In this appendix we show that the reconciliation algorithm (\S~\ref{sec:algorithm}) satisfies the properties of Byzantine Eventual Consistency.
+We consider two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, and final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$ after they have finished communicating (i.e.\ after both processes have reached line 16 of Fig.~\ref{fig:algorithm}).
+We assume that $p$ and $q$ do not communicate with any other processes whilst they are communicating, nor do they add any local updates.
+We use $\mathit{heads}(\mathcal{U})$ to denote the set of elements without successors in $\mathcal{U}$:
+\[ \mathit{heads}(\mathcal{U}) = \{u \in \mathcal{U} \mid \nexists (v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}. \]
 
 \begin{lemma}\label{lemma:no-p-missing}
-$\mathcal{U}_p \subseteq \mathcal{U}'_p$
+The set of updates of a correct process $p$ grows monotonically: $\mathcal{U}_p \subseteq \mathcal{U}'_p$.
 \end{lemma}
 \begin{proof}[Proof sketch.]
-The process $p$ only modifies $\mathcal{U}$ by unioning it with the set $\mathit{received}$ thus elements are only added to the set $\mathcal{U}$ (Fig.~\ref{fig:algorithm}, line 15). 
-Therefore $\mathcal{U}_p \subseteq \mathcal{U}'_p$.
+The process $p$ only modifies $\mathcal{U}$ by unioning it with the set $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line 15), or by generating new operations, which are added to $\mathcal{U}$.
+Thus, elements are only added to the set $\mathcal{U}$, and therefore $\mathcal{U}_p \subseteq \mathcal{U}'_p$.
+\end{proof}
+
+\begin{lemma}\label{lemma:no-dangling}
+Let $u = (\mathit{val}, \mathit{hs})$ such that $u \in \mathcal{U}_p$.
+Then for all $h \in \mathit{hs}$ we have $\exists v \in \mathcal{U}_p.\; H(v) = h$.
+\end{lemma}
+\begin{proof}[Proof sketch.]
+There are two ways how $u$ can become a member of $\mathcal{U}_p$ for a correct process $p$:
+\begin{enumerate}
+    \item $u$ is generated by process $p$.
+    In this case, since $p$ is assumed to be correct, $\mathit{hs} = \{H(v) \mid v \in \mathcal{U} \wedge \mathrm{succ}^1(v) = \{\}\,\}$ for some earlier state $\mathcal{U}$, as per \S~\ref{sec:optimisations}.
+    As $\mathcal{U}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}), $\mathcal{U} \subseteq \mathcal{U}_p$, and thus we can deduce that $\forall h \in \mathit{hs}.\; \exists v \in \mathcal{U}_p.\; H(v) = h$.
+    \item $u$ is received during reconciliation with another process (which might be faulty).
+    In this case, during the run of the protocol at which $p$ received $u$, we have $u \in \mathit{received}$ and $\mathit{missing} = \{\}$ at line 15 of Fig.~\ref{fig:algorithm}.
+    Let $\mathcal{U}$ be the set of updates at $p$ immediately before that execution of line 15.
+    From $\mathit{missing} = \{\}$ and lines 12--13 we can deduce that $\forall h \in \mathit{hs}.\; \exists v \in (\mathcal{U} \cup \mathit{received}).\; H(v) = h$.
+    Since $\mathcal{U}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}) and $\mathit{received} \subseteq \mathcal{U}_p$ (line 15) we have $\forall h \in \mathit{hs}.\; \exists v \in \mathcal{U}_p.\; H(v) = h$.
+\end{enumerate}
+\end{proof}
+
+\begin{lemma}\label{lemma:no-collision}
+Let $u = (\mathit{val}, \mathit{hs})$ such that $u \in \mathcal{U}_p$ and $u \in \mathcal{U}_q$.
+Then $\{v \in \mathcal{U}_p \mid H(v) \in \mathit{hs}\} = \{v \in \mathcal{U}_q \mid H(v) \in \mathit{hs}\}$.
+\end{lemma}
+\begin{proof}[Proof sketch.]
+We use proof by contradiction.\\
+Assume there exists $h \in \mathit{hs}$ such that $\{v \in \mathcal{U}_p \mid H(v) = h\} \neq \{v \in \mathcal{U}_q \mid H(v) = h\}$.\\
+From Lemma~\ref{lemma:no-dangling} we have that $\{v \in \mathcal{U}_p \mid H(v) = h\} \neq \{\}$ and $\{v \in \mathcal{U}_q \mid H(v) = h\} \neq \{\}$.\\
+Hence, there exist $v \in \mathcal{U}_p$ and $v' \in \mathcal{U}_q$ such that $v \neq v'$ and $H(v) = H(v') = h$.\\
+However, this contradicts our assumption in \S~\ref{sec:algorithm} that the hash function $H(\cdot)$ is collision-resistant.
 \end{proof}
 
 \begin{lemma}\label{lemma:no-q-missing}
 $\mathcal{U}_q \subseteq \mathcal{U}'_p$
 \end{lemma}
 \begin{proof}[Proof sketch.]
-We will use proof by contradiction.\\
-Assume that $\exists u \in \mathcal{U}_q: u \notin  \mathcal{U}'_p$.\\
+We use proof by contradiction.\\
+Assume that $\exists u \in \mathcal{U}_q.\; u \notin  \mathcal{U}'_p$.\\
 Since $\mathit{received}$ is a subset of $\mathcal{U}'_p$ (Fig.~\ref{fig:algorithm}, line 15) and elements are only added to $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line 7) then $u \notin  \mathcal{U}'_p$ implies that $u \notin \mathit{received}$ on process $p$.\\
-Since $u \in \mathcal{U}_q$ then either $u \in \mathit{head}(\mathcal{U}_q)$ or $u \notin \mathit{head}(\mathcal{U}_q)$, we now consider each case in turn.
+Since $u \in \mathcal{U}_q$ then either $u \in \mathit{heads}(\mathcal{U}_q)$ or $u \notin \mathit{heads}(\mathcal{U}_q)$, we now consider each case in turn.
 \begin{enumerate}
-    \item\textsc{Case} $u \in head(\mathcal{U}_q)$:\\
-    The first message from process $q$ will be an update with $\mathit{head}(\mathcal{U}_q)$ (Fig.~\ref{fig:algorithm}, line 3-4).\\
-    Therefore $\mathit{head}(\mathcal{U}_q) \subseteq \mathit{received}$ so $u \in \mathit{received}$ (Fig.~\ref{fig:algorithm}, line 7).\\
+    \item\textsc{Case} $u \in heads(\mathcal{U}_q)$:\\
+    The first message from process $q$ will be an update with $\mathit{heads}(\mathcal{U}_q)$ (Fig.~\ref{fig:algorithm}, line 3-4).\\
+    Therefore $\mathit{heads}(\mathcal{U}_q) \subseteq \mathit{received}$ so $u \in \mathit{received}$ (Fig.~\ref{fig:algorithm}, line 7).\\
     This contradicts our previous finding that $u \notin \mathit{received}$.
     
-    \item\textsc{Case} $u \notin \mathit{head}(\mathcal{U}_q)$:\\
-    Since $\mathcal{U}_q$ is a DAG and $u \notin \mathit{head}(\mathcal{U}_q)$, there must exists a update $v$ such that $v \in \mathit{head}(\mathcal{U}_q)$ and $v \in \mathrm{succ}^*(u)$ in $\mathcal{U}_q$.\\
-    As in the previous case, $\mathit{head}(\mathcal{U}_q) \subseteq \mathit{received}$ so $v \in \mathit{received}$.\\
+    \item\textsc{Case} $u \notin \mathit{heads}(\mathcal{U}_q)$:\\
+    Since $\mathcal{U}_q$ is a DAG and $u \notin \mathit{heads}(\mathcal{U}_q)$, there must exist an update $v$ such that $v \in \mathit{heads}(\mathcal{U}_q)$ and $v \in \mathrm{succ}^*(u)$ in $\mathcal{U}_q$.\\
+    As in the previous case, $\mathit{heads}(\mathcal{U}_q) \subseteq \mathit{received}$, so $v \in \mathit{received}$.\\
     Note that none of the updates in $\mathrm{succ}^*(u)$ are in $\mathcal{U}_p$ as $u \notin \mathcal{U}'_p$ implies that  $u \notin \mathcal{U}_p$ (Lemma~\ref{lemma:no-p-missing}).\\
     If $v \in \mathrm{succ}^1(u)$ then it must the case that $u \in \mathit{received}$ by the time that $\mathit{missing} = \emptyset$, otherwise $u \in \mathit{missing}$ (Fig.~\ref{fig:algorithm}, lines 12-13).\\
     By induction over the path of successors from $v$ to $u$, we observe that $u \in \mathit{received}$.\\
+    At each step of the induction, the processes move to the predecessors of the previous step; due to Lemma~\ref{lemma:no-collision}, $p$ and $q$ agree about the identity of these predecessors.\\
     This contradicts our previous finding that $u \notin \mathit{received}$.
 \end{enumerate}
 \end{proof}
-
 
 \begin{lemma}\label{lemma:no-extras}
 $\mathcal{U}'_p \subseteq \mathcal{U}_p \cup \mathcal{U}_q$    
 \end{lemma}
 \begin{proof}[Proof sketch.]
-We will use proof by contradiction.\\
-Assume that $\exists u \in \mathcal{U}'_p: u \notin \mathcal{U}_p  \land  u \notin \mathcal{U}_q$.\\
+We use proof by contradiction.\\
+Assume that $\exists u \in \mathcal{U}'_p.\; u \notin \mathcal{U}_p  \land  u \notin \mathcal{U}_q$.\\
 Since $\exists u \in \mathcal{U}'_p$, the process $p$ must have received an update containing $u$ from process $q$ before it finished the reconciliation algorithm (Fig.~\ref{fig:algorithm}, lines 6,7,15).\\
-The process $q$ will only send an update containing $u$ if $u \in \mathcal{U}_q$ or $u \in \mathcal{U}_q$, depending on whether process $q$ has finished the reconciliation algorithm.
+Process $q$ will only send an update containing $u$ if $u \in \mathcal{U}_q$ or $u \in \mathcal{U}'_q$, depending on whether process $q$ has finished the reconciliation algorithm.
 Since $u \notin \mathcal{U}_q$ then process $q$ must have received an update containing $u$ from process $p$.
-Since $u \notin \mathcal{U}_p$ then process $p$ will not send this message and therefore the update $u$ does not exists.
+Since $u \notin \mathcal{U}_p$ then process $p$ will not send this message and therefore the update $u$ does not exist.
 \end{proof}
 
-\begin{theorem}
-When two processes, $p$ and $q$, with initial updates, $\mathcal{U}_p$ and $\mathcal{U}_q$, have finished communicating then their final updates, $\mathcal{U}'_p$ and $\mathcal{U}'_q$  are both equal to $\mathcal{U}_q \cup \mathcal{U}_q$.
+\begin{theorem}\label{theorem:convergence}
+When two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, have finished communicating (i.e.\ both have reached line 16 of Fig.~\ref{fig:algorithm}), then their final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$  are both equal to $\mathcal{U}_q \cup \mathcal{U}_q$.
 \end{theorem}
 \begin{proof}[Proof sketch.]
 We can prove that $\mathcal{U}'_p = \mathcal{U}_q \cup \mathcal{U}_q$ by showing the following:
@@ -335,6 +361,15 @@ We can prove that $\mathcal{U}'_p = \mathcal{U}_q \cup \mathcal{U}_q$ by showing
 These have been shown by lemmas \ref{lemma:no-p-missing}, \ref{lemma:no-q-missing} and \ref{lemma:no-extras} respectively.  
 By swapping $p$ and $q$, we can show that the same holds for $\mathcal{U}'_q$.
 \end{proof}
+
+This concludes the proof that the reconciliation algorithm of \S~\ref{sec:algorithm} satisfies the convergence property of BEC.
+The proof of the validity property is obvious (the only way how an update in $\mathcal{U}$ can come into existence is by being proposed by one of the processes), and the liveness property follows from Theorem~\ref{theorem:convergence} and the assumption that any two correct processes will eventually succeed in communicating.
+
+In this protocol, the only thing that a Byzantine-faulty process can do is to extend the set $\mathcal{U}$ with well-formed updates (i.e.\ updates containing only hashes that resolve to other updates).
+If a Byzantine-faulty process generates updates containing hashes that do not resolve, the correct process will never reach the $\mathit{missing} = \{\}$ state and thus never update $\mathcal{U}$ in this protocol run.
+If a faulty process responds incorrectly to a $\mathsf{needs}$ message, likewise any effects on the recipient's state are limited to well-formed updates.
+This ensures the integrity of the DAG.
+Arbitrary $\mathsf{needs}$ messages sent by a faulty process have no consequence, since they do not affect the state of the recipient.
 
 % If the communication is between a correct and a Byzantine-faulty replica, the faulty replica can obviously add updates to the set or omit updates from those sent to the correct replica.
 % But the faulty replica cannot corrupt the correct replica's state in a way that would prevent the correct replica from later synchronising its set of updates with another correct replica.
