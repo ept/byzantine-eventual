@@ -5,16 +5,20 @@
 \node (b) [right of=a] {$B$};
 \node (c) [above right of=b] {$C$};
 \node (d) [right of=c] {$D$};
-\node[circle,draw] (e) [right of=d] {$E$};
-\node (f) [below right of=b] {$F$};
-\node[circle,draw] (g) [right of=f] {$G$};
+\node (e) [right of=d,draw,circle] {$E$};
+\node (j) [below right of=b] {$J$};
+\node (k) [right of=j] {$K$};
+\node (l) [right of=k] {$L$};
+\node (m) [right of=l,draw,circle] {$M$};
 
 % arrows
 \draw[<-] (a) -- (b);
 \draw[<-] (b) -- (c);
 \draw[<-] (c) -- (d);
 \draw[<-] (d) -- (e);
-\draw[<-] (f) -- (e);
-\draw[<-] (b) -- (f);
-\draw[<-] (f) -- (g);
+\draw[<-] (j) -- (e);
+\draw[<-] (b) -- (j);
+\draw[<-] (j) -- (k);
+\draw[<-] (k) -- (l);
+\draw[<-] (l) -- (m);
 \end{tikzpicture}

@@ -1,31 +1,35 @@
 \vspace{0.5cm}
 \begin{tikzpicture}
-\def\width{3cm}
-\def\latency{1cm}
-\def\spacing{0.1cm}
-\def\length{6cm}
-\def\startdelay{0.5cm}
+\newlength{\width}\setlength{\width}{3cm}
+\newlength{\latency}\setlength{\latency}{0.5cm}
+\newlength{\replydelay}\setlength{\replydelay}{0.1cm}
 
 % Timelimes
-\node (p1-start) at (0,0) {$p$};
-\node (p2-start) at (\width,0) {$q$};
-\node (p1-end) at (0,-\length) {};
-\node (p2-end) at (\width,-\length) {};
+\node (p1-start) at (0, 0.5cm) {$p$};
+\node (p2-start) at (\width, 0.5cm) {$q$};
+\node (p1-end) at (0,-3.8cm) {};
+\node (p2-end) at (\width,-3.8cm) {};
 \draw (p1-start) -- (p1-end);
 \draw (p2-start) -- (p2-end);
 
 % Messages
-\draw[->] (0,-\startdelay) node[left] {$\langle\mathsf{updates}: \{E,G\}\rangle$} -- (\width,\spacing-\startdelay-\latency);
-\draw[->] (\width,-\startdelay) node[right] {$\langle\mathsf{updates}: \{K\}\rangle$} -- (0,\spacing-\startdelay-\latency);
+\draw[->] (0,0) node[left] {$\langle\mathsf{heads}: \{H(E),H(M)\}\rangle$} -- (\width,\replydelay-\latency);
+\draw[->] (\width,0) node[right] {$\langle\mathsf{heads}: \{H(G),H(K)\}\rangle$} -- (0,\replydelay-\latency);
 
-\draw[->] (\width, -\startdelay-\latency) node[right] {$\langle\mathsf{needs}: \{H(D), H(F)\}\rangle$} -- (0,\spacing-\startdelay-2.0\latency);
-\draw[->] (0, -\startdelay-\latency) node[left] {$\langle\mathsf{needs}: \{H(J)\}\rangle$} -- (\width,\spacing-\startdelay-2.0\latency);
+\draw[->] (\width, -\latency) node[right] {$\langle\mathsf{needs}: \{H(E),H(M)\}\rangle$} -- (0,\replydelay-2.0\latency);
+\draw[->] (0, -\latency) node[left] {$\langle\mathsf{updates}: \{L, M\} \rangle,\; \langle\mathsf{needs}: \{H(G)\}\rangle$} -- (\width,\replydelay-2.0\latency);
 
-\draw[->] (0, -\startdelay-2.0\latency) node[left] {$\langle\mathsf{updates}: \{D, F\}\rangle$} -- (\width,\spacing-\startdelay-3.0\latency);
-\draw[->] (\width, -\startdelay-2.0\latency) node[right] {$\langle\mathsf{updates}: \{J\}\rangle$} -- (0,\spacing-\startdelay-3.0\latency) node[left] {finished};
+\draw[->] (0, -2.0\latency) node[left] {$\langle\mathsf{updates}: \{E\}\rangle$} -- (\width,\replydelay-3.0\latency);
+\draw[->] (\width, -2.0\latency) node[right] {$\langle\mathsf{updates}: \{G\}\rangle$} -- (0,\replydelay-3.0\latency);
 
-\draw[->] (\width, -\startdelay-3.0\latency) node[right] {$\langle\mathsf{needs}: \{H(C)\}$} -- (0,\spacing-\startdelay-4.0\latency);
+\draw[->] (\width, -3.0\latency) node[right] {$\langle\mathsf{needs}: \{H(D)\}$} -- (0,\replydelay-4.0\latency);
+\draw[->] (0, -3.0\latency) node[left] {$\langle\mathsf{needs}: \{H(F)\}\rangle$} -- (\width,\replydelay-4.0\latency);
 
-\draw[->] (0, -\startdelay-4.0\latency) node[left] {$\langle\mathsf{updates}: \{C\}\rangle$} -- (\width,\spacing-\startdelay-5.0\latency) node[right] {finished};
+\draw[->] (0, -4.0\latency) node[left] {$\langle\mathsf{updates}: \{D\}\rangle$} -- (\width,\replydelay-5.0\latency);
+\draw[->] (\width, -4.0\latency) node[right] {$\langle\mathsf{updates}: \{F\}\rangle$} -- (0,\replydelay-5.0\latency) node[left] {finished};
+
+\draw[->] (\width, -5.0\latency) node[right] {$\langle\mathsf{needs}: \{H(C)\}$} -- (0,\replydelay-6.0\latency);
+
+\draw[->] (0, -6.0\latency) node[left] {$\langle\mathsf{updates}: \{C\}\rangle$} -- (\width,\replydelay-7.0\latency) node[right] {finished};
 
 \end{tikzpicture}
