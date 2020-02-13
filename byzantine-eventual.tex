@@ -114,31 +114,31 @@ We will illustrate the operation of this algorithm using the example in Fig.~\re
     \algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
     \begin{algorithmic}[1]
     \On{connecting to another process}
-        \State $\mathit{sent} := \{\}; \mathit{received} := \{\}$ \Comment{connection-local variables}
-        \State \textbf{send} $\langle\mathsf{heads}: \{H(u) \mid u \in \mathcal{U} \wedge \nexists (v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}\rangle$
+        \State $\mathit{sent} := \{\}; \mathit{received} := \{\}$ \label{line:init}\Comment{connection-local variables}
+        \State \textbf{send} $\langle\mathsf{heads}: \{H(u) \mid u \in \mathcal{U} \wedge \nexists (v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}\rangle$ \label{line:send-heads}
     \EndOn\vspace{6pt}
-    \On{receiving $\langle\mathsf{heads}: \mathit{hs}\rangle$}
-        \State $\mathit{reply} := \{v \mid \exists u \in \mathcal{U}.\; H(u) \in \mathit{hs} \,\wedge\, v \in \mathrm{succ}^*(u)\}$
+    \On{receiving $\langle\mathsf{heads}: \mathit{hs}\rangle$} \label{line:recv-heads}
+        \State $\mathit{reply} := \{v \mid \exists u \in \mathcal{U}.\; H(u) \in \mathit{hs} \,\wedge\, v \in \mathrm{succ}^*(u)\}$ \label{line:succ}
         \If{$\mathit{reply} \neq \{\}$}
-            \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply};\;$ \textbf{send} $\langle\mathsf{updates}: \mathit{reply}\rangle$
+            \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply};\;$ \textbf{send} $\langle\mathsf{updates}: \mathit{reply}\rangle$ \label{line:heads-reply}
         \EndIf
-        \State \Call{HandleMissing}{$\{h \in \mathit{hs} \mid \nexists u \in \mathcal{U}.\; H(u) = h\}$}
+        \State \Call{HandleMissing}{$\{h \in \mathit{hs} \mid \nexists u \in \mathcal{U}.\; H(u) = h\}$} \label{line:heads-missing}
     \EndOn\vspace{6pt}
-    \On{receiving $\langle\mathsf{updates}: \mathit{new}\rangle$}
-        \State $\mathit{received} := \mathit{received} \,\cup\, \mathit{new}$
-        \State $\mathit{missing} := \{h \mid \exists (v, \mathit{hs}) \in \mathit{received}.\; h \in \mathit{hs} \;\wedge$
-        \State \hspace{55pt}$\; \nexists u \in (\mathcal{U} \cup \mathit{received}).\; H(u) = h\}$
-        \State \Call{HandleMissing}{$\mathit{missing}$}
+    \On{receiving $\langle\mathsf{updates}: \mathit{new}\rangle$} \label{line:recv-updates}
+        \State $\mathit{received} := \mathit{received} \,\cup\, \mathit{new}$ \label{line:updates-received}
+        \State $\mathit{missing} := \{h \mid \exists (v, \mathit{hs}) \in \mathit{received}.\; h \in \mathit{hs} \;\wedge$ \label{line:updates-missing}
+        \State \hspace{55pt}$\; \nexists u \in (\mathcal{U} \cup \mathit{received}).\; H(u) = h\}$ \label{line:updates-missing2}
+        \State \Call{HandleMissing}{$\mathit{missing}$} \label{line:updates-handle-missing}
     \EndOn\vspace{6pt}
-    \On{receiving $\langle\mathsf{needs}: \mathit{missing}\rangle$}
-        \State $\mathit{reply} := \{u \in \mathcal{U} \mid H(u) \in \mathit{missing} \wedge u \notin \mathit{sent}\}$
-        \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply};\;$ \textbf{send} $\langle\mathsf{updates}: \mathit{reply}\rangle$
-    \EndOn\vspace{6pt}
+    \On{receiving $\langle\mathsf{needs}: \mathit{missing}\rangle$} \label{line:recv-needs}
+        \State $\mathit{reply} := \{u \in \mathcal{U} \mid H(u) \in \mathit{missing} \wedge u \notin \mathit{sent}\}$ \label{line:needs-reply}
+        \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply};\;$ \textbf{send} $\langle\mathsf{updates}: \mathit{reply}\rangle$ \label{line:send-updates}
+    \EndOn\vspace{6pt} \label{line:end-needs}
     \Function{HandleMissing}{$\mathit{missing}$}
-        \If{$\mathit{missing} = \{\}$}
-            \State $\mathcal{U} := \mathcal{U} \cup \mathit{received};\;$ \textbf{finish protocol}
+        \If{$\mathit{missing} = \{\}$} \label{line:missing-empty}
+            \State $\mathcal{U} := \mathcal{U} \cup \mathit{received};\;$ \textbf{finish protocol} \label{line:finish}
         \Else
-            \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$
+            \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$ \label{line:send-missing}
         \EndIf
     \EndFunction
     \end{algorithmic}
@@ -170,19 +170,19 @@ We will illustrate the operation of this algorithm using the example in Fig.~\re
     \label{fig:messages}
 \end{figure}
 
-Initially, when a connection is established between two processes, they send each other hashes of their \emph{heads}: that is, hashes of the updates in their local set $\mathcal{U}$ that have no successors (Fig.~\ref{fig:algorithm}, line 3).
+Initially, when a connection is established between two processes, they send each other hashes of their \emph{heads}: that is, hashes of the updates in their local set $\mathcal{U}$ that have no successors (Fig.~\ref{fig:algorithm}, line~\ref{line:send-heads}).
 In the example of Fig.~\ref{fig:example-dags}, $p$ sends $\{H(E),H(M)\}$ to $q$, while $q$ sends $\{H(G),H(K)\}$ to $p$.
-Each process also initialises variables $\mathit{sent}$ and $\mathit{received}$ to contain the set of updates sent to/received from the other process within the scope of this particular connection (line 2).
+Each process also initialises variables $\mathit{sent}$ and $\mathit{received}$ to contain the set of updates sent to/received from the other process within the scope of this particular connection (line~\ref{line:init}).
 
-On receiving the head hashes from the other process (line 5), the recipient first checks if its local set $\mathcal{U}$ contains successors for any of the sender's heads; if so, those successors, and any transitive successors, are sent immediately to the other process (lines 6--8).
+On receiving the head hashes from the other process (line~\ref{line:recv-heads}), the recipient first checks if its local set $\mathcal{U}$ contains successors for any of the sender's heads; if so, those successors, and any transitive successors, are sent immediately to the other process (lines~\ref{line:succ}--\ref{line:heads-reply}).
 By definition of $\mathit{heads}$, these successors are not yet known to the other process.
 
-If the recipient does not know some of the head hashes, it replies with a $\mathsf{needs}$ message requesting the updates matching those hashes (lines 10, 26).
-The processes respond to such a $\mathsf{needs}$ message by returning all the matching updates in an $\mathsf{updates}$ message (lines 18--21).
-The received $\mathsf{updates}$ message might again contain unresolved hashes, resulting in another $\mathsf{needs}$ message requesting the updates (lines 14--16).
+If the recipient does not know some of the head hashes, it replies with a $\mathsf{needs}$ message requesting the updates matching those hashes (lines~\ref{line:heads-missing}, \ref{line:send-missing}).
+A process responds to such a $\mathsf{needs}$ message by returning all the matching updates (lines~\ref{line:recv-needs}--\ref{line:end-needs}).
+That $\mathsf{updates}$ message might again contain unresolved hashes, resulting in another $\mathsf{needs}$ message (lines~\ref{line:updates-missing}--\ref{line:updates-handle-missing}).
 In successive rounds of this protocol, the processes work their way from the heads along the paths of predecessors, until they reach the updates that are common ancestors of both processes' heads.
 
-Eventually, when there are no unresolved hashes, we merge the set of received updates into $\mathcal{U}$ and conclude the protocol run (lines 23--24).
+Eventually, when there are no unresolved hashes, we merge the set of received updates into $\mathcal{U}$ and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
 We show in the appendix that this algorithm ensures Byzantine Eventual Consistency.
 
 \subsection{Optimisations}\label{sec:optimisations}
@@ -193,11 +193,10 @@ Assuming that the number of heads is small compared to the total number of updat
 In order to keep the number of heads small, whenever a correct process generates a new update $(v, \mathit{hs})$, it should set $\mathit{hs}$ to be the set of hashes of the current heads:
 $\mathit{hs} = \{H(u) \mid u \in \mathcal{U} \wedge \mathrm{succ}^1(u) = \{\}\,\}$.
 In this construction, the number of heads is bounded by the number of processes generating updates concurrently.
-When a Byzantine-faulty process generates new updates, we cannot guarantee that it will follow this approach, and thus a faulty process may generate a large number of heads.
-While this will affect the performance of the algorithm, it will not affect its correctness.
+A Byzantine-faulty process may generate a large number of heads, which will affect the performance of the algorithm, but not its correctness.
 
 A downside of the algorithm in Fig.~\ref{fig:algorithm} is that the number of round trips required can be up to the length of the longest path in the graph.
-In order to optimise this, we could change lines 19--20 to send not only the immediate updates identified by the hashes in the $\mathsf{needs}$ message, but also all of the predecessors of those updates, several levels deep.
+In order to optimise this, we could change lines~\ref{line:needs-reply}--\ref{line:send-updates} to send not only the immediate updates identified by the hashes in the $\mathsf{needs}$ message, but also all of the predecessors of those updates, several levels deep.
 The number of round-trips is then reduced proportionally to the number of predecessor levels, but the downside is that some of the predecessors may already be known to the recipient, and are thus transmitted unnecessarily.
 
 To determine the number of predecessor levels to send in each round, as a rule of thumb, the size of the $\mathsf{updates}$ message should be approximately equal to the bandwidth-delay product of the connection between the two processes.
@@ -215,7 +214,6 @@ The log is then simply the sequence of operations obtained by sorting the elemen
 
 Unlike the log produced by Byzantine agreement (\S~\ref{sec:properties}), the BEC-SMR log does not guarantee that operations are added to the log in increasing timestamp order.
 Thus, if a process receives operations out-of-order, it may need to roll back the state machine to an earlier state, and then replay operations in timestamp order~\cite{Jefferson:1985em}.
-This is the price we have to pay to tolerate arbitrary numbers of Byzantine-faulty processes.
 
 \section{Related Work}
 
@@ -225,11 +223,13 @@ Some take a different approach to bounding the number of failures: for example, 
 
 % add paragraph on the other issues with byzantine agreement e.g. high latency (one or more round trips to most processes), poor availability (a process cannot add an update less it can communicate with most other processes), need for crypto keys (the issue of how to securely set these up is seldom discussed) 
 
-Byzantine eventual consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011un}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
+Byzantine Eventual Consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011un}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
 Conflict-free Replicated Data Types (CRDTs) provide SEC by ensuring that whenever any two replicas have seen the same set of updates (possibly in a different order), those replicas are in the same state~\cite{Shapiro:2011un}.
 We can strengthen CRDTs to provide Byzantine Eventual Consistency by making each operation an update, and using the algorithm of \S~\ref{sec:algorithm} to reconcile the sets of operations.
 
-The hash chaining approach of our algorithm in \S~\ref{sec:algorithm} has similarities to a Git commit history (where each commit references the hashes of its predecessor commits), a blockchain~\cite{Bano:2019}, or a Merkle tree~\cite{Merkle:1987}.
+The hash chaining approach of our algorithm resembles a Git commit history, a blockchain~\cite{Bano:2019}, or a Merkle tree~\cite{Merkle:1987}.
+Our algorithm in \S~\ref{sec:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
+However, to our knowledge the Git protocol has not yet been the subject of much study, and particularly not in a context of Byzantine fault tolerance.
 
 % Roy Friedman and Roni Licher. Hardening Cassandra Against Byzantine Failures.
 % https://arxiv.org/pdf/1610.02885.pdf
@@ -257,7 +257,10 @@ The hash chaining approach of our algorithm in \S~\ref{sec:algorithm} has simila
 % Comparision to byz chain replication
 % https://link.springer.com/chapter/10.1007/978-3-642-35476-2_24
 
-\section{Summary}
+\section{Conclusions}
+
+We explore the possibilities beyond the $3f+1$ bound of Byzantine agreement.
+For systems with an arbitrary number of faulty processes we propose Byzantine Eventual Consistency as a model, and a hash chaining algorithm for replication.
 
 \begin{acks}
 Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and by the Isaac Newton Trust.
@@ -269,8 +272,8 @@ Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and
 \appendix
 \section{Correctness of the reconciliation algorithm}
 
-In this appendix we show that the reconciliation algorithm (\S~\ref{sec:algorithm}) satisfies the properties of Byzantine Eventual Consistency.
-We consider two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, and final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$ after they have finished communicating (i.e.\ after both processes have reached line 24 of Fig.~\ref{fig:algorithm}).
+In this appendix we show that the reconciliation algorithm of \S~\ref{sec:algorithm} satisfies the properties of Byzantine Eventual Consistency.
+We consider two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, and final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$ after they have finished communicating (i.e.\ after both processes have reached line~\ref{line:finish} of Fig.~\ref{fig:algorithm}).
 We assume that $p$ and $q$ do not communicate with any other processes whilst they are communicating, nor do they add any local updates.
 We use $\mathit{heads}(\mathcal{U})$ to denote the set of elements without successors in $\mathcal{U}$:
 \[ \mathit{heads}(\mathcal{U}) = \{u \in \mathcal{U} \mid \nexists (v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}. \]
@@ -279,7 +282,7 @@ We use $\mathit{heads}(\mathcal{U})$ to denote the set of elements without succe
 The set of updates of a correct process $p$ grows monotonically: $\mathcal{U}_p \subseteq \mathcal{U}'_p$.
 \end{lemma}
 \begin{proof}[Proof sketch.]
-The process $p$ only modifies $\mathcal{U}$ by unioning it with the set $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line 24), or by generating new operations, which are added to $\mathcal{U}$.
+The process $p$ only modifies $\mathcal{U}$ by unioning it with the set $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line~\ref{line:finish}), or by generating new operations, which are added to $\mathcal{U}$.
 Thus, elements are only added to the set $\mathcal{U}$, and therefore $\mathcal{U}_p \subseteq \mathcal{U}'_p$.
 \end{proof}
 
@@ -294,10 +297,10 @@ There are two ways how $u$ can become a member of $\mathcal{U}_p$ for a correct 
     In this case, since $p$ is assumed to be correct, $\mathit{hs} = \{H(v) \mid v \in \mathcal{U} \wedge \mathrm{succ}^1(v) = \{\}\,\}$ for some earlier state $\mathcal{U}$, as per \S~\ref{sec:optimisations}.
     As $\mathcal{U}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}), $\mathcal{U} \subseteq \mathcal{U}_p$, and thus we can deduce that $\forall h \in \mathit{hs}.\; \exists v \in \mathcal{U}_p.\; H(v) = h$.
     \item $u$ is received during reconciliation with another process (which might be faulty).
-    In this case, during the run of the protocol at which $p$ received $u$, we have $u \in \mathit{received}$ and $\mathit{missing} = \{\}$ at line 24 of Fig.~\ref{fig:algorithm}.
-    Let $\mathcal{U}$ be the set of updates at $p$ immediately before that execution of line 24.
-    From $\mathit{missing} = \{\}$ and lines 14--15 we can deduce that $\forall h \in \mathit{hs}.\; \exists v \in (\mathcal{U} \cup \mathit{received}).\; H(v) = h$.
-    Since $\mathcal{U}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}) and $\mathit{received} \subseteq \mathcal{U}_p$ (line 24) we have $\forall h \in \mathit{hs}.\; \exists v \in \mathcal{U}_p.\; H(v) = h$.
+    In this case, during the run of the protocol at which $p$ received $u$, we have $u \in \mathit{received}$ and $\mathit{missing} = \{\}$ at line~\ref{line:finish} of Fig.~\ref{fig:algorithm}.
+    Let $\mathcal{U}$ be the set of updates at $p$ immediately before that execution of line~\ref{line:finish}.
+    From $\mathit{missing} = \{\}$ and lines~\ref{line:updates-missing}--\ref{line:updates-missing2} we can deduce that $\forall h \in \mathit{hs}.\; \exists v \in (\mathcal{U} \cup \mathit{received}).\; H(v) = h$.
+    Since $\mathcal{U}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}) and $\mathit{received} \subseteq \mathcal{U}_p$ (line~\ref{line:finish}) we have $\forall h \in \mathit{hs}.\; \exists v \in \mathcal{U}_p.\; H(v) = h$.
 \end{enumerate}
 \end{proof}
 
@@ -319,20 +322,20 @@ $\mathcal{U}_q \subseteq \mathcal{U}'_p$
 \begin{proof}[Proof sketch.]
 We use proof by contradiction.\\
 Assume that $\exists u \in \mathcal{U}_q.\; u \notin  \mathcal{U}'_p$.\\
-Since $\mathit{received}$ is a subset of $\mathcal{U}'_p$ (Fig.~\ref{fig:algorithm}, line 24) and elements are only added to $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line 13) then $u \notin  \mathcal{U}'_p$ implies that $u \notin \mathit{received}$ on process $p$.\\
+Since $\mathit{received}$ is a subset of $\mathcal{U}'_p$ (Fig.~\ref{fig:algorithm}, line~\ref{line:finish}) and elements are only added to $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line~\ref{line:updates-received}) then $u \notin  \mathcal{U}'_p$ implies that $u \notin \mathit{received}$ on process $p$.\\
 Since $u \in \mathcal{U}_q$ then either $u \in \mathit{heads}(\mathcal{U}_q)$ or $u \notin \mathit{heads}(\mathcal{U}_q)$, we now consider each case in turn.
 % TODO change this to reflect that the heads message contains only hashes, no updates!
 \begin{enumerate}
     \item\textsc{Case} $u \in heads(\mathcal{U}_q)$:\\
-    The first message from process $q$ will be an update with $\mathit{heads}(\mathcal{U}_q)$ (Fig.~\ref{fig:algorithm}, line 3).\\
-    Therefore $\mathit{heads}(\mathcal{U}_q) \subseteq \mathit{received}$ so $u \in \mathit{received}$ (Fig.~\ref{fig:algorithm}, line 13).\\
+    The first message from process $q$ will be an update with $\mathit{heads}(\mathcal{U}_q)$ (Fig.~\ref{fig:algorithm}, line~\ref{line:send-heads}).\\
+    Therefore $\mathit{heads}(\mathcal{U}_q) \subseteq \mathit{received}$ so $u \in \mathit{received}$ (Fig.~\ref{fig:algorithm}, line~\ref{line:updates-received}).\\
     This contradicts our previous finding that $u \notin \mathit{received}$.
     
     \item\textsc{Case} $u \notin \mathit{heads}(\mathcal{U}_q)$:\\
     Since $\mathcal{U}_q$ is a DAG and $u \notin \mathit{heads}(\mathcal{U}_q)$, there must exist an update $v$ such that $v \in \mathit{heads}(\mathcal{U}_q)$ and $v \in \mathrm{succ}^*(u)$ in $\mathcal{U}_q$.\\
     As in the previous case, $\mathit{heads}(\mathcal{U}_q) \subseteq \mathit{received}$, so $v \in \mathit{received}$.\\
     Note that none of the updates in $\mathrm{succ}^*(u)$ are in $\mathcal{U}_p$ as $u \notin \mathcal{U}'_p$ implies that  $u \notin \mathcal{U}_p$ (Lemma~\ref{lemma:no-p-missing}).\\
-    If $v \in \mathrm{succ}^1(u)$ then it must the case that $u \in \mathit{received}$ by the time that $\mathit{missing} = \emptyset$, otherwise $u \in \mathit{missing}$ (Fig.~\ref{fig:algorithm}, lines 14--15).\\
+    If $v \in \mathrm{succ}^1(u)$ then it must the case that $u \in \mathit{received}$ by the time that $\mathit{missing} = \emptyset$, otherwise $u \in \mathit{missing}$ (Fig.~\ref{fig:algorithm}, lines~\ref{line:updates-missing}--\ref{line:updates-missing2}).\\
     By induction over the path of successors from $v$ to $u$, we observe that $u \in \mathit{received}$.\\
     At each step of the induction, the processes move to the predecessors of the previous step; due to Lemma~\ref{lemma:no-collision}, $p$ and $q$ agree about the identity of these predecessors.\\
     This contradicts our previous finding that $u \notin \mathit{received}$.
@@ -345,14 +348,14 @@ $\mathcal{U}'_p \subseteq \mathcal{U}_p \cup \mathcal{U}_q$
 \begin{proof}[Proof sketch.]
 We use proof by contradiction.\\
 Assume that $\exists u \in \mathcal{U}'_p.\; u \notin \mathcal{U}_p  \land  u \notin \mathcal{U}_q$.\\
-Since $\exists u \in \mathcal{U}'_p$, the process $p$ must have received an update containing $u$ from process $q$ before it finished the reconciliation algorithm (Fig.~\ref{fig:algorithm}, lines 12, 13, 24).\\
+Since $\exists u \in \mathcal{U}'_p$, the process $p$ must have received an update containing $u$ from process $q$ before it finished the reconciliation algorithm (Fig.~\ref{fig:algorithm}, lines \ref{line:recv-updates}, \ref{line:updates-received}, \ref{line:finish}).\\
 Process $q$ will only send an update containing $u$ if $u \in \mathcal{U}_q$ or $u \in \mathcal{U}'_q$, depending on whether process $q$ has finished the reconciliation algorithm.
 Since $u \notin \mathcal{U}_q$ then process $q$ must have received an update containing $u$ from process $p$.
 Since $u \notin \mathcal{U}_p$ then process $p$ will not send this message and therefore the update $u$ does not exist.
 \end{proof}
 
 \begin{theorem}\label{theorem:convergence}
-When two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, have finished communicating (i.e.\ both have reached line 24 of Fig.~\ref{fig:algorithm}), then their final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$  are both equal to $\mathcal{U}_q \cup \mathcal{U}_q$.
+When two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, have finished communicating (i.e.\ both have reached line~\ref{line:finish} of Fig.~\ref{fig:algorithm}), then their final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$  are both equal to $\mathcal{U}_q \cup \mathcal{U}_q$.
 \end{theorem}
 \begin{proof}[Proof sketch.]
 We can prove that $\mathcal{U}'_p = \mathcal{U}_q \cup \mathcal{U}_q$ by showing the following:
