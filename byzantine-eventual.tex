@@ -337,11 +337,12 @@ We use proof by contradiction.\\
 Assume that $\exists u \in \mathcal{U}_q.\; u \notin  \mathcal{U}'_p$.\\
 Since $\mathit{received}$ is a subset of $\mathcal{U}'_p$ (Fig.~\ref{fig:algorithm}, line~\ref{line:finish}) and elements are only added to $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line~\ref{line:updates-received}) then $u \notin  \mathcal{U}'_p$ implies that $u \notin \mathit{received}$ on process $p$.\\
 Since $u \in \mathcal{U}_q$ then either $u \in \mathit{heads}(\mathcal{U}_q)$ or $u \notin \mathit{heads}(\mathcal{U}_q)$, we now consider each case in turn.
-% TODO change this to reflect that the heads message contains only hashes, no updates!
 \begin{enumerate}
     \item\textsc{Case} $u \in heads(\mathcal{U}_q)$:\\
-    The first message from process $q$ will be an update with $\mathit{heads}(\mathcal{U}_q)$ (Fig.~\ref{fig:algorithm}, line~\ref{line:send-heads}).\\
-    Therefore $\mathit{heads}(\mathcal{U}_q) \subseteq \mathit{received}$ so $u \in \mathit{received}$ (Fig.~\ref{fig:algorithm}, line~\ref{line:updates-received}).\\
+    The first message from process $q$ to process $p$ will be a head message with $\mathit{heads}(\mathcal{U}_q)$ (Fig.~\ref{fig:algorithm}, line~\ref{line:send-heads}).\\
+    Since $u \in heads(\mathcal{U}_q)$ and $u \notin  \mathcal{U}_p$ then process $p$ will send an needs message to process $q$ including $H(u)$ (Fig.~\ref{fig:algorithm}, line~\ref{line:heads-missing}).\\
+    Upon receiving the needs message including $H(u)$, process $q$ will reply with an update message including $u$ (Fig.~\ref{fig:algorithm}, line~\ref{line:send-updates}).\\
+    Process $p$ will receive the update message with $u$ from process $q$ and will add $u$ to $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line~\ref{line:updates-received}).\\
     This contradicts our previous finding that $u \notin \mathit{received}$.
     
     \item\textsc{Case} $u \notin \mathit{heads}(\mathcal{U}_q)$:\\
