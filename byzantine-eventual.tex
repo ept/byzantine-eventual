@@ -29,7 +29,7 @@
 }
 
 \begin{abstract}
-    If $1/3$ or more processes may be faulty, a Byzantine agreement algorithm cannot make any consistency guarantees.
+    If more than $1/3$ of processes may be faulty, a Byzantine agreement algorithm cannot make any consistency guarantees.
     However, in such situations we can still guarantee a weaker consistency model, which we call Byzantine Eventual Consistency (BEC).
     We define BEC and introduce an algorithm that ensures this consistency model, even in a system with arbitrarily many faulty processes.
 \end{abstract}
@@ -37,13 +37,12 @@
 
 \section{Introduction}
 
-Byzantine agreement assumes that at most $f$ out of $n$ processes are Byzantine-faulty.
-It is well established that without synchrony, Byzantine agreement is impossible if $n\leq3f$~\cite{Lamport:1982,Dwork:1988,Fischer:1985}.
-If more than $f$ processes are faulty, neither safety nor liveness can be guaranteed.
+Byzantine agreement assumes that at most $f$ of $n$ processes are Byzantine-faulty and without synchrony, Byzantine agreement is impossible if $n\leq3f$~\cite{Lamport:1982,Fischer:1985}.
+If more than $f$ processes are faulty, neither agreement nor liveness can be guaranteed.
 This is a problem because the $f$-faulty assumption is not always a realistic threat model.
 Byzantine failures are not necessarily independent: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes, since they are likely to all be running the same software. 
 Similarly, non-malicious software bugs are likely to affect many of the processes at once.
-Moreover, in some systems, the adversary may be able to spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002jr}).
+Moreover, in some systems, the adversary may be able to spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002}).
 
 This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model \emph{can} we achieve under that assumption?
 
@@ -58,7 +57,7 @@ Byzantine agreement is often used to decide an append-only log of values for sta
 
 \begin{description}
 \item[Validity:] Any value decided by a correct process must have been proposed by one of the processes.
-\item[Agreement:] When any two correct processes decide a value for a certain position in the log, those decided values are the same.
+\item[Agreement:] If two correct processes decide a value for a certain position in the log, those values are the same.
 \item[Liveness:] For any value proposed, correct processes will eventually decide that value for some position in the log.
 \end{description}
 
@@ -80,7 +79,7 @@ When two processes $p$ and $q$ communicate, and each process initially has updat
 The simplest reconciliation algorithm is for $p$ to send the entire set $\mathcal{U}_p$ to $q$, and for $q$ to send $\mathcal{U}_q$ to $p$, so that both processes can compute $\mathcal{U}_q \cup \mathcal{U}_q$.
 However, if the sets have many elements in common, this algorithm transmits a large amount of data unnecessarily.
 
-Non-Byzantine reconciliation algorithms often rely on vector clocks to determine which updates to send to each other~\cite{Schwarz:1994gl}.
+Non-Byzantine reconciliation algorithms often rely on vector clocks to determine which updates to send to each other~\cite{Schwarz:1994}.
 However, vector clocks are not suitable in a Byzantine setting, because a faulty node could send contradictory updates to different processes using the same vector timestamp, causing two processes to have the same timestamps, but inconsistent sets of updates.
 Therefore we introduce an algorithm that cannot be corrupted by faulty processes.
 
@@ -213,23 +212,34 @@ Any process may propose an operation $op$ to add to the log by generating $t$ an
 The log is then simply the sequence of operations obtained by sorting the elements of $\mathcal{U}$ by timestamp, breaking ties by ordering on the hash of the respective update.
 
 Unlike the log produced by Byzantine agreement (\S~\ref{sec:properties}), the BEC-SMR log does not guarantee that operations are added to the log in increasing timestamp order.
-Thus, if a process receives operations out-of-order, it may need to roll back the state machine to an earlier state, and then replay operations in timestamp order~\cite{Jefferson:1985em}.
+Thus, if a process receives operations out-of-order, it may need to roll back the state machine to an earlier state, and then replay operations in timestamp order~\cite{Jefferson:1985}.
+
+% Can use digital signatures if you want to authenticate authors of updates
 
 \section{Related Work}
 
-Byzantine agreement~\cite{Lamport:1982} has been subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
-Most Byzantine agreement algorithms assume that $n=3f+1$~\cite{Castro:1999,Cowling:2006,Kotla:2007,Aublin:2015,Yin:2019}, while others require that $n=5f+1$~\cite{Abd:2005,Martin:2006}.
-Some take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and assumes $n=2u+r+1$.
+Byzantine agreement has been subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
+Many Byzantine agreement algorithms~\cite{Castro:1999,Kotla:2007,Aublin:2015} assume that $n=3f+1$ and require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
+Zeno~\cite{Singh:2009} is able to make progress with just $f+1$ processes but instead guarantees eventual consistency.
 
-% add paragraph on the other issues with byzantine agreement e.g. high latency (one or more round trips to most processes), poor availability (a process cannot add an update less it can communicate with most other processes), need for crypto keys (the issue of how to securely set these up is seldom discussed) 
+Depot~\cite{Mahajan:2011} tolerates arbitrary numbers of faulty processes; however, its consistency model (fork-join-causal) and replication protocol are significantly more complicated than ours, making them difficult to analyse.
+In BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again.
 
-Byzantine Eventual Consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011un}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
-Conflict-free Replicated Data Types (CRDTs) provide SEC by ensuring that whenever any two replicas have seen the same set of updates (possibly in a different order), those replicas are in the same state~\cite{Shapiro:2011un}.
+Byzantine Eventual Consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
+Conflict-free Replicated Data Types (CRDTs) provide SEC by ensuring that whenever any two replicas have seen the same set of updates (possibly in a different order), those replicas are in the same state~\cite{Shapiro:2011}.
 We can strengthen CRDTs to provide Byzantine Eventual Consistency by making each operation an update, and using the algorithm of \S~\ref{sec:algorithm} to reconcile the sets of operations.
 
 The hash chaining approach of our algorithm resembles a Git commit history, a blockchain~\cite{Bano:2019}, or a Merkle tree~\cite{Merkle:1987}.
 Our algorithm in \S~\ref{sec:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
 However, to our knowledge the Git protocol has not yet been the subject of much study, and particularly not in a context of Byzantine fault tolerance.
+
+
+% SPORC: Group Collaboration using Untrusted Cloud Resources
+% (uses fork-causal consistency)
+% https://www.usenix.org/conference/osdi10/sporc-group-collaboration-using-untrusted-cloud-resources
+
+% Secure Untrusted Data Repository (SUNDR)
+% https://www.usenix.org/legacy/event/osdi04/tech/full_papers/li_j/li_j.pdf
 
 % Roy Friedman and Roni Licher. Hardening Cassandra Against Byzantine Failures.
 % https://arxiv.org/pdf/1610.02885.pdf
@@ -261,6 +271,9 @@ However, to our knowledge the Git protocol has not yet been the subject of much 
 
 We explore the possibilities beyond the $3f+1$ bound of Byzantine agreement.
 For systems with an arbitrary number of faulty processes we propose Byzantine Eventual Consistency as a model, and a hash chaining algorithm for replication.
+
+% We believe that a threat model with unbounded numbers of Byzantine-faulty nodes is realistic in many Internet settings, making BEC an important building block for future applications.
+% We hope that future research will further develop the theory and practice of Byzantine Eventual Consistency.
 
 \begin{acks}
 Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and by the Isaac Newton Trust.
