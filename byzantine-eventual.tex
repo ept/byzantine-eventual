@@ -29,20 +29,22 @@
 }
 
 \begin{abstract}
-    If more than $1/3$ of processes may be faulty, a Byzantine agreement algorithm cannot make any consistency guarantees.
-    However, in such situations we can still guarantee a weaker consistency model, which we call Byzantine Eventual Consistency (BEC).
-    We define BEC and introduce an algorithm that ensures this consistency model, even in a system with arbitrarily many faulty processes.
+    Byzantine agreement guarantees consistency provided that less than $1/3$ of processes are faulty.
+    However, if more faults occur, we can still guarantee weaker consistency models. 
+    In this brief announcement, we define one such model, which we refer to as Byzantine Eventual Consistency (BEC).
+    We also introduce an algorithm that implements this consistency model, even in a system with arbitrarily many faulty processes, and prove that it ensures BEC.
 \end{abstract}
 \maketitle
 
 \section{Introduction}
 
-Byzantine agreement assumes that at most $f$ of $n$ processes are Byzantine-faulty and without synchrony, Byzantine agreement is impossible if $n\leq3f$~\cite{Lamport:1982,Fischer:1985}.
+Byzantine agreement assumes that at most $f$ out of $n$ processes are Byzantine-faulty.
+Without synchrony, Byzantine agreement is impossible if $n\leq3f$~\cite{Lamport:1982,Dwork:1988}.
 If more than $f$ processes are faulty, neither agreement nor liveness can be guaranteed.
 This is a problem because the $f$-faulty assumption is not always a realistic threat model.
 Byzantine failures are not necessarily independent: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes, since they are likely to all be running the same software. 
 Similarly, non-malicious software bugs are likely to affect many of the processes at once.
-Moreover, in some systems, the adversary may be able to spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002}).
+In some systems, such as open peer-to-peer networks that anybody can join, an adversary can spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002}).
 
 This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model \emph{can} we achieve under that assumption?
 
@@ -62,29 +64,29 @@ Byzantine agreement is often used to decide an append-only log of values for sta
 \end{description}
 
 The agreement and liveness properties of Byzantine agreement assume that no more than $f$ processes are Byzantine-faulty, while liveness also assumes partial synchrony~\cite{Dwork:1988}.
-We can define a similar set of properties for Byzantine Eventual Consistency (BEC).
-These properties are weaker, but they can be satisfied without making any assumptions about the number of faulty processes or the synchrony model.
+The properties of Byzantine Eventual Consistency (BEC) are weaker, but they can be satisfied without making any assumptions about the number of faulty processes or the synchrony model.
 For generality, we assume each process locally maintains a monotonically growing set of updates $\mathcal{U}$.
-\S~\ref{sec:smr} shows how to implement SMR using this set of updates.
+We show in \S~\ref{sec:smr} how to implement SMR using this set of updates.
+The properties of BEC are:
 
 \begin{description}
 \item[Validity:] Any update in the set of updates of a correct process must have been proposed by one of the processes.
 \item[Convergence:] When any two correct processes finish communicating, their sets of updates are the same.
-\item[Liveness:] Assuming that any two correct processes will eventually finish communicating, a update proposed by one process will eventually be in the set of updates for all correct processes.
+\item[Liveness:] Assuming that any two correct processes will eventually finish communicating, an update proposed by one process will eventually be in the set of updates for all correct processes.
 \end{description}
 
 \section{Reconciliation algorithms}\label{sec:algorithm}
 
-When two processes $p$ and $q$ communicate, and each process initially has updates $\mathcal{U}_p$ and $\mathcal{U}_q$ respectively, a reconciliation algorithm should ensure that both processes converge to the same set $\mathcal{U}_q \cup \mathcal{U}_q$.
-The simplest reconciliation algorithm is for $p$ to send the entire set $\mathcal{U}_p$ to $q$, and for $q$ to send $\mathcal{U}_q$ to $p$, so that both processes can compute $\mathcal{U}_q \cup \mathcal{U}_q$.
+When two processes $p$ and $q$ communicate, and each process initially has updates $\mathcal{U}_p$ and $\mathcal{U}_q$ respectively, a reconciliation algorithm should ensure that both processes converge to the same set $\mathcal{U}_p \cup \mathcal{U}_q$.
+The simplest reconciliation algorithm is for $p$ to send the entire set $\mathcal{U}_p$ to $q$, and for $q$ to send $\mathcal{U}_q$ to $p$, so that both processes can compute $\mathcal{U}_p \cup \mathcal{U}_q$.
 However, if the sets have many elements in common, this algorithm transmits a large amount of data unnecessarily.
 
 Non-Byzantine reconciliation algorithms often rely on vector clocks to determine which updates to send to each other~\cite{Schwarz:1994}.
-However, vector clocks are not suitable in a Byzantine setting, because a faulty node could send contradictory updates to different processes using the same vector timestamp, causing two processes to have the same timestamps, but inconsistent sets of updates.
-Therefore we introduce an algorithm that cannot be corrupted by faulty processes.
+However, vector clocks are not suitable in a Byzantine setting, because a faulty process could send contradictory updates to different processes using the same vector timestamp, causing two processes to have the same timestamps, but inconsistent sets of updates.
+Therefore we introduce an algorithm that is resilient to faulty processes.
 
 Let the set of updates $\mathcal{U}$ be a set of pairs $(v, \mathit{hs})$, where $v$ is any value, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
-We assume that $H$ is collision-resistant (i.e.\ it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$).
+We assume that $H$ is collision-resistant, i.e.\ it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$.
 
 Say $\mathcal{U}$ contains updates $A = (v_A, \mathit{hs}_A)$ and $B = (v_B, \mathit{hs}_B)$, where $H(A) \in \mathit{hs}_B$.
 Then we call $A$ a \emph{predecessor} of $B$, and $B$ a \emph{successor} of $A$.
@@ -196,7 +198,7 @@ A Byzantine-faulty process may generate a large number of heads, which will affe
 
 A downside of the algorithm in Fig.~\ref{fig:algorithm} is that the number of round trips required can be up to the length of the longest path in the graph.
 In order to optimise this, we could change lines~\ref{line:needs-reply}--\ref{line:send-updates} to send not only the immediate updates identified by the hashes in the $\mathsf{needs}$ message, but also all of the predecessors of those updates, several levels deep.
-The number of round-trips is then reduced proportionally to the number of predecessor levels, but the downside is that some of the predecessors may already be known to the recipient, and are thus transmitted unnecessarily.
+The number of round-trips is then reduced proportionally to the number of predecessor levels, but the downside is that some of the predecessor updates may already be known to the recipient, and are thus transmitted unnecessarily.
 
 To determine the number of predecessor levels to send in each round, as a rule of thumb, the size of the $\mathsf{updates}$ message should be approximately equal to the bandwidth-delay product of the connection between the two processes.
 Thus, on a connection with low bandwidth and fast round-trips we will prefer to send many small messages, while on a connection with high bandwidth and slow round-trips we will batch the updates into a small number of large messages.
@@ -219,8 +221,8 @@ Thus, if a process receives operations out-of-order, it may need to roll back th
 \section{Related Work}
 
 Byzantine agreement has been subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
-Many Byzantine agreement algorithms~\cite{Castro:1999,Kotla:2007,Aublin:2015} assume that $n=3f+1$ and require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
-Zeno~\cite{Singh:2009} is able to make progress with just $f+1$ processes but instead guarantees eventual consistency.
+Many Byzantine agreement algorithms~\cite{Castro:1999,Kotla:2007} assume $n \ge 3f+1$ and require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
+Zeno~\cite{Singh:2009} makes progress with just $f+1$ processes, but safety depends on less than $\frac{1}{3}$ of processes being Byzantine-faulty.
 
 Depot~\cite{Mahajan:2011} tolerates arbitrary numbers of faulty processes; however, its consistency model (fork-join-causal) and replication protocol are significantly more complicated than ours, making them difficult to analyse.
 In BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again.
@@ -269,11 +271,12 @@ However, to our knowledge the Git protocol has not yet been the subject of much 
 
 \section{Conclusions}
 
-We explore the possibilities beyond the $3f+1$ bound of Byzantine agreement.
-For systems with an arbitrary number of faulty processes we propose Byzantine Eventual Consistency as a model, and a hash chaining algorithm for replication.
+Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty processes and are thus not suitable applications for Byzantine agreement.
+In this brief announcement, we have defined BEC and proposed an algorithm that implements it.
+We hope BEC will inspire further research to ensure the correctness of eventually consistent systems in the presence of arbitrary numbers of Byzantine faults.
 
-% We believe that a threat model with unbounded numbers of Byzantine-faulty nodes is realistic in many Internet settings, making BEC an important building block for future applications.
-% We hope that future research will further develop the theory and practice of Byzantine Eventual Consistency.
+%BEC is an important building block
+%We hope that future research will further develop the theory and practice of Byzantine Eventual Consistency.
 
 \begin{acks}
 Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and by the Isaac Newton Trust.
@@ -287,7 +290,7 @@ Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and
 
 In this appendix we show that the reconciliation algorithm of \S~\ref{sec:algorithm} satisfies the properties of Byzantine Eventual Consistency.
 We consider two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, and final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$ after they have finished communicating (i.e.\ after both processes have reached line~\ref{line:finish} of Fig.~\ref{fig:algorithm}).
-We assume that $p$ and $q$ do not communicate with any other processes whilst they are communicating, nor do they add any local updates.
+We assume that $p$ and $q$ do not communicate with any other processes whilst they are performing this protocol, nor do they add any local updates.
 We use $\mathit{heads}(\mathcal{U})$ to denote the set of elements without successors in $\mathcal{U}$:
 \[ \mathit{heads}(\mathcal{U}) = \{u \in \mathcal{U} \mid \nexists (v, \mathit{hs}) \in \mathcal{U}.\; H(u) \in \mathit{hs}\}. \]
 
@@ -339,10 +342,10 @@ Since $\mathit{received}$ is a subset of $\mathcal{U}'_p$ (Fig.~\ref{fig:algorit
 Since $u \in \mathcal{U}_q$ then either $u \in \mathit{heads}(\mathcal{U}_q)$ or $u \notin \mathit{heads}(\mathcal{U}_q)$, we now consider each case in turn.
 \begin{enumerate}
     \item\textsc{Case} $u \in heads(\mathcal{U}_q)$:\\
-    The first message from process $q$ to process $p$ will be a head message with $\mathit{heads}(\mathcal{U}_q)$ (Fig.~\ref{fig:algorithm}, line~\ref{line:send-heads}).\\
-    Since $u \in heads(\mathcal{U}_q)$ and $u \notin  \mathcal{U}_p$ then process $p$ will send an needs message to process $q$ including $H(u)$ (Fig.~\ref{fig:algorithm}, line~\ref{line:heads-missing}).\\
-    Upon receiving the needs message including $H(u)$, process $q$ will reply with an update message including $u$ (Fig.~\ref{fig:algorithm}, line~\ref{line:send-updates}).\\
-    Process $p$ will receive the update message with $u$ from process $q$ and will add $u$ to $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line~\ref{line:updates-received}).\\
+    The first message from $q$ to $p$ will be a $\mathsf{heads}$ message containing the hashes of $\mathit{heads}(\mathcal{U}_q)$ (Fig.~\ref{fig:algorithm}, line~\ref{line:send-heads}).\\
+    Since $u \in heads(\mathcal{U}_q)$ and $u \notin  \mathcal{U}_p$, process $p$ will send a $\mathsf{needs}$ message to $q$ containing $H(u)$ (Fig.~\ref{fig:algorithm}, line~\ref{line:heads-missing}).\\
+    Upon receiving the $\mathsf{needs}$ message containing $H(u)$, process $q$ will reply with an $\mathsf{updates}$ message containing $u$ (Fig.~\ref{fig:algorithm}, line~\ref{line:send-updates}).\\
+    Process $p$ will receive the $\mathsf{updates}$ message with $u$ from process $q$ and will add $u$ to $\mathit{received}$ (Fig.~\ref{fig:algorithm}, line~\ref{line:updates-received}).\\
     This contradicts our previous finding that $u \notin \mathit{received}$.
     
     \item\textsc{Case} $u \notin \mathit{heads}(\mathcal{U}_q)$:\\
@@ -384,15 +387,28 @@ By swapping $p$ and $q$, we can show that the same holds for $\mathcal{U}'_q$.
 \end{proof}
 
 This concludes the proof that the reconciliation algorithm of \S~\ref{sec:algorithm} satisfies the convergence property of BEC.
-The proof of the validity property is obvious (the only way how an update in $\mathcal{U}$ can come into existence is by being proposed by one of the processes), and the liveness property follows from Theorem~\ref{theorem:convergence} and the assumption that any two correct processes will eventually succeed in communicating.
+The proof of the validity property is obvious (the only way how an update in $\mathcal{U}$ can come into existence is by being proposed by one of the processes).
+It remains only to show the liveness property:
 
-In this protocol, the only thing that a Byzantine-faulty process can do is to extend the set $\mathcal{U}$ with well-formed updates (i.e.\ updates containing only hashes that resolve to other updates).
-If a Byzantine-faulty process generates updates containing hashes that do not resolve, the correct process will never reach the $\mathit{missing} = \{\}$ state and thus never update $\mathcal{U}$ in this protocol run.
+\begin{theorem}\label{theorem:liveness}
+Assuming that any two correct processes execute the reconciliation protocol an unbounded number of times, and assuming that only a finite number of messages are lost, an update proposed by one process will eventually be in the set of updates for all correct processes.
+\end{theorem}
+\begin{proof}[Proof sketch.]
+Since the graph of updates $\mathcal{U}_p$ at any correct process $p$ is finite and contains no cycles, every vertex $v \in \mathcal{U}_p$ can be reached in a finite number of steps by starting a graph traversal at $\mathit{heads}(\mathcal{U}_p)$ and, in each step, moving from each vertex to its predecessors.
+Since $\mathcal{U}_p$ at any correct process $p$ contains only hashes that are the hash of another update in $\mathcal{U}_p$ (Lemma~\ref{lemma:no-dangling}), the algorithm of Fig.~\ref{fig:algorithm} will always reach the state $\mathit{missing} = \{\}$ and finish (i.e.\ reach line~\ref{line:finish} of Fig.~\ref{fig:algorithm}) in a finite number of round-trips of $\mathsf{needs}$ and $\mathsf{updates}$ messages, when communicating with another correct process.
+
+Since we assume that only a finite number of messages are ever lost, there will be an infinite number of executions of the protocol for any two correct processes $p$ and $q$ in which no messages are lost.
+In those protocol runs in which all messages are delivered, $p$ and $q$ will both finish in a finite time, because each of the finite number of round-trips completes in finite time.
+Thus, by Theorem~\ref{theorem:convergence}, any update known to $p$ will eventually be known to $q$ and vice versa.
+\end{proof}
+
+Note that the protocol may never finish when one of the communicating processes is Byzantine-faulty, e.g.\ because the faulty process may send hashes that do not resolve to any update, and so the state $\mathit{missing} = \{\}$ is never reached.
+However, in a protocol run that never finishes, $\mathcal{U}$ is never updated, and so the actions of the faulty process have no effect on the state of the correct process.
+
+In a protocol run that finishes, the only things a Byzantine-faulty process can do is to omit heads, or to extend the set $\mathcal{U}$ with well-formed updates (i.e.\ updates containing only hashes that resolve to other updates).
 If a faulty process responds incorrectly to a $\mathsf{needs}$ message, likewise any effects on the recipient's state are limited to well-formed updates.
 This ensures the integrity of the DAG.
 Arbitrary $\mathsf{needs}$ messages sent by a faulty process have no consequence, since they do not affect the state of the recipient.
-
-% If the communication is between a correct and a Byzantine-faulty replica, the faulty replica can obviously add updates to the set or omit updates from those sent to the correct replica.
-% But the faulty replica cannot corrupt the correct replica's state in a way that would prevent the correct replica from later synchronising its set of updates with another correct replica.
+Thus, a faulty process cannot corrupt the state of a correct process in a way that would prevent the correct process from later synchronising its set of updates with another correct process.
 
 \end{document}
