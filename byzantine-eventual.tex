@@ -1,33 +1,40 @@
-\documentclass[manuscript,anonymous]{acmart}
+\documentclass[a4paper,USenglish]{lipics-v2019}
 \usepackage[utf8]{inputenc}
 \usepackage{algpseudocode} % for pseudocode
 \usepackage{tikz} % for figures
 \usepackage{subcaption} % for subfigures
 
+\title{Byzantine Eventual Consistency}
+
+\author{Martin Kleppmann}{University of Cambridge}{mk428@cst.cam.ac.uk}{https://orcid.org/0000-0001-7252-6958}{Supported by a Leverhulme Trust Early Career Fellowship and by the Isaac Newton Trust.}
+
+\author{Heidi Howard}{University of Cambridge}{hh360@cst.cam.ac.uk}{https://orcid.org/0000-0001-5256-7664}{}
+
+\authorrunning{M. Kleppmann and H. Howard}
+\Copyright{Martin Kleppmann and Heidi Howard}
+
+\begin{CCSXML}
+<ccs2012>
+   <concept>
+       <concept_id>10003752.10003809.10010172</concept_id>
+       <concept_desc>Theory of computation~Distributed algorithms</concept_desc>
+       <concept_significance>500</concept_significance>
+       </concept>
+   <concept>
+       <concept_id>10002951.10003152.10003166.10003172</concept_id>
+       <concept_desc>Information systems~Remote replication</concept_desc>
+       <concept_significance>300</concept_significance>
+       </concept>
+ </ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Theory of computation~Distributed algorithms}
+\ccsdesc[300]{Information systems~Remote replication}
+
+\keywords{replication, Byzantine fault tolerance, eventual consistency}
+
 \begin{document}
-\title{Brief Announcement: Byzantine Eventual Consistency}
-\author{Martin Kleppmann}
-\email{mk428@cst.cam.ac.uk}
-\orcid{0000-0001-7252-6958}
-\affiliation{%
-  \institution{University of Cambridge}
-  \streetaddress{15 JJ Thomson Avenue}
-  \city{Cambridge}
-  \postcode{CB3 0FD}
-  \country{UK}
-}
-
-\author{Heidi Howard}
-\email{hh360@cst.cam.ac.uk}
-\orcid{0000-0001-5256-7664}
-\affiliation{%
-  \institution{University of Cambridge}
-  \streetaddress{15 JJ Thomson Avenue}
-  \city{Cambridge}
-  \postcode{CB3 0FD}
-  \country{UK}
-}
-
+\maketitle
 \begin{abstract}
     Byzantine agreement guarantees consistency provided that less than $1/3$ of processes are faulty.
     However, if more faults occur, we can still guarantee weaker consistency models. 
@@ -48,10 +55,10 @@ In some systems, such as open peer-to-peer networks that anybody can join, an ad
 
 This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model \emph{can} we achieve under that assumption?
 
-In this paper we propose \emph{Byzantine Eventual Consistency} (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty processes.
-We define BEC in \S~\ref{sec:properties}, and in \S~\ref{sec:algorithm} we describe an algorithm that achieves BEC.
+We propose \emph{Byzantine Eventual Consistency} (BEC), a novel consistency model that can be achieved regardless of the number of Byzantine-faulty processes.
+We define BEC in \S~\ref{sec:properties}, and in \S~\ref{sec:algorithm} we introduce an algorithm that achieves BEC (as proved in the appendix).
 In BEC, each process is a replica of some shared state, and any two correct replicas converge towards the same state as they communicate, even if they also communicate with arbitrarily many Byzantine-faulty processes.
-Essentially, we need to ensure that faulty replicas cannot corrupt the state of correct replicas.
+Essentially, the algorithm ensures that faulty replicas cannot corrupt the state of correct replicas.
 
 \section{Defining Byzantine Eventual Consistency}\label{sec:properties}
 
@@ -224,7 +231,7 @@ Byzantine agreement has been subject of extensive research and has seen a recent
 Many Byzantine agreement algorithms~\cite{Castro:1999,Kotla:2007} assume $n \ge 3f+1$ and require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
 Zeno~\cite{Singh:2009} makes progress with just $f+1$ processes, but safety depends on less than $\frac{1}{3}$ of processes being Byzantine-faulty.
 
-Depot~\cite{Mahajan:2011} tolerates arbitrary numbers of faulty processes; however, its consistency model (fork-join-causal) and replication protocol are significantly more complicated than ours, making them difficult to analyse.
+Depot~\cite{Mahajan:2011} tolerates arbitrary numbers of faulty processes; however, its consistency model (fork-join-causal) and replication protocol are considerably more complicated than ours, making them difficult to analyse.
 In BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again.
 
 Byzantine Eventual Consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
@@ -278,11 +285,7 @@ We hope BEC will inspire further research to ensure the correctness of eventuall
 %BEC is an important building block
 %We hope that future research will further develop the theory and practice of Byzantine Eventual Consistency.
 
-\begin{acks}
-Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, and by the Isaac Newton Trust.
-\end{acks}
-
-\bibliographystyle{ACM-Reference-Format}
+\bibliographystyle{plainurl}
 \bibliography{references}
 
 \appendix
