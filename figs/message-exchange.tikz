@@ -1,38 +1,42 @@
-\vspace{0.5cm}
 \begin{tikzpicture}
-\newlength{\distance}\setlength{\distance}{1cm}
-\newlength{\latency}\setlength{\latency}{2.0cm}
-\newlength{\replydelay}\setlength{\replydelay}{0.5cm}
+\newlength{\width}\setlength{\width}{2cm}
+\newlength{\latency}\setlength{\latency}{1.2cm}
+\newlength{\replydelay}\setlength{\replydelay}{0.4cm}
 \tikzstyle{msg}=[thick,->]
-\tikzstyle{pmsg}=[anchor=south west,rotate=20,inner xsep=0,inner ysep=0]
-\tikzstyle{qmsg}=[anchor=north west,rotate=340,inner xsep=0,inner ysep=0]
 
 % Timelimes
-\node (p-start) at (-0.5cm, \distance) {$p$};
-\node (q-start) at (-0.5cm, 0) {$q$};
-\node (p-end) at (14cm, \distance) {};
-\node (q-end) at (14cm, 0) {};
-\draw (p-start) -- (p-end);
-\draw (q-start) -- (q-end);
+\node (p1-start) at (0, 0.5cm) {$p$};
+\node (p2-start) at (\width, 0.5cm) {$q$};
+\node (p1-end) at (0,-8.5cm) {};
+\node (p2-end) at (\width,-8.5cm) {};
+\draw (p1-start) -- (p1-end);
+\draw (p2-start) -- (p2-end);
+
+%\node (p-start) at (-0.5cm, \width) {$p$};
+%\node (q-start) at (-0.5cm, 0) {$q$};
+%\node (p-end) at (14cm, \distance) {};
+%\node (q-end) at (14cm, 0) {};
+%\draw (p-start) -- (p-end);
+%\draw (q-start) -- (q-end);
 
 % Messages
-\draw[msg] (0, \distance) node[pmsg] {send $\langle\mathsf{heads}: \{H(E),H(M)\}\rangle$} -- (\latency-\replydelay, 0);
-\draw[msg] (0, 0) node[qmsg] {send $\langle\mathsf{heads}: \{H(G),H(K)\}\rangle$} -- (\latency-\replydelay, \distance);
+\draw[msg] (0,0) node[left] {$\langle\mathsf{heads}: \{H(E),H(M)\}\rangle$} -- (\width,\replydelay-\latency);
+\draw[msg] (\width,0) node[right] {$\langle\mathsf{heads}: \{H(G),H(K)\}\rangle$} -- (0,\replydelay-\latency);
 
-\draw[msg] (\latency, 0) node[qmsg] {send $\langle\mathsf{needs}: \{H(E),H(M)\}\rangle$} -- (2.0\latency-\replydelay, \distance);
-\draw[msg] (\latency, \distance) node[pmsg] {send $\langle\mathsf{updates}: \{L, M\} \rangle, \langle\mathsf{needs}: \{H(G)\}\rangle$} -- (2.0\latency-\replydelay, 0);
+\draw[msg] (\width, -\latency) node[right] {$\langle\mathsf{needs}: \{H(E),H(M)\}\rangle$} -- (0,\replydelay-2.0\latency);
+\draw[msg] (0, -\latency) node[left] {$\langle\mathsf{updates}: \{L, M\} \rangle,\; \langle\mathsf{needs}: \{H(G)\}\rangle$} -- (\width,\replydelay-2.0\latency);
 
-\draw[msg] (2.0\latency, \distance) node[pmsg] {send $\langle\mathsf{updates}: \{E\}\rangle$} -- (3.0\latency-\replydelay, 0);
-\draw[msg] (2.0\latency, 0) node[qmsg] {send $\langle\mathsf{updates}: \{G\}\rangle$} -- (3.0\latency-\replydelay, \distance);
+\draw[msg] (0, -2.0\latency) node[left] {$\langle\mathsf{updates}: \{E\}\rangle$} -- (\width,\replydelay-3.0\latency);
+\draw[msg] (\width, -2.0\latency) node[right] {$\langle\mathsf{updates}: \{G\}\rangle$} -- (0,\replydelay-3.0\latency);
 
-\draw[msg] (3.0\latency, 0) node[qmsg] {send $\langle\mathsf{needs}: \{H(D)\}\rangle$} -- (4.0\latency-\replydelay, \distance);
-\draw[msg] (3.0\latency, \distance) node[pmsg] {send $\langle\mathsf{needs}: \{H(F)\}\rangle$} -- (4.0\latency-\replydelay, 0);
+\draw[msg] (\width, -3.0\latency) node[right] {$\langle\mathsf{needs}: \{H(D)\}$} -- (0,\replydelay-4.0\latency);
+\draw[msg] (0, -3.0\latency) node[left] {$\langle\mathsf{needs}: \{H(F)\}\rangle$} -- (\width,\replydelay-4.0\latency);
 
-\draw[msg] (4.0\latency, \distance) node[pmsg] {send $\langle\mathsf{updates}: \{D\}\rangle$} -- (5.0\latency-\replydelay, 0);
-\draw[msg] (4.0\latency, 0) node[qmsg] {send $\langle\mathsf{updates}: \{F\}\rangle$} -- (5.0\latency-\replydelay, \distance) node[pmsg] {finish};
+\draw[msg] (0, -4.0\latency) node[left] {$\langle\mathsf{updates}: \{D\}\rangle$} -- (\width,\replydelay-5.0\latency);
+\draw[msg] (\width, -4.0\latency) node[right] {$\langle\mathsf{updates}: \{F\}\rangle$} -- (0,\replydelay-5.0\latency) node[left] {finish};
 
-\draw[msg] (5.0\latency, 0) node[qmsg] {send $\langle\mathsf{needs}: \{H(C)\}$} -- (6.0\latency-\replydelay, \distance);
+\draw[msg] (\width, -5.0\latency) node[right] {$\langle\mathsf{needs}: \{H(C)\}$} -- (0,\replydelay-6.0\latency);
 
-\draw[msg] (6.0\latency, \distance) node[pmsg] {send $\langle\mathsf{updates}: \{C\}\rangle$} -- (7.0\latency-\replydelay, 0) node[qmsg] {finish};
+\draw[msg] (0, -6.0\latency) node[left] {send $\langle\mathsf{updates}: \{C\}\rangle$} -- (\width,\replydelay-7.0\latency) node[right] {finish};
 
 \end{tikzpicture}
