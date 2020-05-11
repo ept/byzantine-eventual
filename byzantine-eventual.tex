@@ -1,4 +1,4 @@
-\documentclass[a4paper,USenglish]{lipics-v2019}
+\documentclass[a4paper,anonymous,USenglish]{lipics-v2019}
 \usepackage[utf8]{inputenc}
 \usepackage{algorithm}
 \usepackage{algpseudocode} % for pseudocode
@@ -39,8 +39,8 @@
 \begin{abstract}
     Byzantine agreement guarantees consistency provided that less than $1/3$ of processes are faulty.
     However, if more faults occur, we can still guarantee weaker consistency models. 
-    In this brief announcement, we define one such model, which we refer to as Byzantine Eventual Consistency (BEC).
-    We also introduce an algorithm that implements this consistency model, even in a system with arbitrarily many faulty processes, and prove that it ensures BEC.
+    In this paper we define one such model, which we refer to as Byzantine Eventual Consistency (BEC).
+    We also introduce an algorithm that implements this consistency model, even in a system with arbitrarily many Byzantine-faulty processes, and prove that it ensures BEC.
 \end{abstract}
 \maketitle
 
@@ -57,7 +57,7 @@ In some systems, such as open peer-to-peer networks that anybody can join, an ad
 This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model \emph{can} we achieve under that assumption?
 
 We propose \emph{Byzantine Eventual Consistency} (BEC), a novel consistency model that can be achieved regardless of the number of Byzantine-faulty processes.
-We define BEC in \S~\ref{sec:properties}, and in \S~\ref{sec:algorithm} we introduce an algorithm that achieves BEC (as proved in the appendix).
+We define BEC in \S~\ref{sec:properties}, and in \S~\ref{sec:algorithm} we introduce an algorithm that achieves BEC (as proved in \S~\ref{sec:proof}).
 In BEC, each process is a replica of some shared state, and any two correct replicas converge towards the same state as they communicate, even if they also communicate with arbitrarily many Byzantine-faulty processes.
 Essentially, the algorithm ensures that faulty replicas cannot corrupt the state of correct replicas.
 
@@ -209,7 +209,7 @@ Thus, on a connection with low bandwidth and fast round-trips we will prefer to 
 % Prevent unbounded storage growth
 % Find last common ancestor by some kind of binary search; problem: graph of updates is not linear, so definition of half-way point is fiddly.
 
-\section{Proof of correctness}
+\section{Proof of correctness}\label{sec:proof}
 
 In this section we show that the reconciliation algorithm of \S~\ref{sec:algorithm} satisfies the properties of Byzantine Eventual Consistency.
 We consider two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, and final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$ after they have finished communicating (i.e.\ after both processes have reached line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}).
@@ -348,9 +348,10 @@ Thus, if a process receives operations out-of-order, it may need to roll back th
 
 \section{Related Work}
 
-Byzantine agreement has been subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
-Many Byzantine agreement algorithms~\cite{Castro:1999,Kotla:2007} assume $n \ge 3f+1$ and require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
+Byzantine agreement has been subject of extensive research and has seen a recent renewal of interest due to its application in permissioned blockchains~\cite{Bano:2019}.
+Many Byzantine agreement algorithms~\cite{Castro:1999,Kotla:2007,Bessani:2014,Aublin:2015,Cowling:2006,Abd:2005} for asynchronous environments assume $n \ge 3f+1$ and require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
 Zeno~\cite{Singh:2009} makes progress with just $f+1$ processes, but safety depends on less than $\frac{1}{3}$ of processes being Byzantine-faulty.
+Byzec~\cite{Shoker:2017}, as well as work by Chai and Zhao~\cite{Chai:2014}, also considers eventual consistency in the context of Byzantine faults but again assumes that $f$ of $3f+1$ processes are faulty.
 
 Depot~\cite{Mahajan:2011} tolerates arbitrary numbers of faulty processes; however, its consistency model (fork-join-causal) and replication protocol are considerably more complicated than ours, making them difficult to analyse.
 In BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again.
@@ -400,7 +401,7 @@ However, to our knowledge the Git protocol has not yet been the subject of much 
 \section{Conclusions}
 
 Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty processes and are thus not suitable applications for Byzantine agreement.
-In this brief announcement, we have defined BEC and proposed an algorithm that implements it.
+In this paper, we have defined BEC and proposed an algorithm that implements it.
 We hope BEC will inspire further research to ensure the correctness of eventually consistent systems in the presence of arbitrary numbers of Byzantine faults.
 
 %BEC is an important building block
