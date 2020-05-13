@@ -37,7 +37,7 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-    Byzantine agreement guarantees consistency provided that less than $1/3$ of processes are faulty.
+    Byzantine agreement guarantees consistency and liveness on the condition that a bounded number of processes (typically $1/3$) are faulty.
     However, if more faults occur, we can still guarantee weaker consistency models. 
     In this paper we define one such model, which we refer to as Byzantine Eventual Consistency (BEC).
     We also introduce an algorithm that implements this consistency model, even in a system with arbitrarily many Byzantine-faulty processes, and prove that it ensures BEC.
@@ -49,7 +49,7 @@
 Byzantine agreement assumes that at most $f$ out of $n$ processes are Byzantine-faulty.
 It is well established that without synchrony, Byzantine agreement is impossible if $n\leq3f$~\cite{Dwork:1988,Lamport:1982}.
 If more than $f$ processes are faulty, neither safety (agreement) nor liveness can be guaranteed.
-This is a problem because the assumption that no more than $f$ processes are faulty is not always a realistic threat model.
+In practice, the assumption that no more than $f$ processes are faulty is not necessarily a realistic threat model.
 
 Byzantine failures are not necessarily independent: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes, since they are likely to all be running the same software. 
 Similarly, non-malicious software bugs are likely to affect many of the processes at once.
@@ -65,7 +65,7 @@ Essentially, the algorithm ensures that faulty replicas cannot corrupt the state
 
 \section{Defining Byzantine Eventual Consistency}\label{sec:properties}
 
-Algorithms for Byzantine agreement (or consensus) are often used to create an append-only log of values for state machine replication~\cite{Schneider:1990} (SMR), such as a blockchain~\cite{Bano:2019}.
+Algorithms for Byzantine agreement (or consensus) are often used to create an append-only log of values for state machine replication~\cite{Schneider:1990}, such as a blockchains~\cite{Bano:2019}.
 The primary correctness criterion for such a log is that all correct processes observe the same sequence of values, even in the presence of up to $f$ Byzantine-faulty processes.
 If we use these values as inputs to a deterministic state machine, that state machine goes through the same sequence of state transitions on each process, resulting in consistent replicas of the state.
 
@@ -116,6 +116,8 @@ The system is asynchronous: that is, there is no upper bound on network delay, a
 We assume that the network is unreliable and that messages might be dropped; however, for liveness purposes we assume that any pair of processes will eventually be able to exchange an unbounded number of messages.
 We assume that any number of processes may be Byzantine-faulty and deviate from the protocol in arbitrary ways.
 We can only reason about the behaviour of correct processes, since we make no assumptions about the behaviour or internal state of faulty processes.
+% we assume that the adversary cannot modify communication between correct processes
+% assume that network communication is via fair-loss links
 
 \begin{figure}
     \centering
@@ -183,7 +185,7 @@ Say $\mathcal{U}$ contains updates $A = (v_A, \mathit{hs}_A)$ and $B = (v_B, \ma
 Then we call $A$ a \emph{predecessor} of $B$, and $B$ a \emph{successor} of $A$.
 Define a graph with a vertex for each update in $\mathcal{U}$, and a directed edge from each update to each of its predecessors.
 We can assume that this graph is acyclic because the presence of a cycle would imply knowledge of a collision in the hash function.
-Fig.~\ref{fig:example-dags} shows examples of such graphs.
+Figure~\ref{fig:example-dags} shows examples of such graphs.
 
 Let $\mathrm{succ}^1(\mathcal{U}, u)$ be the set of successors of update $u$ in $\mathcal{U}$, let $\mathrm{succ}^2(\mathcal{U}, u)$ be the successors of the successors of $u$, and so on, and define $\mathrm{succ}^*(\mathcal{U}, u)$ to be the transitive closure:
 \[
@@ -196,16 +198,27 @@ Let $\mathrm{succ}^1(\mathcal{U}, u)$ be the set of successors of update $u$ in 
 \mathrm{succ}^*(\mathcal{U}, u) = \bigcup_{i \ge 1} \mathrm{succ}^i(\mathcal{U}, u)
 \]
 
+We define the set of predecessors of $u$ similarly:
+\[
+\mathrm{pred}^i(\mathcal{U}, u) =
+\begin{cases}
+\{ v \in \mathcal{U} \mid H(v) \in u.\mathit{hs}\} & \text{ for } i=1 \\
+\bigcup_{u' \in \mathrm{pred}^1(\mathcal{U}, u)} \mathrm{pred}^{i-1}(\mathcal{U}, u') & \text{ for } i>1
+\end{cases}
+\hspace{26pt}
+\mathrm{pred}^*(\mathcal{U}, u) = \bigcup_{i \ge 1} \mathrm{pred}^i(\mathcal{U}, u)
+\]
+
 Let $\mathrm{heads}(\mathcal{U})$ denote the set of hashes of updates in $\mathcal{U}$ that have no successors:
 \[ \mathrm{heads}(\mathcal{U}) = \{H(u) \mid u \in \mathcal{U} \wedge \mathrm{succ}^1(\mathcal{U}, u) = \{\}\;\}. \]
 
 We define the reconciliation process as taking place over a \emph{connection}.
 This connection is a logical grouping of a bidirectional sequence of related messages between two processes (in practice, it can be implemented as a TCP connection).
 Connections have the same reliability assumptions as individual message delivery: messages may be dropped, resulting in the connection eventually timing out, and the reconciliation process being cancelled.
-For liveness purposes we assume that if two processes repeatedly try, eventually they will succeed in creating a connection of finite duration that is free from message loss.
+However, if two processes repeatedly try, eventually they will succeed in creating a connection of finite duration that is free from message loss.
 
 When one process connects to another, both processes execute Algorithm~\ref{fig:algorithm}.
-We will illustrate the operation of this algorithm using the example in Fig.~\ref{fig:example-dags}; the messages sent in the course of the execution are shown in Fig.~\ref{fig:messages}.
+We will illustrate the operation of this algorithm using the example in Figure~\ref{fig:example-dags}; the messages sent in the course of the execution are shown in Figure~\ref{fig:messages}.
 
 \begin{figure}[p]
     \centering
@@ -231,38 +244,40 @@ We will illustrate the operation of this algorithm using the example in Fig.~\re
     \label{fig:messages}
 \end{figure}
 
+\algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
 \begin{algorithm}[p]
-    \algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
     \begin{algorithmic}[1]
-    \On{connecting to another process}
-        \State $\mathit{sent} := \{\};\; \mathit{received} := \{\};\; \mathcal{U}_\mathsf{conn} := \mathcal{U}$ \label{line:init}\Comment{connection-local variables}
+    \On{connecting to another process} \label{line:connect-begin}
+        \State $\mathit{sent} := \{\};\; \mathit{received} := \{\};\; \mathit{missing} := \{\};\; \mathcal{U}_\mathsf{conn} := \mathcal{U}$ \label{line:init}\Comment{connection-local variables}
         \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{U}_\mathsf{conn})\rangle$ \label{line:send-heads}
-    \EndOn
+    \EndOn \label{line:connect-end}
     \State
     \On{receiving $\langle\mathsf{heads}: \mathit{hs}\rangle$} \label{line:recv-heads}
-        \State $\mathit{reply} := \{v \mid \exists u \in \mathcal{U}_\mathsf{conn}.\; H(u) \in \mathit{hs} \,\wedge\, v \in \mathrm{succ}^*(\mathcal{U}_\mathsf{conn}, u)\}$ \label{line:succ}
+        \State $\mathit{reply} := \{v \mid \exists u \in \mathcal{U}_\mathsf{conn}.\; H(u) \in \mathit{hs} \,\wedge\, v \in \mathrm{succ}^*(\mathcal{U}_\mathsf{conn}, u) \,\wedge\, v \notin \mathit{sent}\}$ \label{line:succ}
         \If{$\mathit{reply} \neq \{\}$}
             \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
             \State \textbf{send} $\langle\mathsf{updates}: \mathit{reply}\rangle$ \label{line:heads-reply}
         \EndIf
         \State \Call{HandleMissing}{$\{h \in \mathit{hs} \mid \nexists u \in \mathcal{U}_\mathsf{conn}.\; H(u) = h\}$} \label{line:heads-missing}
-    \EndOn
+    \EndOn\label{line:recv-heads-end}
     \State
     \On{receiving $\langle\mathsf{updates}: \mathit{new}\rangle$} \label{line:recv-updates}
         \State $\mathit{received} := \mathit{received} \,\cup\, \mathit{new}$ \label{line:updates-received}
-        \State $\mathit{missing} := \{h \mid \exists (v, \mathit{hs}) \in \mathit{received}.\; h \in \mathit{hs} \;\wedge\; \nexists u \in (\mathcal{U}_\mathsf{conn} \cup \mathit{received}).\; H(u) = h\}$ \label{line:updates-missing}
-        \State \Call{HandleMissing}{$\mathit{missing}$} \label{line:updates-handle-missing}
+        \State $\mathit{unresolved} := \{h \mid \exists (v, \mathit{hs}) \in \mathit{received}.\; h \in \mathit{hs} \;\wedge\; \nexists u \in (\mathcal{U}_\mathsf{conn} \cup \mathit{received}).\; H(u) = h\}$ \label{line:updates-missing}
+        \State \Call{HandleMissing}{$\mathit{unresolved}$} \label{line:updates-handle-missing}
     \EndOn
     \State
-    \On{receiving $\langle\mathsf{needs}: \mathit{missing}\rangle$} \label{line:recv-needs}
-        \State $\mathit{reply} := \{u \in \mathcal{U}_\mathsf{conn} \mid H(u) \in \mathit{missing} \wedge u \notin \mathit{sent}\}$ \label{line:needs-reply}
+    \On{receiving $\langle\mathsf{needs}: \mathit{hashes}\rangle$} \label{line:recv-needs}
+        \State $\mathit{reply} := \{u \in \mathcal{U}_\mathsf{conn} \mid H(u) \in \mathit{hashes} \wedge u \notin \mathit{sent}\}$ \label{line:needs-reply}
         \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
         \State \textbf{send} $\langle\mathsf{updates}: \mathit{reply}\rangle$ \label{line:send-updates}
     \EndOn\label{line:end-needs}
     \State
-    \Function{HandleMissing}{$\mathit{missing}$}
+    \Function{HandleMissing}{$\mathit{hashes}$}
+        \State $\mathit{missing} := (\mathit{missing} \cup \mathit{hashes}) - \{H(u) \mid u \in \mathit{received}\}$
         \If{$\mathit{missing} = \{\}$} \label{line:missing-empty}
             \State $\mathcal{U} := \mathcal{U} \cup \mathit{received}$ \label{line:update-u}
+            \State \Call{Store}{$\mathcal{U}$}
             \State \textbf{reconciliation complete} \label{line:finish}
         \Else
             \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$ \label{line:send-missing}
@@ -273,66 +288,106 @@ We will illustrate the operation of this algorithm using the example in Fig.~\re
 \end{algorithm}
 
 Initially, when a connection is established between two processes, they send each other their heads (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-heads}).
-In the example of Fig.~\ref{fig:example-dags}, $p$ sends $\{H(E),H(M)\}$ to $q$, while $q$ sends $\{H(G),H(K)\}$ to $p$.
+In the example of Figure~\ref{fig:example-dags}, $p$ sends $\{H(E),H(M)\}$ to $q$, while $q$ sends $\{H(G),H(K)\}$ to $p$.
 
-Each process also initialises variables $\mathit{sent}$ and $\mathit{received}$ to contain the set of updates sent to/received from the other process within the scope of this particular connection, and $\mathcal{U}_\mathsf{conn}$ contains a copy of this process' set of updates $\mathcal{U}$ at the time the connection is established (line~\ref{line:init}).
-A process may concurrently execute several instances of this algorithm using several connections; in this case, each connection has a separate copy of the variables $\mathit{sent}$, $\mathit{received}$, and $\mathcal{U}_\mathsf{conn}$.
+Each process also initialises variables $\mathit{sent}$ and $\mathit{received}$ to contain the set of updates sent to/received from the other process within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack an update, and $\mathcal{U}_\mathsf{conn}$ to contain a copy of this process' set of updates $\mathcal{U}$ at the time the connection is established (line~\ref{line:init}).
+A process may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{received}$, $\mathit{missing}$, and $\mathcal{U}_\mathsf{conn}$.
 
 On receiving the heads from the other process (line~\ref{line:recv-heads}), the recipient first checks if its local set $\mathcal{U}_\mathsf{conn}$ contains successors for any of the sender's heads; if so, those successors, and any transitive successors, are sent immediately to the other process (lines~\ref{line:succ}--\ref{line:heads-reply}).
 By definition of $\mathit{heads}$, these successors are not yet known to the other process.
 
-If the recipient does not know some of the head hashes, it replies with a $\mathsf{needs}$ message requesting the updates matching those hashes (lines~\ref{line:heads-missing}, \ref{line:send-missing}).
+If the recipient does not know some of the head hashes, it replies with a $\mathsf{needs}$ message requesting the updates matching those hashes (lines~\ref{line:heads-missing} and \ref{line:send-missing}).
 A process responds to such a $\mathsf{needs}$ message by returning all the matching updates (lines~\ref{line:recv-needs}--\ref{line:end-needs}).
 That $\mathsf{updates}$ message might again contain unresolved hashes, resulting in another $\mathsf{needs}$ message (lines~\ref{line:updates-missing}--\ref{line:updates-handle-missing}).
 In successive rounds of this protocol, the processes work their way from the heads along the paths of predecessors, until they reach the updates that are common ancestors of both processes' heads.
 
-Eventually, when there are no unresolved hashes, we merge the set of received updates into $\mathcal{U}$ and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
-This is the moment at which the ``reconciliation is complete'', as per the convergence property of Byzantine Eventual Consistency.
-We show in \S~\ref{sec:proof} that this algorithm satisfies all three properties of BEC.
+Eventually, when there are no unresolved hashes, we merge the set of received updates into $\mathcal{U}$, write $\mathcal{U}$ to stable storage, and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
+This is the moment at which the ``reconciliation is complete'', as per the BEC convergence property.
 
-\subsection{Optimisations and extensions}\label{sec:optimisations}
-
-Assuming that the number of heads is small compared to the total number of updates in $\mathcal{U}$, the initial $\mathsf{heads}$ message will be small, yielding a big performance improvement over sending the whole of $\mathcal{U}$.
-
+Assuming that the number of heads is small compared to the total number of updates in $\mathcal{U}$, the initial $\mathsf{heads}$ message will be small, yielding a big performance improvement compared to sending the whole of $\mathcal{U}$.
 In order to keep the number of heads small, whenever a correct process generates a new update $(v, \mathit{hs})$, it should set $\mathit{hs}$ to be the set of hashes of the current heads:
 $\mathit{hs} = \mathrm{heads}(\mathcal{U})$.
 In this construction, the number of heads is bounded by the number of processes generating updates concurrently.
 A Byzantine-faulty process may generate a large number of heads, which will affect the performance of the algorithm, but not its correctness.
+We show in \S~\ref{sec:proof} that this algorithm satisfies all three properties of BEC.
+
+\begin{algorithm}[t]
+    \begin{algorithmic}[1]
+    \On{connecting to process $q$}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}}
+        \State $\mathit{sent} := \{\};\; \mathit{received} := \{\};\; \mathit{missing} := \{\};\; \mathcal{U}_\mathsf{conn} := \mathcal{U}$ \Comment{connection-local variables}
+        \State $\mathit{oldHeads} := \Call{LoadHeads}{q}$\label{line:load-heads}
+        \State $\mathit{newUpdates} := \Call{UpdatesSince}{\mathit{oldHeads}}$
+        \If{$\mathit{newUpdates} \ne \{\} \wedge |\mathit{newUpdates}| \le \mathit{immediateSendThreshold}$}\label{line:immediate-send}
+            \State $\mathit{sent} := \mathit{sent} \cup \mathit{newUpdates}$
+            \State \textbf{send} $\langle\mathsf{updates}: \mathit{newUpdates}\rangle$
+        \EndIf\label{line:immediate-send-end}
+        \State $\mathit{filter} := \Call{MakeBloomFilter}{\mathit{newUpdates}}$\label{line:make-bloom}
+        \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{U}_\mathsf{conn}),\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$ \label{line:a2-send-heads}
+    \EndOn
+    \State
+    \On{receiving $\langle\mathsf{heads}: \mathit{hs},\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$}\Comment{Replaces lines \ref{line:recv-heads}--\ref{line:recv-heads-end}}\label{line:a2-recv-heads}
+        \State $\mathit{reply} := \{v \mid \exists u \in \mathcal{U}_\mathsf{conn}.\; H(u) \in \mathit{hs} \,\wedge\, v \in \mathrm{succ}^*(\mathcal{U}_\mathsf{conn}, u) \,\wedge\, v \notin \mathit{sent}\}$ \label{line:a2-succ}
+        \State $\mathit{bloomNegative} := \{u \in \Call{UpdatesSince}{\mathit{oldHeads}} \mid \neg\Call{BloomMember}{\mathit{filter}, u}\}$\label{line:bloom-member}
+        \State $\mathit{reply} := \left(\mathit{reply} \cup \mathit{bloomNegative} \cup \bigcup_{u \in \mathit{bloomNegative}} \mathrm{succ}^*(\mathcal{U}_\mathsf{conn}, u)\right) - \mathit{sent}$\label{line:bloom-succ}
+        \If{$\mathit{reply} \neq \{\}$}
+            \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
+            \State \textbf{send} $\langle\mathsf{updates}: \mathit{reply}\rangle$ \label{line:a2-heads-reply}
+        \EndIf
+        \State \Call{HandleMissing}{$\{h \in \mathit{hs} \mid \nexists u \in \mathcal{U}_\mathsf{conn}.\; H(u) = h\}$} \label{line:a2-heads-missing}
+    \EndOn
+    \State
+    \Function{UpdatesSince}{$\mathit{oldHeads}$}
+        \State $\mathit{known} := \{u \in \mathcal{U}_\mathsf{conn} \mid H(u) \in \mathit{oldHeads}\}$
+        \State \textbf{return} $\mathcal{U}_\mathsf{conn} - \mathit{known} - \bigcup_{v \in \mathit{known}} \mathrm{pred}^*(\mathcal{U}_\mathsf{conn}, v)$
+    \EndFunction
+    \end{algorithmic}
+    \caption{Optimisations to reduce the number of round-trips.}\label{fig:algorithm2}
+\end{algorithm}
+
+\subsection{Reducing the number of round trips}\label{sec:reduce-round-trips}
 
 A downside of Algorithm~\ref{fig:algorithm} is that the number of round trips required can be up to the length of the longest path in the graph.
-In order to optimise this, we could change lines~\ref{line:needs-reply}--\ref{line:send-updates} to send not only the immediate updates identified by the hashes in the $\mathsf{needs}$ message, but also all of the predecessors of those updates, several levels deep.
-The number of round-trips is then reduced proportionally to the number of predecessor levels, but the downside is that some of the predecessor updates may already be known to the recipient, and are thus transmitted unnecessarily.
+When performing reconciliation over a high-latency network, it is desirable to reduce the number of round-trips as much as possible, while still avoiding sending updates that the other process already has.
 
-To determine the number of predecessor levels to send in each round, as a rule of thumb, the size of the $\mathsf{updates}$ message should be approximately equal to the bandwidth-delay product of the connection between the two processes.
-Thus, on a connection with low bandwidth and fast round-trips we will prefer to send many small messages, while on a connection with high bandwidth and slow round-trips we will batch the updates into a small number of large messages.
+Note that Algorithm~\ref{fig:algorithm} does not store any information about the outcome of the last reconciliation with a particular process; if two processes periodically reconcile their states, they need to discover each other's states from scratch on every protocol run.
+If we assume that a process knows the identity of the other process it is communicating with, we can record the outcome of a protocol run.
+We will do this by adding the following instruction after line~\ref{line:update-u} of Algorithm~\ref{fig:algorithm}, where $q$ is the identity of the other process:
+\[ \textsc{StoreHeads}(q, \mathrm{heads}(\mathcal{U}_\mathsf{conn} \cup \mathit{received})). \]
 
-In order to further improve efficiency, the processes can send each other a probabilistic data structure summarising the set of elements in their local set $\mathcal{U}$, such as a Bloom filter~\cite{Bloom:1970}.
-The recipient of such a structure can then compute the approximate set of updates that the other process is missing; however, this set may be incomplete due to false positives, necessitating at least one more round trip of communication to fill in the gaps.
-A detailed study of the performance characteristics of this approach is beyond the scope of this paper.
+We use this information in Algorithm~\ref{fig:algorithm2} to reduce the number of round trips.
+Algorithm~\ref{fig:algorithm2} replaces the ``on initial connection'' and ``on receiving heads'' functions of Algorithm~\ref{fig:algorithm}, while leaving the rest of Algorithm~\ref{fig:algorithm} unchanged.
+
+First, when process $p$ connects to process $q$, $p$ calls $\textsc{LoadHeads}(q)$ to load the heads stored at the end of the previous reconciliation with $q$ (Algorithm~\ref{fig:algorithm2}, line~\ref{line:load-heads}).
+This function returns the empty set if this is the first reconciliation with $q$.
+We then find all of the updates that were added since this last reconciliation (i.e.\ all updates that are not among the heads or their predecessors).
+
+If the number of new updates since the last reconciliation is below some threshold $\mathit{immediateSendThreshold}$, we immediately send the updates to the other process, because it is not worth running a more complicated protocol for a small amount of data (lines~\ref{line:immediate-send}--\ref{line:immediate-send-end}).
+We do this even though the other process may have already received these updates from another process, as long as the cost of sending unnecessary updates does not exceed the overhead of the rest of the protocol.
+
+Next, we construct a Bloom filter~\cite{Bloom:1970} containing all of the new updates, and send it to process $q$ along with the heads (lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
+When the heads and Bloom filter are received, we first search for any successors of the heads as before (line~\ref{line:a2-succ}).
+Next, we identify any updates that were added since the last reconciliation that are \emph{not} present in the Bloom filter's membership check (line~\ref{line:bloom-member}); these must be sent to the other process, since we know that the other process does not have them.
+Moreover, we also send any successors of updates whose Bloom filter membership check returned false (line~\ref{line:bloom-succ}): if the membership check returned true for some of those successors, we know that it must have been a false positive, since the set $\mathcal{U}$ for a correct process cannot contain updates whose predecessors are missing.
+
+Due to Bloom filter false positives, the set of updates sent on line~\ref{line:a2-heads-reply} may be incomplete, but it is likely to contain most of the updates that the other process is lacking.
+The remaining missing updates are identified based on the received heads (line~\ref{line:a2-heads-missing}).
+For these we revert back to Algorithm~\ref{fig:algorithm}, and perform round trips of $\mathsf{needs}$ and $\mathsf{updates}$ messages until the received set of updates is complete.
+
+Since Algorithm~\ref{fig:algorithm2} relies on knowing the identity of the process it is communicating with, the underlying network connection may need to be authenticated to prevent a faulty process from impersonating another process.
+This can be achieved with digital signatures, for example.
+
+\subsection{Further optimisations and extensions}\label{sec:optimisations}
 
 Another potential issue with Algorithm~\ref{fig:algorithm} is the unbounded growth of storage requirements, since the set $\mathcal{U}$ grows monotonically (much like most algorithms for Byzantine agreement, which produce an append-only log without considering how that log might be truncated).
 If the set of processes in the system is known, we can perform garbage collection in the set $\mathcal{U}$ using the following observation: once some update $u$ is known to all of the processes, Algorithm~\ref{fig:algorithm} no longer needs to refer to any of the predecessors of $u$, and so all of those predecessors can be removed from $\mathcal{U}$ without affecting the algorithm.
-
-Some systems may need to check the authenticity of updates (i.e.\ to verify that an update was generated by a particular process).
-This can easily be achieved by attaching a digital signature to each update.
-
-% reuse prior knowledge of other processes
 
 % Find last common ancestor by some kind of binary search; problem: graph of updates is not linear, so definition of half-way point is fiddly.
 
 \subsection{Building applications on top of BEC}\label{sec:applications}
 
 BEC can ensure convergence for any data structure that is a deterministic function of the set of updates $\mathcal{U}$.
-For example, we can implement Byzantine eventually consistent state machine replication (BEC-SMR) as follows: let each value in $\mathcal{U}$ be a pair $(t, \mathit{op})$, where $t$ is a timestamp and $\mathit{op}$ is a state machine operation.
-Any process may propose an operation $op$ to add to the log by generating $t$ and adding $((t, \mathit{op}), \mathit{hs})$ to $\mathcal{U}$.
-The log is then simply the sequence of operations obtained by sorting the elements of $\mathcal{U}$ by timestamp, breaking ties by ordering on the hash of the respective update.
 
-Unlike the log produced by Byzantine agreement, the BEC-SMR log does not guarantee that operations are added to the log in increasing timestamp order.
-Thus, if a process receives operations out-of-order, it may need to roll back the state machine to an earlier state, and then replay operations in timestamp order.
-
-This rollback approach is only feasible if all side-effects of the state machine can be undone~\cite{Jefferson:1985}.
-If side-effects need to be irrevocable, BEC-SMR is not suitable, and a traditional Byzantine agreement algorithm must be used.
-For example, most blockchains require that a payment (a side-effect of processing a block) cannot be reversed once it has been confirmed by the consensus algorithm.
+TODO add material on CRDTs
 
 \section{Proof of correctness}\label{sec:proof}
 
