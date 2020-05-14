@@ -106,6 +106,7 @@ In Algorithm~\ref{fig:algorithm}, reconciliation is complete when the execution 
 
 % assume the sets have a lot of overlap, so we want complexity to be linear in amount of divergence.
 % give our algorithm a name?
+% do we need to mention here that updates from correct processes are unique? if the same update is added multiple times then it will appear in the set of updates only once.
 
 In this section we discuss replication algorithms that ensure BEC.
 In these systems, each process locally maintains a replica of a set of updates $\mathcal{U}$, and each process may add new updates to its local copy of $\mathcal{U}$, e.g.\ as the result of requests made by clients.
@@ -133,7 +134,7 @@ We can only reason about the behaviour of correct processes, since we make no as
     \label{fig:trivial2}
 \end{figure}
 
-\subsection{Trivial algorithms}
+\subsection{Na\"{\i}ve algorithms}
 
 The simplest replication algorithm is as follows: every time a process makes an update, it adds the update to its set $\mathcal{U}$ and broadcasts that update to every other process, re-transmitting until it is acknowledged.
 Every process that receives an update also adds it to $\mathcal{U}$.
@@ -150,8 +151,13 @@ However, this algorithm is very inefficient.
 When processes periodically reconcile their state, we can expect that at the start of each round of reconciliation their sets of updates already have many elements in common.
 Sending the entire set of updates to each other thus implies transmitting a large amount of data unnecessarily.
 
-A more efficient reconciliation algorithm should determine which elements the processes' sets already have in common, and transmit only those updates that are unknown to the other process.
+An efficient reconciliation algorithm should determine which elements the processes' sets already have in common, and transmit only those updates that are unknown to the other process.
 For example, $p$ should only send $\mathcal{U}_p - \mathcal{U}_r$ to $r$, and $r$ should only send $\mathcal{U}_r - \mathcal{U}_p$ to $p$.
+
+Furthermore, the network and computational overhead for calculating which updates to send should not be proportional to the size of the sets, $|\mathcal{U}_p|$ and $|\mathcal{U}_r|$.
+This requirements rules out simple fixes to the above algorithm such as having process $p$ first send a list of hashes, one for each element in $\mathcal{U}_p$, to process $r$ such that process $r$ can compute which elements it needs to send.
+Similarly, approximate solutions are not suitable as is since we require convergence at the end of reconciliation.
+For example, this rules out simply exchanging Bloom filters of updates between processes to compute which elements are missing as false positives can violate convergence.
 
 \begin{figure}
     \centering
@@ -373,6 +379,10 @@ Due to Bloom filter false positives, the set of updates sent on line~\ref{line:a
 The remaining missing updates are identified based on the received heads (line~\ref{line:a2-heads-missing}).
 For these we revert back to Algorithm~\ref{fig:algorithm}, and perform round trips of $\mathsf{needs}$ and $\mathsf{updates}$ messages until the received set of updates is complete.
 
+The size of the Bloom filter can be adjusted dynamically based on the number of elements it contains and the desired false positive probability.
+Note that the Bloom filter contains only updates that were added since the heads of the last reconciliation with $q$, not all updates $\mathcal{U}$.
+Thus, if the reconciliations are frequent, they can employ a small Bloom filter size to minimise the cost of reconciliation.
+
 Since Algorithm~\ref{fig:algorithm2} relies on knowing the identity of the process it is communicating with, the underlying network connection may need to be authenticated to prevent a faulty process from impersonating another process.
 This can be achieved with digital signatures, for example.
 
@@ -525,6 +535,9 @@ Byzec~\cite{Shoker:2017}, as well as work by Chai and Zhao~\cite{Chai:2014}, als
 
 Depot~\cite{Mahajan:2011} tolerates arbitrary numbers of faulty processes; however, its consistency model (fork-join-causal) and replication protocol are considerably more complicated than ours, making them difficult to analyse.
 In BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again.
+
+Beyond the field of Byzantine fault tolerance, the closely related problems of computing the difference, union or intersection between sets on remote hosts has been studied previously in various domains, including peer-to-peer systems such as BitTorrent, deduplication of backups and encoding.
+Approaches taken include using Bloom Filters~\cite{Skjegstad:2011}, Invertible Bloom Filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2006}.
 
 Byzantine Eventual Consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
 Conflict-free Replicated Data Types (CRDTs) provide SEC by ensuring that whenever any two replicas have seen the same set of updates (possibly in a different order), those replicas are in the same state~\cite{Shapiro:2011}.
