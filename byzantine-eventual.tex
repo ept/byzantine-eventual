@@ -41,6 +41,7 @@
     However, if more faults occur, we can still guarantee weaker consistency models. 
     In this paper we define one such model, which we refer to as Byzantine Eventual Consistency (BEC).
     We also introduce an algorithm that implements this consistency model, even in a system with arbitrarily many Byzantine-faulty processes, and prove that it ensures BEC.
+    Our evaluation shows that the performance of our algorithm is near optimal in terms of network bandwidth and round-trips.
 \end{abstract}
 \maketitle
 
@@ -49,8 +50,8 @@
 Byzantine agreement assumes that at most $f$ out of $n$ processes are Byzantine-faulty.
 It is well established that without synchrony, Byzantine agreement is impossible if $n\leq3f$~\cite{Dwork:1988,Lamport:1982}.
 If more than $f$ processes are faulty, neither safety (agreement) nor liveness can be guaranteed.
-In practice, the assumption that no more than $f$ processes are faulty is not necessarily a realistic threat model.
 
+In practice, the assumption that no more than $f$ processes are faulty is not necessarily a realistic threat model.
 Byzantine failures are not necessarily independent: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes, since they are likely to all be running the same software. 
 Similarly, non-malicious software bugs are likely to affect many of the processes at once.
 This issue was acknowledged in the pBFT paper, which states that: ``{\dots}each node should run different implementations of the service code and operating system{\dots}''~\cite{Castro:1999}~--- an assumption that is unrealistic for any system with more than a few processes, and is seldom true in practice today.
@@ -59,13 +60,17 @@ In some systems, such as open peer-to-peer networks that anybody can join, an ad
 This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model \emph{can} we achieve under that assumption?
 
 In this paper we propose \emph{Byzantine Eventual Consistency} (BEC), a novel consistency model that can be achieved regardless of the number of Byzantine-faulty processes.
-We define BEC in \S~\ref{sec:properties}, and in \S~\ref{sec:algorithm} we introduce an algorithm that achieves BEC (as proved in \S~\ref{sec:proof}).
-In BEC, each process is a replica of some shared state, and any two correct replicas converge towards the same state as they communicate, even if they also communicate with arbitrarily many Byzantine-faulty processes.
-Essentially, the algorithm ensures that faulty replicas cannot corrupt the state of correct replicas.
+BEC ensures that all correct replicas of some shared state converge towards the same set of updates, even if they also communicate with arbitrarily many Byzantine-faulty processes.
+Essentially, BEC ensures that faulty replicas cannot corrupt the state of correct replicas.
+
+After defining BEC, we give several examples of systems in which BEC is useful in \S~\ref{sec:applications}.
+We then introduce and compare several algorithms for BEC in \S~\ref{sec:algorithm}, and prove in \S~\ref{sec:proof} that our algorithms guarantee BEC.
+Finally, we evaluate the performance of two variants of our algorithm in \S~\ref{sec:evaluation}, showing that our optimised algorithm achieves near-optimal performance in terms of network communication.
+
 
 \section{Defining Byzantine Eventual Consistency}\label{sec:properties}
 
-Algorithms for Byzantine agreement (or consensus) are often used to create an append-only log of values for state machine replication~\cite{Schneider:1990}, such as a blockchains~\cite{Bano:2019}.
+Algorithms for Byzantine agreement (or consensus) are often used to create an append-only log of values for state machine replication~\cite{Schneider:1990}, such as a blockchain~\cite{Bano:2019}.
 The primary correctness criterion for such a log is that all correct processes observe the same sequence of values, even in the presence of up to $f$ Byzantine-faulty processes.
 If we use these values as inputs to a deterministic state machine, that state machine goes through the same sequence of state transitions on each process, resulting in consistent replicas of the state.
 
@@ -89,11 +94,11 @@ We then say that an algorithm ensures BEC if, for all executions of that algorit
 \item[Liveness:] For any update proposed by one of the processes, that update will eventually be contained in the set of updates for all correct processes.
 \end{description}
 
-Like in Byzantine agreement, liveness in BEC requires a further assumption: namely, we assume that any network partitions are of a finite duration, i.e.\ that any two processes will eventually be able to exchange an unbounded number of messages.
-However, none of the three properties require making any assumptions about the number of Byzantine-faulty nodes, and no timing assumptions are needed (the system may be fully asynchronous).
+Like in Byzantine agreement, liveness in BEC requires a further assumption: namely, we assume fair-loss links, i.e.\ that any given message has a nonzero probability of being delivered.
+However, none of the three properties require making any assumptions about the number of Byzantine-faulty processes, and no timing assumptions are needed (the system may be fully asynchronous).
 
 The primary difference between Byzantine agreement and BEC is that the output of a BEC algorithm is an unordered set of updates rather than a totally ordered log.
-While an unordered set is not sufficient for state machine replication, it can be used to implement various other applications, as we show in \S~\ref{sec:applications}.
+We show in \S~\ref{sec:applications} how this is a useful primitive for building a wide range of applications.
 
 The definitions of Byzantine agreement and BEC both rely on events that occur at a particular process and a particular time: \emph{deciding a value} and \emph{completing reconciliation}, respectively.
 In both cases, it is the replication algorithm that determines when such an event has occurred.
@@ -102,11 +107,30 @@ Likewise, in the case of BEC, process $p$'s reconciliation with process $q$ is \
 Process $q$ independently determines when reconciliation is complete from its perspective, which may happen earlier or later.
 In Algorithm~\ref{fig:algorithm}, reconciliation is complete when the execution reaches line~\ref{line:finish}.
 
-\section{Reconciliation algorithms}\label{sec:algorithm}
+\subsection{Building applications on top of BEC}\label{sec:applications}
 
-% assume the sets have a lot of overlap, so we want complexity to be linear in amount of divergence.
-% give our algorithm a name?
-% do we need to mention here that updates from correct processes are unique? if the same update is added multiple times then it will appear in the set of updates only once.
+BEC is not sufficient for implementing state machine replication, since it does not make any guarantee about the order in which updates are added to the set $\mathcal{U}$.
+Nevertheless, it is a useful abstraction for a wide range of practical databases and applications.
+
+Many widely-used eventually consistent databases, such as Amazon's Dynamo~\cite{DeCandia:2007ui} and Apache Cassandra~\cite{Lakshman:2009tz}, assume that each replica may observe updates in a different order.
+As long as all replicas eventually observe the same set of updates, these systems ensure that replicas converge by using vector clocks or timestamps to order updates.
+These systems are currently designed for a non-Byzantine model, so they can only be deployed within closed datacenter networks where all nodes are trusted.
+Moving to a BEC protocol for disseminating updates would allow these systems to tolerate Byzantine faults, and thus allow deployment across multiple mutually untrusting organisations, or even on the public Internet, where nodes cannot necessarily be trusted.
+
+Another class of systems that are based on an unordered set of updates are \emph{Conflict-free Replicated Data Types} or \emph{CRDTs}~\cite{Preguica:2018gi,Shapiro:2011}.
+These are replicated data structures that can be concurrently modified on multiple replicas without any locking or other synchronous coordination, even while those replicas are offline.
+CRDTs then ensure that whenever two replicas have seen the same set of updates (in any order), their data structures are also in the same state; this property is known as \emph{strong eventual consistency}~\cite{Gomes:2017gy,Shapiro:2011}.
+
+CRDTs have been used to implement distributed databases~\cite{Akkoorath2016Cure,Brown2016bigsets,Zawirski2015SwiftCloud}, multi-user collaborative text editors~\cite{AhmedNacer:2011ke,Nedelec:2016eo,Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many other applications.
+However, all of these applications have been designed for a non-Byzantine model.
+This is problematic because in CRDT applications, replicas are often on devices under end-user control, which cannot be fully trusted.
+In some situations, e.g.\ lawyers from several companies negotiating a contract using a shared document editor, it is essential that all parties have a consistent view of the document, even if some of them behave maliciously~\cite{Kollmann:2019hf}.
+
+Several CRDTs have been formally verified to provide strong eventual consistency~\cite{Gomes:2017gy,Zeller:2014fl}: that is, it has been proved that their replica states are consistent, provided that their sets of updates are the same.
+Byzantine Eventual Consistency provides the counterpart to this: ensuring that replicas have the same sets of updates.
+By using a BEC replication algorithm, any CRDT can thus be made Byzantine fault tolerant.
+
+\section{Reconciliation algorithms}\label{sec:algorithm}
 
 In this section we discuss replication algorithms that ensure BEC.
 In these systems, each process locally maintains a replica of a set of updates $\mathcal{U}$, and each process may add new updates to its local copy of $\mathcal{U}$, e.g.\ as the result of requests made by clients.
@@ -114,11 +138,10 @@ The purpose of the algorithms is to ensure that at every replica, the set $\math
 
 We assume a system model in which every process can communicate with every other process.
 The system is asynchronous: that is, there is no upper bound on network delay, and no bounds on the relative processing speed of different processes.
-We assume that the network is unreliable and that messages might be dropped; however, for liveness purposes we assume that any pair of processes will eventually be able to exchange an unbounded number of messages.
+We assume that the network is unreliable and that messages might be dropped; however, for liveness purposes we assume fair-loss links that eventually deliver a message if the sender keeps retrying.
 We assume that any number of processes may be Byzantine-faulty and deviate from the protocol in arbitrary ways.
 We can only reason about the behaviour of correct processes, since we make no assumptions about the behaviour or internal state of faulty processes.
 % we assume that the adversary cannot modify communication between correct processes
-% assume that network communication is via fair-loss links
 
 \begin{figure}
     \centering
@@ -154,10 +177,8 @@ Sending the entire set of updates to each other thus implies transmitting a larg
 An efficient reconciliation algorithm should determine which elements the processes' sets already have in common, and transmit only those updates that are unknown to the other process.
 For example, $p$ should only send $\mathcal{U}_p - \mathcal{U}_r$ to $r$, and $r$ should only send $\mathcal{U}_r - \mathcal{U}_p$ to $p$.
 
-Furthermore, the network and computational overhead for calculating which updates to send should not be proportional to the size of the sets, $|\mathcal{U}_p|$ and $|\mathcal{U}_r|$.
-This requirements rules out simple fixes to the above algorithm such as having process $p$ first send a list of hashes, one for each element in $\mathcal{U}_p$, to process $r$ such that process $r$ can compute which elements it needs to send.
-Similarly, approximate solutions are not suitable as is since we require convergence at the end of reconciliation.
-For example, this rules out simply exchanging Bloom filters of updates between processes to compute which elements are missing as false positives can violate convergence.
+Another simple algorithm would be to send a set of hashes of elements in $\mathcal{U}_p$ rather than the elements themselves.
+However, the network communication cost of this approach is still proportional to the size of the set $|\mathcal{U}_p|$, which scales poorly as the set grows.
 
 \begin{figure}
     \centering
@@ -176,16 +197,17 @@ In a system where processes correctly follow the protocol, the three components 
 Thus, $p$ and $r$ should be able to reconcile their updates by first sending each other their latest vector timestamps, which serve as a concise summary of the set of updates they have seen.
 However, in the example of Figure~\ref{fig:vectorclocks}, this approach fails due to $q$'s earlier faulty behaviour: $p$ and $r$ detect that their vector timestamps are equal, and thus incorrectly believe that they are in the same state, even though their sets of updates are different.
 
-Since a vector clock can thus be corrupted by a faulty process, a BEC reconciliation algorithm must find a different way of summarising sets of updates that is not vulnerable to such corruption.
+Since a vector clock can be corrupted by a faulty process in this way, a BEC reconciliation algorithm must find a different way of summarising sets of updates that is not vulnerable to such corruption.
 
-\subsection{An efficient BEC reconciliation algorithm}\label{sec:algorithm1}
+\subsection{A more efficient BEC reconciliation algorithm}\label{sec:algorithm1}
 
 We now present a reconciliation algorithm that can be run by any two replicas to bring their sets of updates into the same state.
 Our algorithm is efficient in the sense that when two correct processes are communicating, one process does not send any updates that the other process already has.
-We prove in \S~\ref{sec:proof} that this algorithm ensures BEC, regardless of the number of Byzantine-faulty processes in the system.
+We prove in \S~\ref{sec:proof} that this algorithm ensures BEC, regardless of the number of Byzantine-faulty processes in the system, and examine its performance in \S~\ref{sec:evaluation}.
 
 Let the set of updates $\mathcal{U}$ be a set of pairs $(v, \mathit{hs})$, where $v$ is any value, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
 We assume that $H$ is collision-resistant, i.e.\ that it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$.
+We also assume that updates made by correct processes are distinct (for example by incorporating a unique identifier as part of the value).
 
 Say $\mathcal{U}$ contains updates $A = (v_A, \mathit{hs}_A)$ and $B = (v_B, \mathit{hs}_B)$, where $H(A) \in \mathit{hs}_B$.
 Then we call $A$ a \emph{predecessor} of $B$, and $B$ a \emph{successor} of $A$.
@@ -203,7 +225,6 @@ Let $\mathrm{succ}^1(\mathcal{U}, u)$ be the set of successors of update $u$ in 
 \hspace{30pt}
 \mathrm{succ}^*(\mathcal{U}, u) = \bigcup_{i \ge 1} \mathrm{succ}^i(\mathcal{U}, u)
 \]
-
 We define the set of predecessors of $u$ similarly:
 \[
 \mathrm{pred}^i(\mathcal{U}, u) =
@@ -214,8 +235,8 @@ We define the set of predecessors of $u$ similarly:
 \hspace{26pt}
 \mathrm{pred}^*(\mathcal{U}, u) = \bigcup_{i \ge 1} \mathrm{pred}^i(\mathcal{U}, u)
 \]
-
-Let $\mathrm{heads}(\mathcal{U})$ denote the set of hashes of updates in $\mathcal{U}$ that have no successors:
+where $u.\mathit{hs}$ is the right half of the pair $u = (v, \mathit{hs})$.
+Let $\mathrm{heads}(\mathcal{U})$ denote the set of hashes of those updates in $\mathcal{U}$ that have no successors:
 \[ \mathrm{heads}(\mathcal{U}) = \{H(u) \mid u \in \mathcal{U} \wedge \mathrm{succ}^1(\mathcal{U}, u) = \{\}\;\}. \]
 
 We define the reconciliation process as taking place over a \emph{connection}.
@@ -283,7 +304,6 @@ We will illustrate the operation of this algorithm using the example in Figure~\
         \State $\mathit{missing} := (\mathit{missing} \cup \mathit{hashes}) - \{H(u) \mid u \in \mathit{received}\}$
         \If{$\mathit{missing} = \{\}$} \label{line:missing-empty}
             \State $\mathcal{U} := \mathcal{U} \cup \mathit{received}$ \label{line:update-u}
-            \State \Call{Store}{$\mathcal{U}$}
             \State \textbf{reconciliation complete} \label{line:finish}
         \Else
             \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$ \label{line:send-missing}
@@ -297,7 +317,7 @@ Initially, when a connection is established between two processes, they send eac
 In the example of Figure~\ref{fig:example-dags}, $p$ sends $\{H(E),H(M)\}$ to $q$, while $q$ sends $\{H(G),H(K)\}$ to $p$.
 
 Each process also initialises variables $\mathit{sent}$ and $\mathit{received}$ to contain the set of updates sent to/received from the other process within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack an update, and $\mathcal{U}_\mathsf{conn}$ to contain a copy of this process' set of updates $\mathcal{U}$ at the time the connection is established (line~\ref{line:init}).
-A process may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{received}$, $\mathit{missing}$, and $\mathcal{U}_\mathsf{conn}$.
+A process may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{received}$, $\mathit{missing}$, and $\mathcal{U}_\mathsf{conn}$, while $\mathcal{U}$ is a global variable that is shared between all connections.
 
 On receiving the heads from the other process (line~\ref{line:recv-heads}), the recipient first checks if its local set $\mathcal{U}_\mathsf{conn}$ contains successors for any of the sender's heads; if so, those successors, and any transitive successors, are sent immediately to the other process (lines~\ref{line:succ}--\ref{line:heads-reply}).
 By definition of $\mathit{heads}$, these successors are not yet known to the other process.
@@ -307,7 +327,7 @@ A process responds to such a $\mathsf{needs}$ message by returning all the match
 That $\mathsf{updates}$ message might again contain unresolved hashes, resulting in another $\mathsf{needs}$ message (lines~\ref{line:updates-missing}--\ref{line:updates-handle-missing}).
 In successive rounds of this protocol, the processes work their way from the heads along the paths of predecessors, until they reach the updates that are common ancestors of both processes' heads.
 
-Eventually, when there are no unresolved hashes, we merge the set of received updates into $\mathcal{U}$, write $\mathcal{U}$ to stable storage, and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
+Eventually, when there are no unresolved hashes, we merge the set of received updates into the global set $\mathcal{U}$ and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
 This is the moment at which the ``reconciliation is complete'', as per the BEC convergence property.
 
 Assuming that the number of heads is small compared to the total number of updates in $\mathcal{U}$, the initial $\mathsf{heads}$ message will be small, yielding a big performance improvement compared to sending the whole of $\mathcal{U}$.
@@ -322,12 +342,7 @@ We show in \S~\ref{sec:proof} that this algorithm satisfies all three properties
     \On{connecting to process $q$}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}}
         \State $\mathit{sent} := \{\};\; \mathit{received} := \{\};\; \mathit{missing} := \{\};\; \mathcal{U}_\mathsf{conn} := \mathcal{U}$ \Comment{connection-local variables}
         \State $\mathit{oldHeads} := \Call{LoadHeads}{q}$\label{line:load-heads}
-        \State $\mathit{newUpdates} := \Call{UpdatesSince}{\mathit{oldHeads}}$
-        \If{$\mathit{newUpdates} \ne \{\} \wedge |\mathit{newUpdates}| \le \mathit{immediateSendThreshold}$}\label{line:immediate-send}
-            \State $\mathit{sent} := \mathit{sent} \cup \mathit{newUpdates}$
-            \State \textbf{send} $\langle\mathsf{updates}: \mathit{newUpdates}\rangle$
-        \EndIf\label{line:immediate-send-end}
-        \State $\mathit{filter} := \Call{MakeBloomFilter}{\mathit{newUpdates}}$\label{line:make-bloom}
+        \State $\mathit{filter} := \textsc{MakeBloomFilter}(\Call{UpdatesSince}{\mathit{oldHeads}})$\label{line:make-bloom}
         \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{U}_\mathsf{conn}),\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$ \label{line:a2-send-heads}
     \EndOn
     \State
@@ -347,7 +362,7 @@ We show in \S~\ref{sec:proof} that this algorithm satisfies all three properties
         \State \textbf{return} $\mathcal{U}_\mathsf{conn} - \mathit{known} - \bigcup_{v \in \mathit{known}} \mathrm{pred}^*(\mathcal{U}_\mathsf{conn}, v)$
     \EndFunction
     \end{algorithmic}
-    \caption{Optimisations to reduce the number of round-trips.}\label{fig:algorithm2}
+    \caption{Optimising Algorithm~\ref{fig:algorithm} to reduce the number of round-trips.}\label{fig:algorithm2}
 \end{algorithm}
 
 \subsection{Reducing the number of round trips}\label{sec:algorithm2}
@@ -357,51 +372,48 @@ When performing reconciliation over a high-latency network, it is desirable to r
 
 Note that Algorithm~\ref{fig:algorithm} does not store any information about the outcome of the last reconciliation with a particular process; if two processes periodically reconcile their states, they need to discover each other's states from scratch on every protocol run.
 If we assume that a process knows the identity of the other process it is communicating with, we can record the outcome of a protocol run.
-We will do this by adding the following instruction after line~\ref{line:update-u} of Algorithm~\ref{fig:algorithm}, where $q$ is the identity of the other process:
-\[ \textsc{StoreHeads}(q, \mathrm{heads}(\mathcal{U}_\mathsf{conn} \cup \mathit{received})). \]
+We will do this by adding the following instruction after line~\ref{line:update-u} of Algorithm~\ref{fig:algorithm}, where $q$ is the identity of the current connection's remote process:
+\[ \textsc{StoreHeads}(q, \mathrm{heads}(\mathcal{U}_\mathsf{conn} \cup \mathit{received})) \]
+which updates a key-value store to associate the value $\mathrm{heads}(\mathcal{U}_\mathsf{conn} \cup \mathit{received})$ with the key $q$ (overwriting any previous value for that key if appropriate).
 
 We use this information in Algorithm~\ref{fig:algorithm2} to reduce the number of round trips.
 Algorithm~\ref{fig:algorithm2} replaces the ``on initial connection'' and ``on receiving heads'' functions of Algorithm~\ref{fig:algorithm}, while leaving the rest of Algorithm~\ref{fig:algorithm} unchanged.
 
-First, when process $p$ connects to process $q$, $p$ calls $\textsc{LoadHeads}(q)$ to load the heads stored at the end of the previous reconciliation with $q$ (Algorithm~\ref{fig:algorithm2}, line~\ref{line:load-heads}).
+First, when process $p$ establishes a connection with process $q$, $p$ calls $\textsc{LoadHeads}(q)$ to load the heads from the previous reconciliation with $q$ from the key-value store (Algorithm~\ref{fig:algorithm2}, line~\ref{line:load-heads}).
 This function returns the empty set if this is the first reconciliation with $q$.
 We then find all of the updates that were added since this last reconciliation (i.e.\ all updates that are not among the heads or their predecessors).
 
-If the number of new updates since the last reconciliation is below some threshold $\mathit{immediateSendThreshold}$, we immediately send the updates to the other process, because it is not worth running a more complicated protocol for a small amount of data (lines~\ref{line:immediate-send}--\ref{line:immediate-send-end}).
-We do this even though the other process may have already received these updates from another process, as long as the cost of sending unnecessary updates does not exceed the overhead of the rest of the protocol.
-
 Next, we construct a Bloom filter~\cite{Bloom:1970} containing all of the new updates, and send it to process $q$ along with the heads (lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
-When the heads and Bloom filter are received, we first search for any successors of the heads as before (line~\ref{line:a2-succ}).
-Next, we identify any updates that were added since the last reconciliation that are \emph{not} present in the Bloom filter's membership check (line~\ref{line:bloom-member}); these must be sent to the other process, since we know that the other process does not have them.
+When the heads and Bloom filter are received, we first search for any successors of the heads, which can be immediately sent in reply (line~\ref{line:a2-succ} of Algorithm~\ref{fig:algorithm2} is the same as line~\ref{line:succ} of Algorithm~\ref{fig:algorithm}).
+
+We then identify any updates that were added since the last reconciliation that are \emph{not} present in the Bloom filter's membership check (line~\ref{line:bloom-member}); these must be sent to the other process, since we know that the other process does not have them.
 Moreover, we also send any successors of updates whose Bloom filter membership check returned false (line~\ref{line:bloom-succ}): if the membership check returned true for some of those successors, we know that it must have been a false positive, since the set $\mathcal{U}$ for a correct process cannot contain updates whose predecessors are missing.
 
 Due to Bloom filter false positives, the set of updates sent on line~\ref{line:a2-heads-reply} may be incomplete, but it is likely to contain most of the updates that the other process is lacking.
 The remaining missing updates are identified based on the received heads (line~\ref{line:a2-heads-missing}).
 For these we revert back to Algorithm~\ref{fig:algorithm}, and perform round trips of $\mathsf{needs}$ and $\mathsf{updates}$ messages until the received set of updates is complete.
 
-The size of the Bloom filter can be adjusted dynamically based on the number of elements it contains and the desired false positive probability.
-Note that the Bloom filter contains only updates that were added since the heads of the last reconciliation with $q$, not all updates $\mathcal{U}$.
+The size of the Bloom filter can be chosen dynamically based on the number of elements it contains and the desired false positive probability.
+Note that the Bloom filter reflects only updates that were added since the heads of the last reconciliation with $q$, not all updates $\mathcal{U}$.
 Thus, if the reconciliations are frequent, they can employ a small Bloom filter size to minimise the cost of reconciliation.
 
-Since Algorithm~\ref{fig:algorithm2} relies on knowing the identity of the process it is communicating with, the underlying network connection may need to be authenticated to prevent a faulty process from impersonating another process.
-This can be achieved with digital signatures, for example.
+This optimised algorithm also tolerates Byzantine faults.
+For example, a faulty replica may send a correct replica an arbitrarily corrupted Bloom filter and arbitrary hashes.
+However, this only changes the set of updates in the reply from the correct process, and has no effect on $\mathcal{U}$ at the correct process.
+We formally analyse the correctness of this algorithm in \S~\ref{sec:proof}.
 
-\subsection{Further optimisations and extensions}\label{sec:optimisations}
+Since Algorithm~\ref{fig:algorithm2} relies on knowing the identity of the process it is communicating with, the underlying network connection may need to be authenticated to prevent a faulty process from impersonating another process.
+This can be achieved with a digital signatures, for example.
+
+\subsection{Garbage collection}
 
 Another potential issue with Algorithm~\ref{fig:algorithm} is the unbounded growth of storage requirements, since the set $\mathcal{U}$ grows monotonically (much like most algorithms for Byzantine agreement, which produce an append-only log without considering how that log might be truncated).
 If the set of processes in the system is known, we can perform garbage collection in the set $\mathcal{U}$ using the following observation: once some update $u$ is known to all of the processes, Algorithm~\ref{fig:algorithm} no longer needs to refer to any of the predecessors of $u$, and so all of those predecessors can be removed from $\mathcal{U}$ without affecting the algorithm.
 
-% Find last common ancestor by some kind of binary search; problem: graph of updates is not linear, so definition of half-way point is fiddly.
-
-\subsection{Building applications on top of BEC}\label{sec:applications}
-
-BEC can ensure convergence for any data structure that is a deterministic function of the set of updates $\mathcal{U}$.
-
-TODO add material on CRDTs
-
 \section{Proof of correctness}\label{sec:proof}
 
-In this section we show that the reconciliation algorithm of \S~\ref{sec:algorithm} satisfies the properties of Byzantine Eventual Consistency.
+In this section we show that Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} satisfy the BEC properties.
+If a lemma does not specify which of the two algorithms it applies to, it holds for both.
 
 We consider two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$ respectively at the start of the execution.
 Assume that in this run of the algorithm, $p$ and $q$ both complete the reconciliation by reaching line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}.
@@ -424,12 +436,12 @@ Then $\forall h \in \mathit{hs}.\; \exists v \in \mathcal{U}_p.\; H(v) = h$.
 There are two ways how $u$ can become a member of $\mathcal{U}_p$ for a correct process $p$:
 \begin{enumerate}
     \item $u$ is generated by process $p$.
-    In this case, since $p$ is assumed to be correct, $\mathit{hs} = \{H(v) \mid v \in \mathcal{U} \wedge \mathrm{succ}^1(\mathcal{U}, v) = \{\}\,\}$ for some earlier state $\mathcal{U}$, as per \S~\ref{sec:optimisations}.
+    In this case, since $p$ is assumed to be correct, $\mathit{hs} = \{H(v) \mid v \in \mathcal{U} \wedge \mathrm{succ}^1(\mathcal{U}, v) = \{\}\,\}$ for some earlier state $\mathcal{U}$, as per \S~\ref{sec:algorithm1}.
     As $\mathcal{U}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}), $\mathcal{U} \subseteq \mathcal{U}_p$, and thus we can deduce that $\forall h \in \mathit{hs}.\; \exists v \in \mathcal{U}_p.\; H(v) = h$.
     \item $u$ is received during reconciliation with another process (which might be faulty).
     In this case, during the run of the protocol at which $p$ received $u$, we have $u \in \mathit{received}$ and $\mathit{missing} = \{\}$ at line~\ref{line:update-u} of Algorithm~\ref{fig:algorithm}.
     Let $\mathcal{U}$ be the set of updates at $p$ immediately before that execution of line~\ref{line:update-u}.
-    From $\mathit{missing} = \{\}$ and line~\ref{line:updates-missing} we can deduce that $\forall h \in \mathit{hs}.\; \exists v \in (\mathcal{U} \cup \mathit{received}).\; H(v) = h$.
+    From $\mathit{missing} = \{\}$ and line~\ref{line:updates-missing} of Algorithm~\ref{fig:algorithm} we can deduce that $\forall h \in \mathit{hs}.\; \exists v \in (\mathcal{U} \cup \mathit{received}).\; H(v) = h$.
     Since $\mathcal{U}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}) and $\mathit{received} \subseteq \mathcal{U}_p$ (line~\ref{line:update-u}) we have $\forall h \in \mathit{hs}.\; \exists v \in \mathcal{U}_p.\; H(v) = h$.
 \end{enumerate}
 \end{proof}
@@ -447,7 +459,7 @@ However, this contradicts our assumption in \S~\ref{sec:algorithm} that the hash
 \end{proof}
 
 \begin{lemma}\label{lemma:no-q-missing}
-$\mathcal{U}_q \subseteq \mathcal{U}'_p$
+$\mathcal{U}_q \subseteq \mathcal{U}'_p$ when executing Algorithm~\ref{fig:algorithm}.
 \end{lemma}
 \begin{proof}
 We use proof by contradiction.\\
@@ -474,31 +486,40 @@ Since $u \in \mathcal{U}_q$ we have either $\mathrm{succ}^1(\mathcal{U}_q, u) = 
 \end{enumerate}
 \end{proof}
 
+\begin{lemma}\label{lemma:no-q-missing2}
+$\mathcal{U}_q \subseteq \mathcal{U}'_p$ when executing Algorithm~\ref{fig:algorithm2}.
+\end{lemma}
+\begin{proof}
+By contradiction.
+Assume $u \in \mathcal{U}_q$, $u \notin \mathcal{U}_p'$ and $u \notin \mathit{received}$ like in Lemma~\ref{lemma:no-q-missing}.\\
+Let $\mathit{filter}$ be the Bloom filter in the initial message from $p$ to $q$ in the current protocol run.\\
+Even though we have $u \notin \mathcal{U}_p$ (by Lemma~\ref{lemma:no-p-missing}), $\textsc{BloomMember}(\mathit{filter}, u)$ may return a false positive.
+Moreover, if it returns true, $u$ may or may not be a successor of a $\mathit{bloomNegative}$ item as computed in Algorithm~\ref{fig:algorithm2}, lines~\ref{line:bloom-member}--\ref{line:bloom-succ}.\\
+As a result it is possible for either $u \in \mathit{reply}$ or $u \notin \mathit{reply}$ after executing line~\ref{line:bloom-succ}.\\
+If $u \in \mathit{reply}$ then $p$ will receive an $\mathsf{updates}$ message containing $u$, which will be added to $\mathit{received}$, contradicting our assumption that $u \notin \mathit{received}$.\\
+If $u \notin \mathit{reply}$ we continue to line~\ref{line:a2-heads-missing} of Algorithm~\ref{fig:algorithm2}, from which point onward the algorithm is the same as Algorithm~\ref{fig:algorithm}.
+Thus, we have $\mathcal{U}_q \subseteq \mathcal{U}'_p$ by Lemma~\ref{lemma:no-q-missing}.
+\end{proof}
+
 \begin{lemma}\label{lemma:no-extras}
-$\mathcal{U}'_p \subseteq \mathcal{U}_p \cup \mathcal{U}_q$    
+$\mathcal{U}'_p \subseteq \mathcal{U}_p \cup \mathcal{U}_q$.
 \end{lemma}
 \begin{proof}
 We use proof by contradiction.\\
 Assume that $\exists u \in \mathcal{U}'_p.\; u \notin \mathcal{U}_p  \land  u \notin \mathcal{U}_q$.\\
-Since $\exists u \in \mathcal{U}'_p$, the process $p$ must have received an update containing $u$ from process $q$ before it completed reconciliation (Algorithm~\ref{fig:algorithm}, lines \ref{line:recv-updates}, \ref{line:updates-received}, \ref{line:finish}).\\
+Since $\exists u \in \mathcal{U}'_p$, the process $p$ must have received an update containing $u$ from process $q$ before it completed reconciliation (Algorithm~\ref{fig:algorithm}, lines \ref{line:recv-updates}--\ref{line:updates-handle-missing} and \ref{line:update-u}).\\
 Process $q$ will only send an update containing $u$ if $u \in \mathcal{U}_q$ or $u \in \mathcal{U}'_q$, depending on whether process $q$ has completed the reconciliation algorithm.
 Since $u \notin \mathcal{U}_q$ then process $q$ must have received an update containing $u$ from process $p$.
 Since $u \notin \mathcal{U}_p$ then process $p$ will not send this message and therefore the update $u$ does not exist.
 \end{proof}
 
 \begin{theorem}\label{theorem:convergence}
-When two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, have completed reconciliation (i.e.\ both have reached line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}), then their final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$  are both equal to $\mathcal{U}_q \cup \mathcal{U}_q$.
+When two correct processes $p$ and $q$, with initial sets of updates $\mathcal{U}_p$ and $\mathcal{U}_q$, have completed reconciliation (i.e.\ both have reached line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}), then their final sets of updates $\mathcal{U}'_p$ and $\mathcal{U}'_q$  are both equal to $\mathcal{U}_p \cup \mathcal{U}_q$.
 \end{theorem}
 \begin{proof}
-We can prove that $\mathcal{U}'_p = \mathcal{U}_q \cup \mathcal{U}_q$ by showing the following:
-\begin{enumerate}
-   \item $\mathcal{U}_p \subseteq \mathcal{U}'_p$
-   \item $\mathcal{U}_q \subseteq \mathcal{U}'_p$
-   \item $\mathcal{U}'_p \subseteq \mathcal{U}_p \cup \mathcal{U}_q$
-\end{enumerate}
-
-These have been shown by lemmas \ref{lemma:no-p-missing}, \ref{lemma:no-q-missing} and \ref{lemma:no-extras} respectively.  
-By swapping $p$ and $q$, we can show that the same holds for $\mathcal{U}'_q$.
+We have $\mathcal{U}_p \subseteq \mathcal{U}'_p$ by lemma \ref{lemma:no-p-missing}, $\mathcal{U}_q \subseteq \mathcal{U}'_p$ by lemmas \ref{lemma:no-q-missing} and \ref{lemma:no-q-missing2}, and $\mathcal{U}'_p \subseteq \mathcal{U}_p \cup \mathcal{U}_q$ from lemma \ref{lemma:no-extras}.
+From these facts we have $\mathcal{U}'_p = \mathcal{U}_q \cup \mathcal{U}_q$.\\
+Similarly, by swapping $p$ and $q$ we can show that $\mathcal{U}'_q = \mathcal{U}_q \cup \mathcal{U}_q$.
 \end{proof}
 
 This concludes the proof that the reconciliation algorithm of \S~\ref{sec:algorithm} satisfies the convergence property of BEC.
@@ -506,15 +527,17 @@ The proof of the validity property is obvious (the only way how an update in $\m
 It remains only to show the liveness property:
 
 \begin{theorem}\label{theorem:liveness}
-Assuming that any two correct processes execute the reconciliation protocol an unbounded number of times, and assuming that only a finite number of messages are lost, an update proposed by one process will eventually be in the set of updates for all correct processes.
+Assuming that any two correct processes execute the reconciliation protocol an unbounded number of times, and assuming fair-loss links, an update proposed by one process will eventually be in the set of updates for all correct processes.
 \end{theorem}
 \begin{proof}
 Since the graph of updates $\mathcal{U}_p$ at any correct process $p$ is finite and contains no cycles, every vertex $v \in \mathcal{U}_p$ can be reached in a finite number of steps by starting a graph traversal at $\mathrm{heads}(\mathcal{U}_p)$ and, in each step, moving from each vertex to its predecessors.
 Since $\mathcal{U}_p$ at any correct process $p$ contains only hashes that are the hash of another update in $\mathcal{U}_p$ (Lemma~\ref{lemma:no-dangling}), the algorithm of Algorithm~\ref{fig:algorithm} will always reach the state $\mathit{missing} = \{\}$ and terminate (i.e.\ reach line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}) in a finite number of round-trips of $\mathsf{needs}$ and $\mathsf{updates}$ messages, when communicating with another correct process.
 
-Since we assume that only a finite number of messages are ever lost, there will be an infinite number of executions of the protocol for any two correct processes $p$ and $q$ in which no messages are lost.
-In those protocol runs in which all messages are delivered, $p$ and $q$ will both complete in a finite time, because each of the finite number of round-trips completes in finite time.
+With fair-loss links each message has a nonzero probability of being delivered.
+For any finite protocol execution, the probability that no messages are lost is therefore also nonzero.
+Thus, there will be an infinite number of executions of the protocol for any two correct processes $p$ and $q$ in which no messages are lost.
 Thus, by Theorem~\ref{theorem:convergence}, any update known to $p$ will eventually be known to $q$ and vice versa.
+Since every pair of processes eventually reconciles, any update known to $p$ will eventually be known to all processes.
 \end{proof}
 
 Note that the protocol may never terminate when one of the communicating processes is Byzantine-faulty, e.g.\ because the faulty process may send hashes that do not resolve to any update, and so the state $\mathit{missing} = \{\}$ is never reached.
@@ -526,29 +549,45 @@ This ensures the integrity of the DAG.
 Arbitrary $\mathsf{needs}$ messages sent by a faulty process have no consequence, since they do not affect the state of the recipient.
 Thus, a faulty process cannot corrupt the state of a correct process in a way that would prevent the correct process from later synchronising its set of updates with another correct process.
 
+Note also that it is possible for one process to complete reconciliation while the other times out due to one-sided message loss.
+Thus, when we load the heads from the previous reconciliation in Algorithm~\ref{fig:algorithm2}, the local and the remote process' heads may differ.
+This does not affect the correctness of the algorithm.
+% and that's why we include oldHeads in the heads message
 
 \begin{figure}
   \includegraphics[width=\textwidth,keepaspectratio=true]{figs/evaluation.pdf}
-  \caption{Left: network bandwidth used to reconcile four processes once per second; right: number of round trips until reconciliation is complete (lower is better).}
+  \caption{left: number of round trips until reconciliation is complete; right: network bandwidth used to reconcile four processes once per second (lower is better).}
   \label{fig:evaluation}
 \end{figure}
 
-\section{Evaluation}
+\section{Evaluation}\label{sec:evaluation}
 
-To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2}, we implemented both algorithms and measured their behaviour in a simulated network.
-In our experiments, we use four replicas, where every pair of replicas reconcile their state once per second.
+To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2} we implemented both algorithms and measured their behaviour in a simulated network.
+In our experiments, we use four replicas, where every pair of replicas reconciles their states once per second.
 Each replica concurrently generates new updates, and we vary the rate at which new updates are generated.
 
 Whenever a process generates a new update, that process' previous heads become the predecessors of the new update, and the new update becomes the new head.
 This keeps the number of heads small, as described in \S~\ref{sec:algorithm1}.
 
-Figure~\ref{fig:evaluation} shows the average number of round-trips required to complete one reconciliation.
-When Algorithm~\ref{fig:algorithm} is used, the number of round trips increases linearly with the rate at which new updates are generated.
+First, we measure the average number of round-trips required to complete one reconciliation (Figure~\ref{fig:evaluation} left).
+The higher the rate of new updates, the longer the paths in the predecessor graph.
+Therefore, when Algorithm~\ref{fig:algorithm} is used, the number of round trips increases linearly with the rate at which new updates are generated.
 
-and Algorithm~\ref{fig:algorithm2}.
+However, Algorithm~\ref{fig:algorithm2} reduces each reconciliation to 1.03 round trips on average, and this number remains constant as the rate of new updates grows.
+97\% of reconciliations complete in one round trip, while only 2.9\% require two round trips, and 0.02\% of reconciliations require three or more round trips.
+These figures are based on using Bloom filters with 10 bits per entry and 7 hash functions.
 
+Next, we estimate the network traffic resulting from the use of our algorithms.
+For this we assume that each update is 100 bytes in size (including its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element as before.
+Moreover, we assume that each message sent incurs an additional constant overhead of 50 bytes (e.g.\ for TCP/IP packet headers).
+We compute the number of bytes sent per second (in both directions) using each reconciliation algorithm.
 
-\section{Related Work}
+Figure~\ref{fig:evaluation} (right) shows the results from this experiment.
+The grey line represents a hypothetical optimal algorithm that transmits only new updates, but no additional metadata such as hashes or Bloom filters.
+Compared to this optimum, Algorithm~\ref{fig:algorithm2} incurs a near-constant overhead of less than 500 bytes per reconciliation for the heads hashes, Bloom filter, and occasional additional round trips.
+In contrast, Algorithm~\ref{fig:algorithm} uses more than two times the optimal network bandwidth, primarily because it sends many $\mathsf{needs}$ messages containing hashes, and it sends updates in many small messages rather than batched into one message.
+
+\section{Related Work}\label{sec:relwork}
 
 Byzantine agreement has been subject of extensive research and has seen a recent renewal of interest due to its application in permissioned blockchains~\cite{Bano:2019}.
 Many Byzantine agreement algorithms~\cite{Castro:1999,Kotla:2007,Bessani:2014,Aublin:2015,Cowling:2006,Abd:2005} for asynchronous environments assume $n \ge 3f+1$ and require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
@@ -568,6 +607,8 @@ We can strengthen CRDTs to provide Byzantine Eventual Consistency by making each
 The hash chaining approach of our algorithm resembles a Git commit history, a blockchain~\cite{Bano:2019}, or a Merkle tree~\cite{Merkle:1987}.
 Our algorithm in \S~\ref{sec:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
 However, to our knowledge the Git protocol has not yet been the subject of much study, and particularly not in a context of Byzantine fault tolerance.
+
+% Snapdoc \cite{Kollmann:2019hf}
 
 % IPLD does some kind of hash graph traversal? https://ipld.io/
 

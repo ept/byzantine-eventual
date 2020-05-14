@@ -2,7 +2,8 @@
 @inproceedings{Shapiro:2011,
 author = {Shapiro, Marc and Pregui{\c c}a, Nuno and Baquero, Carlos and Zawirski, Marek},
 title = {Conflict-Free Replicated Data Types},
-booktitle = {13th International Symposium on Stabilization, Safety, and Security of Distributed Systems (SSS)},
+booktitle = {13th International Symposium on Stabilization, Safety, and Security of Distributed Systems},
+series = {SSS 2011},
 year = {2011},
 pages = {386--400},
 publisher = {Springer},
@@ -471,7 +472,229 @@ keywords = {distributed algorithms, set reconciliation, information disseminatio
 location = {San Jose, California},
 series = {FOMC ’11}
 }
-  
 
+@inproceedings{DeCandia:2007ui,
+author = {DeCandia, Giuseppe and Hastorun, Deniz and Jampani, Madan and Kakulapati, Gunavardhan and Lakshman, Avinash and Pilchin, Alex and Sivasubramanian, Swaminathan and Vosshall, Peter and Vogels, Werner},
+title = {{Dynamo}: {Amazon's} highly available key-value store},
+booktitle = {21st ACM Symposium on Operating Systems Principles},
+series = {SOSP 2007},
+year = {2007},
+pages = {205--220},
+publisher = {ACM},
+month = oct,
+doi = {10.1145/1294261.1294281}
+}
 
+@article{Lakshman:2009tz,
+author = {Lakshman, Avinash and Malik, Prashant},
+title = {{Cassandra} -- A Decentralized Structured Storage System},
+journal = {ACM SIGOPS Operating Systems Review},
+year = {2010},
+volume = {44},
+number = {2},
+pages = {35--40},
+month = apr,
+doi = {10.1145/1773912.1773922}
+}
 
+@incollection{Preguica:2018gi,
+author = {Pregui{\c c}a, Nuno and Baquero, Carlos and Shapiro, Marc},
+title = {Conflict-Free Replicated Data Types ({CRDTs})},
+booktitle = {Encyclopedia of Big Data Technologies},
+year = {2018},
+publisher = {Springer},
+month = may,
+doi = {10.1007/978-3-319-63962-8_185-1},
+isbn = {978-3-319-63962-8},
+url = {https://arxiv.org/abs/1805.06358}
+}
+
+@inproceedings{Brown2016bigsets,
+  author = {Brown, Russell and Lakhani, Zeeshan and Place, Paul},
+  title = {Big(Ger) Sets: Decomposed Delta {CRDT} Sets in {Riak}},
+  booktitle = {2nd Workshop on the Principles and Practice of Consistency for Distributed Data},
+  series = {PaPoC 2016},
+  year = {2016},
+  month = apr,
+  articleno = {5},
+  publisher = {ACM},
+  doi = {10.1145/2911151.2911156}
+}
+
+%% http://lip6.fr/Marc.Shapiro/papers/write-fast-read-past-middleware-2015.pdf
+@inproceedings{Zawirski2015SwiftCloud,
+  author = {Zawirski, Marek and Pregui{\c c}a, Nuno and Duarte, S{\'e}rgio and Bieniusa, Annette and Balegas, Valter and Shapiro, Marc},
+  title = {Write Fast, Read in the Past: Causal Consistency for Client-side Applications},
+  booktitle = {16th Annual Middleware Conference},
+  year = {2015},
+  month = dec,
+  publisher = {ACM/IFIP/USENIX},
+  pages = {75--87},
+  doi = {10.1145/2814576.2814733}
+}
+
+%% https://pages.lip6.fr/Marc.Shapiro/papers/Cure-final-ICDCS16.pdf
+@inproceedings{Akkoorath2016Cure,
+  author = {Akkoorath, Deepthi Devaki and Tomsic, Alejandro Z. and Bravo, Manuel and Li, Zhongmiao and Crain, Tyler and Bieniusa, Annette and Pregui{\c c}a, Nuno and Shapiro, Marc},
+  title = {{Cure}: Strong Semantics Meets High Availability and Low Latency},
+  booktitle = {36th IEEE International Conference on Distributed Computing Systems},
+  series = {ICDCS 2016},
+  year = {2016},
+  month = jun,
+  publisher = {IEEE},
+  pages = {405--414},
+  doi = {10.1109/ICDCS.2016.98}
+}
+
+@article{Lv:2018ie,
+author = {Lv, Xiao and He, Fazhi and Cheng, Yuan and Wu, Yiqi},
+title = {A novel {CRDT}-based synchronization method for real-time collaborative {CAD} systems},
+journal = {Advanced Engineering Informatics},
+year = {2018},
+volume = {38},
+pages = {381--391},
+month = aug,
+publisher = {Elsevier},
+doi = {10.1016/j.aei.2018.08.008}
+}
+
+%% https://pages.lip6.fr/Marc.Shapiro/papers/VMCAI-2018-filesys.pdf
+@inproceedings{Najafzadeh:2018bw,
+author = {Najafzadeh, Mahsa and Shapiro, Marc and Eugster, Patrick},
+title = {Co-Design and Verification of an Available File System},
+booktitle = {19th International Conference on Verification, Model Checking, and Abstract Interpretation},
+series = {VMCAI 2018},
+year = {2018},
+pages = {358--381},
+publisher = {Springer International Publishing},
+month = jan,
+doi = {10.1007/978-3-319-73721-8_17}
+}
+
+%% https://pages.lip6.fr/Marc.Shapiro/papers/geodistr-FS-Systor-2015.pdf
+@inproceedings{Tao:2015gd,
+author = {Tao, Vinh and Shapiro, Marc and Rancurel, Vianney},
+title = {Merging semantics for conflict updates in geo-distributed file systems},
+booktitle = {8th ACM International Systems and Storage Conference},
+series = {SYSTOR 2015},
+year = {2015},
+publisher = {ACM},
+month = may,
+doi = {10.1145/2757667.2757683}
+}
+
+%% http://pagesperso.lina.univ-nantes.fr/~molli-p/pmwiki/uploads/Main/weiss09.pdf
+@inproceedings{Weiss:2009ht,
+author = {Weiss, St{\'e}phane and Urso, Pascal and Molli, Pascal},
+title = {{Logoot}: A Scalable Optimistic Replication Algorithm for Collaborative Editing on {P2P} Networks},
+booktitle = {29th IEEE International Conference on Distributed Computing Systems},
+series = {ICDCS 2009},
+year = {2009},
+pages = {404--412},
+publisher = {IEEE},
+month = jun,
+doi = {10.1109/ICDCS.2009.75}
+}
+
+%% https://hal.inria.fr/docs/00/62/95/03/PDF/doce63-ahmednacer.pdf
+@inproceedings{AhmedNacer:2011ke,
+author = {Ahmed-Nacer, Mehdi and Ignat, Claudia-Lavinia and Oster, G{\'e}rald and Roh, Hyun-Gul and Urso, Pascal},
+title = {Evaluating {CRDTs} for real-time document editing},
+booktitle = {11th ACM Symposium on Document Engineering},
+series = {DocEng 2011},
+year = {2011},
+pages = {103--112},
+publisher = {ACM},
+month = sep,
+doi = {10.1145/2034691.2034717}
+}
+
+%% https://hal.archives-ouvertes.fr/hal-01303333
+@inproceedings{Nedelec:2016eo,
+author = {N{\'e}delec, Brice and Molli, Pascal and Mostefaoui, Achour},
+title = {{CRATE}: Writing Stories Together with our Browsers},
+booktitle = {25th International World Wide Web Conference},
+series = {WWW 2016},
+year = {2016},
+pages = {231--234},
+publisher = {ACM},
+month = apr,
+doi = {10.1145/2872518.2890539}
+}
+
+%% http://novasys.di.fct.unl.pt/~alinde/publications/fp0964-vanderlinde.pdf
+@inproceedings{vanderLinde:2017fu,
+author = {van der Linde, Albert and Fouto, Pedro and Leit{\~a}o, Jo{\~a}o and Pregui{\c c}a, Nuno and Casti{\~n}eira, Santiago and Bieniusa, Annette},
+title = {{Legion}: Enriching Internet Services with Peer-to-Peer Interactions},
+booktitle = {26th International Conference on World Wide Web},
+series = {WWW 2017},
+year = {2017},
+pages = {283--292},
+publisher = {ACM},
+month = apr,
+doi = {10.1145/3038912.3052673}
+}
+
+%% https://arxiv.org/abs/1707.01747
+@article{Gomes:2017gy,
+author = {Gomes, Victor B F and Kleppmann, Martin and Mulligan, Dominic P and Beresford, Alastair R},
+title = {Verifying strong eventual consistency in distributed systems},
+journal = {Proceedings of the ACM on Programming Languages},
+year = {2017},
+volume = {1},
+number = {OOPSLA},
+month = oct,
+publisher = {ACM},
+doi = {10.1145/3133933}
+}
+
+@incollection{Zeller:2014fl,
+author = {Zeller, Peter and Bieniusa, Annette and Poetzsch-Heffter, Arnd},
+title = {Formal Specification and Verification of {CRDTs}},
+booktitle = {34th IFIP International Conference on Formal Techniques for Distributed Objects, Components and Systems},
+series = {FORTE 2014},
+year = {2014},
+pages = {33--48},
+publisher = {Springer},
+doi = {10.1007/978-3-662-43613-4_3}
+}
+
+%% https://martin.kleppmann.com/papers/pushpin-papoc20.pdf
+@inproceedings{vanHardenberg2020PushPin,
+  author = {van Hardenberg, Peter and Kleppmann, Martin},
+  title = {{PushPin}: Towards Production-Quality Peer-to-Peer Collaboration},
+  booktitle = {7th Workshop on Principles and Practice of Consistency for Distributed Data},
+  series = {PaPoC 2020},
+  year = {2020},
+  month = apr,
+  publisher = {ACM},
+  articleno = {10},
+  doi = {10.1145/3380787.3393683}
+}
+
+%% https://martin.kleppmann.com/papers/local-first.pdf
+@inproceedings{Kleppmann2019localfirst,
+  author = {Kleppmann, Martin and Wiggins, Adam and van Hardenberg, Peter and McGranaghan, Mark},
+  title = {Local-First Software: You own your data, in spite of the cloud},
+  booktitle = {ACM SIGPLAN International Symposium on New Ideas, New Paradigms, and Reflections on Programming and Software},
+  series = {Onward! 2019},
+  year = {2019},
+  month = oct,
+  publisher = {ACM},
+  pages = {154--178},
+  doi = {10.1145/3359591.3359737}
+}
+
+%% https://www.petsymposium.org/2019/files/papers/issue3/popets-2019-0044.pdf
+@article{Kollmann:2019hf,
+author = {Kollmann, Stephan A and Kleppmann, Martin and Beresford, Alastair R},
+title = {{Snapdoc}: Authenticated snapshots with history privacy in peer-to-peer collaborative editing},
+journal = {Proceedings on Privacy Enhancing Technologies},
+year = {2019},
+volume = {2019},
+number = {3},
+pages = {210--232},
+month = jul,
+publisher = {Sciendo},
+doi = {10.2478/popets-2019-0044}
+}
