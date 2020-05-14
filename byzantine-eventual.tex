@@ -526,6 +526,15 @@ This ensures the integrity of the DAG.
 Arbitrary $\mathsf{needs}$ messages sent by a faulty process have no consequence, since they do not affect the state of the recipient.
 Thus, a faulty process cannot corrupt the state of a correct process in a way that would prevent the correct process from later synchronising its set of updates with another correct process.
 
+\section{Evaluation}
+
+\begin{figure}
+  \includegraphics[width=\textwidth,keepaspectratio=true]{figs/evaluation.pdf}
+  \caption{Left: network bandwidth used to reconcile four processes once per second; right: number of round trips until reconciliation is complete (lower is better).}
+  \label{fig:evaluation}
+\end{figure}
+
+
 \section{Related Work}
 
 Byzantine agreement has been subject of extensive research and has seen a recent renewal of interest due to its application in permissioned blockchains~\cite{Bano:2019}.
@@ -536,7 +545,7 @@ Byzec~\cite{Shoker:2017}, as well as work by Chai and Zhao~\cite{Chai:2014}, als
 Depot~\cite{Mahajan:2011} tolerates arbitrary numbers of faulty processes; however, its consistency model (fork-join-causal) and replication protocol are considerably more complicated than ours, making them difficult to analyse.
 In BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again.
 
-Beyond the field of Byzantine fault tolerance, the closely related problems of computing the difference, union or intersection between sets on remote hosts has been studied previously in various domains, including peer-to-peer systems such as BitTorrent, deduplication of backups and encoding.
+Beyond the field of Byzantine fault tolerance, the closely related problems of computing the difference, union or intersection between sets on remote hosts has been studied previously in various domains including peer-to-peer systems such as BitTorrent, deduplication of backups and error-correction.
 Approaches taken include using Bloom Filters~\cite{Skjegstad:2011}, Invertible Bloom Filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2006}.
 
 Byzantine Eventual Consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
