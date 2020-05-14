@@ -1,0 +1,15 @@
+{
+  "name": "byzantine-eventual",
+  "version": "0.0.1",
+  "scripts": {
+    "evaluation": "node evaluation.js",
+    "test": "mocha"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "bloomfilter": "^0.0.18"
+  },
+  "devDependencies": {
+    "mocha": "^7.1.2"
+  }
+}
