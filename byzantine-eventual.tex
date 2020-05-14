@@ -178,7 +178,7 @@ However, in the example of Figure~\ref{fig:vectorclocks}, this approach fails du
 
 Since a vector clock can thus be corrupted by a faulty process, a BEC reconciliation algorithm must find a different way of summarising sets of updates that is not vulnerable to such corruption.
 
-\subsection{An efficient BEC reconciliation algorithm}
+\subsection{An efficient BEC reconciliation algorithm}\label{sec:algorithm1}
 
 We now present a reconciliation algorithm that can be run by any two replicas to bring their sets of updates into the same state.
 Our algorithm is efficient in the sense that when two correct processes are communicating, one process does not send any updates that the other process already has.
@@ -350,7 +350,7 @@ We show in \S~\ref{sec:proof} that this algorithm satisfies all three properties
     \caption{Optimisations to reduce the number of round-trips.}\label{fig:algorithm2}
 \end{algorithm}
 
-\subsection{Reducing the number of round trips}\label{sec:reduce-round-trips}
+\subsection{Reducing the number of round trips}\label{sec:algorithm2}
 
 A downside of Algorithm~\ref{fig:algorithm} is that the number of round trips required can be up to the length of the longest path in the graph.
 When performing reconciliation over a high-latency network, it is desirable to reduce the number of round-trips as much as possible, while still avoiding sending updates that the other process already has.
@@ -526,13 +526,26 @@ This ensures the integrity of the DAG.
 Arbitrary $\mathsf{needs}$ messages sent by a faulty process have no consequence, since they do not affect the state of the recipient.
 Thus, a faulty process cannot corrupt the state of a correct process in a way that would prevent the correct process from later synchronising its set of updates with another correct process.
 
-\section{Evaluation}
 
 \begin{figure}
   \includegraphics[width=\textwidth,keepaspectratio=true]{figs/evaluation.pdf}
   \caption{Left: network bandwidth used to reconcile four processes once per second; right: number of round trips until reconciliation is complete (lower is better).}
   \label{fig:evaluation}
 \end{figure}
+
+\section{Evaluation}
+
+To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2}, we implemented both algorithms and measured their behaviour in a simulated network.
+In our experiments, we use four replicas, where every pair of replicas reconcile their state once per second.
+Each replica concurrently generates new updates, and we vary the rate at which new updates are generated.
+
+Whenever a process generates a new update, that process' previous heads become the predecessors of the new update, and the new update becomes the new head.
+This keeps the number of heads small, as described in \S~\ref{sec:algorithm1}.
+
+Figure~\ref{fig:evaluation} shows the average number of round-trips required to complete one reconciliation.
+When Algorithm~\ref{fig:algorithm} is used, the number of round trips increases linearly with the rate at which new updates are generated.
+
+and Algorithm~\ref{fig:algorithm2}.
 
 
 \section{Related Work}
