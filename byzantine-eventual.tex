@@ -37,10 +37,10 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-    Byzantine agreement guarantees consistency and liveness on the condition that a bounded number of processes (typically $1/3$) are faulty.
+    Byzantine agreement guarantees consistency and liveness on the condition that a bounded number of processes (typically $1/3$) are faulty; they provide no guarantees if that bound is exceeded.
     However, if more faults occur, we can still guarantee weaker consistency models. 
-    In this paper we define one such model, which we refer to as Byzantine Eventual Consistency (BEC).
-    We introduce algorithms which implement this consistency model, even in a system with arbitrarily many Byzantine-faulty processes, and prove that it ensures BEC.
+    In this paper we define one such model, which we call Byzantine Eventual Consistency (BEC).
+    We introduce algorithms that implement this consistency model, even in a system with arbitrarily many Byzantine-faulty processes, and prove that it ensures BEC.
     Our evaluation shows that the performance of our final algorithm is near optimal in terms of network bandwidth and round-trips.
 \end{abstract}
 \maketitle
@@ -582,14 +582,14 @@ However, Algorithm~\ref{fig:algorithm2} reduces each reconciliation to 1.03 roun
 These figures are based on using Bloom filters with 10 bits per entry and 7 hash functions.
 
 Next, we estimate the network traffic resulting from the use of our algorithms.
-For this we assume that each update is 100 bytes in size (including its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element as before.
+For this we assume that each update is 400 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element as before.
 Moreover, we assume that each message sent incurs an additional constant overhead of 50 bytes (e.g.\ for TCP/IP packet headers).
-We compute the number of bytes sent per second (in both directions) using each reconciliation algorithm.
+We compute the number of kilobytes sent per second (in both directions) using each reconciliation algorithm.
 
 Figure~\ref{fig:evaluation} (right) shows the results from this experiment.
 The grey line represents a hypothetical optimal algorithm that transmits only new updates, but no additional metadata such as hashes or Bloom filters.
-Compared to this optimum, Algorithm~\ref{fig:algorithm2} incurs a near-constant overhead of less than 500 bytes per reconciliation for the heads hashes, Bloom filter, and occasional additional round trips.
-In contrast, Algorithm~\ref{fig:algorithm} uses more than two times the optimal network bandwidth, primarily because it sends many $\mathsf{needs}$ messages containing hashes, and it sends updates in many small messages rather than batched into one message.
+Compared to this optimum, Algorithm~\ref{fig:algorithm2} incurs a near-constant overhead of approximately 800 bytes per reconciliation for the heads and predecessor hashes, Bloom filter, and occasional additional round trips.
+In contrast, Algorithm~\ref{fig:algorithm} incurs an approximately 40\% overhead, primarily because it sends many $\mathsf{needs}$ messages containing hashes, and it sends updates in many small messages rather than batched into one message.
 
 Thus, we can see that in terms of network performance, Algorithm~\ref{fig:algorithm2} is close to the optimum of one round trip, and incurs only a small overhead in terms of bytes transmitted.
 We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future work.
@@ -612,7 +612,7 @@ These approaches are not designed to tolerate Byzantine faults.
 
 BEC is designed to complement Strong Eventual Consistency~\cite{Shapiro:2011}, allowing CRDTs to be adapted to a Byzantine fault tolerant model, as discussed in \S~\ref{sec:applications}.
 Snapdoc~\cite{Kollmann:2019hf} has previously examined cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
-Truong et al.~\cite{Truong:2012et} present a scheme for authenticating CRDT history, but do not include a reconciliation protocol.
+Truong et al.~\cite{Truong:2012et} present another scheme for authenticating CRDT history, but do not include a reconciliation protocol.
 
 Hash chaining is widely used: in blockchains~\cite{Bano:2019}, Git commit histories, Merkle trees~\cite{Merkle:1987}, and systems such as IPLD~\cite{IPLD}.
 Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
