@@ -40,8 +40,8 @@
     Byzantine agreement guarantees consistency and liveness on the condition that a bounded number of processes (typically $1/3$) are faulty.
     However, if more faults occur, we can still guarantee weaker consistency models. 
     In this paper we define one such model, which we refer to as Byzantine Eventual Consistency (BEC).
-    We also introduce an algorithm that implements this consistency model, even in a system with arbitrarily many Byzantine-faulty processes, and prove that it ensures BEC.
-    Our evaluation shows that the performance of our algorithm is near optimal in terms of network bandwidth and round-trips.
+    We introduce algorithms which implement this consistency model, even in a system with arbitrarily many Byzantine-faulty processes, and prove that it ensures BEC.
+    Our evaluation shows that the performance of our final algorithm is near optimal in terms of network bandwidth and round-trips.
 \end{abstract}
 \maketitle
 
@@ -122,13 +122,13 @@ These are replicated data structures that can be concurrently modified on multip
 CRDTs then ensure that whenever two replicas have seen the same set of updates (in any order), their data structures are also in the same state; this property is known as \emph{strong eventual consistency}~\cite{Gomes:2017gy,Shapiro:2011}.
 
 CRDTs have been used to implement distributed databases~\cite{Akkoorath2016Cure,Brown2016bigsets,Zawirski2015SwiftCloud}, multi-user collaborative text editors~\cite{AhmedNacer:2011ke,Nedelec:2016eo,Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many other applications.
-However, all of these applications have been designed for a non-Byzantine model.
-This is problematic because in CRDT applications, replicas are often on devices under end-user control, which cannot be fully trusted.
+However, all of these CRDTs have been designed for a non-Byzantine model.
+This is problematic because in these applications, replicas often are not servers, but rather devices under end-user control, which cannot be fully trusted.
 In some situations, e.g.\ lawyers from several companies negotiating a contract using a shared document editor, it is essential that all parties have a consistent view of the document, even if some of them behave maliciously~\cite{Kollmann:2019hf}.
 
 Several CRDTs have been formally verified to provide strong eventual consistency~\cite{Gomes:2017gy,Zeller:2014fl}: that is, it has been proved that their replica states are consistent, provided that their sets of updates are the same.
 Byzantine Eventual Consistency provides the counterpart to this: ensuring that replicas have the same sets of updates.
-By using a BEC replication algorithm, any CRDT can thus be made Byzantine fault tolerant.
+CRDTs can be made Byzantine fault tolerant by using a BEC replication algorithm.
 
 \section{Reconciliation algorithms}\label{sec:algorithm}
 
@@ -321,8 +321,10 @@ A process may concurrently execute several instances of this algorithm using sev
 
 On receiving the heads from the other process (line~\ref{line:recv-heads}), the recipient first checks if its local set $\mathcal{U}_\mathsf{conn}$ contains successors for any of the sender's heads; if so, those successors, and any transitive successors, are sent immediately to the other process (lines~\ref{line:succ}--\ref{line:heads-reply}).
 By definition of $\mathit{heads}$, these successors are not yet known to the other process.
+In Figure~\ref{fig:example-dags}, $p$'s updates $L$ and $M$ are successors of $q$'s head $K$, so $p$ immediately sends $\langle\mathsf{updates}: \{L, M\}\rangle$ to $q$.
 
 If the recipient does not know some of the head hashes, it replies with a $\mathsf{needs}$ message requesting the updates matching those hashes (lines~\ref{line:heads-missing} and \ref{line:send-missing}).
+In our running example, $p$ needs $H(G)$, while $q$ needs $H(E)$ and $H(M)$.
 A process responds to such a $\mathsf{needs}$ message by returning all the matching updates (lines~\ref{line:recv-needs}--\ref{line:end-needs}).
 That $\mathsf{updates}$ message might again contain unresolved hashes, resulting in another $\mathsf{needs}$ message (lines~\ref{line:updates-missing}--\ref{line:updates-handle-missing}).
 In successive rounds of this protocol, the processes work their way from the heads along the paths of predecessors, until they reach the updates that are common ancestors of both processes' heads.
@@ -347,9 +349,8 @@ We show in \S~\ref{sec:proof} that this algorithm satisfies all three properties
     \EndOn
     \State
     \On{receiving $\langle\mathsf{heads}: \mathit{hs},\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$}\Comment{Replaces lines \ref{line:recv-heads}--\ref{line:recv-heads-end}}\label{line:a2-recv-heads}
-        \State $\mathit{reply} := \{v \mid \exists u \in \mathcal{U}_\mathsf{conn}.\; H(u) \in \mathit{hs} \,\wedge\, v \in \mathrm{succ}^*(\mathcal{U}_\mathsf{conn}, u) \,\wedge\, v \notin \mathit{sent}\}$ \label{line:a2-succ}
         \State $\mathit{bloomNegative} := \{u \in \Call{UpdatesSince}{\mathit{oldHeads}} \mid \neg\Call{BloomMember}{\mathit{filter}, u}\}$\label{line:bloom-member}
-        \State $\mathit{reply} := \left(\mathit{reply} \cup \mathit{bloomNegative} \cup \bigcup_{u \in \mathit{bloomNegative}} \mathrm{succ}^*(\mathcal{U}_\mathsf{conn}, u)\right) - \mathit{sent}$\label{line:bloom-succ}
+        \State $\mathit{reply} := \left(\mathit{bloomNegative} \cup \bigcup_{u \in \mathit{bloomNegative}} \mathrm{succ}^*(\mathcal{U}_\mathsf{conn}, u)\right) - \mathit{sent}$\label{line:bloom-succ}
         \If{$\mathit{reply} \neq \{\}$}
             \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
             \State \textbf{send} $\langle\mathsf{updates}: \mathit{reply}\rangle$ \label{line:a2-heads-reply}
@@ -367,7 +368,7 @@ We show in \S~\ref{sec:proof} that this algorithm satisfies all three properties
 
 \subsection{Reducing the number of round trips}\label{sec:algorithm2}
 
-A downside of Algorithm~\ref{fig:algorithm} is that the number of round trips required can be up to the length of the longest path in the graph.
+A limitation of Algorithm~\ref{fig:algorithm} is that the number of round trips required can be up to the length of the longest path in the graph.
 When performing reconciliation over a high-latency network, it is desirable to reduce the number of round-trips as much as possible, while still avoiding sending updates that the other process already has.
 
 Note that Algorithm~\ref{fig:algorithm} does not store any information about the outcome of the last reconciliation with a particular process; if two processes periodically reconcile their states, they need to discover each other's states from scratch on every protocol run.
@@ -381,29 +382,32 @@ Algorithm~\ref{fig:algorithm2} replaces the ``on initial connection'' and ``on r
 
 First, when process $p$ establishes a connection with process $q$, $p$ calls $\textsc{LoadHeads}(q)$ to load the heads from the previous reconciliation with $q$ from the key-value store (Algorithm~\ref{fig:algorithm2}, line~\ref{line:load-heads}).
 This function returns the empty set if this is the first reconciliation with $q$.
-We then find all of the updates that were added since this last reconciliation (i.e.\ all updates that are not among the heads or their predecessors).
+In the example of Figure~\ref{fig:example-dags}, the previous reconciliation heads might be $\{H(B)\}$.
 
-Next, we construct a Bloom filter~\cite{Bloom:1970} containing all of the new updates, and send it to process $q$ along with the heads (lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
-When the heads and Bloom filter are received, we first search for any successors of the heads, which can be immediately sent in reply (line~\ref{line:a2-succ} of Algorithm~\ref{fig:algorithm2} is the same as line~\ref{line:succ} of Algorithm~\ref{fig:algorithm}).
+We then find all of the updates that were added since this last reconciliation (i.e.\ all updates that are not among the last reconciliation's heads or their predecessors), and construct a Bloom filter~\cite{Bloom:1970} containing those updates.
+In the example of Figure~\ref{fig:example-dags}, $p$'s Bloom filter would contain $\{C, D, E, J, K, L, M\}$, while $q$'s filter contains $\{F, G, J, K\}$.
+We send this Bloom filter to the other process, along with the heads (lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
 
-We then identify any updates that were added since the last reconciliation that are \emph{not} present in the Bloom filter's membership check (line~\ref{line:bloom-member}); these must be sent to the other process, since we know that the other process does not have them.
-Moreover, we also send any successors of updates whose Bloom filter membership check returned false (line~\ref{line:bloom-succ}): if the membership check returned true for some of those successors, we know that it must have been a false positive, since the set $\mathcal{U}$ for a correct process cannot contain updates whose predecessors are missing.
+On receiving the heads and Bloom filter, we identify any updates that were added since the last reconciliation that are \emph{not} present in the Bloom filter's membership check (line~\ref{line:bloom-member}).
+In the example, $q$ looks up $\{F, G, J, K\}$ in the Bloom filter received from $p$; \textsc{BloomMember} returns true for $J$ and $K$. For $F$ and $G$, \textsc{BloomMember} is likely to return false, but may return true.
+In this example we assume that the Bloom membership check returns false for $F$ and true for $G$ (a false positive in the case of $G$).
+
+Any Bloom-negative updates are definitely unknown to the other process, so we send those in reply.
+Moreover, we also send any successors of Bloom-negative updates (line~\ref{line:bloom-succ}): since the set $\mathcal{U}$ for a correct process cannot contain updates whose predecessors are missing, we know that these updates must also be missing from the other process.
+In the example, $q$ sends $\langle\mathsf{updates}: \{F, G\}\rangle$ to $p$, because $F$ is Bloom-negative and $G$ is a successor of $F$.
 
 Due to Bloom filter false positives, the set of updates sent on line~\ref{line:a2-heads-reply} may be incomplete, but it is likely to contain most of the updates that the other process is lacking.
-The remaining missing updates are identified based on the received heads (line~\ref{line:a2-heads-missing}).
-For these we revert back to Algorithm~\ref{fig:algorithm}, and perform round trips of $\mathsf{needs}$ and $\mathsf{updates}$ messages until the received set of updates is complete.
+To fill in the remaining missing updates we revert back to Algorithm~\ref{fig:algorithm}, and perform round trips of $\mathsf{needs}$ and $\mathsf{updates}$ messages until the received set of updates is complete.
 
-The size of the Bloom filter can be chosen dynamically based on the number of elements it contains and the desired false positive probability.
+The size of the Bloom filter can be chosen dynamically based on the number of elements it contains.
 Note that the Bloom filter reflects only updates that were added since the heads of the last reconciliation with $q$, not all updates $\mathcal{U}$.
 Thus, if the reconciliations are frequent, they can employ a small Bloom filter size to minimise the cost of reconciliation.
 
 This optimised algorithm also tolerates Byzantine faults.
-For example, a faulty replica may send a correct replica an arbitrarily corrupted Bloom filter and arbitrary hashes.
-However, this only changes the set of updates in the reply from the correct process, and has no effect on $\mathcal{U}$ at the correct process.
+For example, a faulty replica may send a correct replica an arbitrarily corrupted Bloom filter, but this only changes the set of updates in the reply from the correct process, and has no effect on $\mathcal{U}$ at the correct process.
 We formally analyse the correctness of this algorithm in \S~\ref{sec:proof}.
 
-Since Algorithm~\ref{fig:algorithm2} relies on knowing the identity of the process it is communicating with, the underlying network connection may need to be authenticated to prevent a faulty process from impersonating another process.
-This can be achieved with a digital signatures, for example.
+As Algorithm~\ref{fig:algorithm2} needs to know the other process' identity, the communication may need to be authenticated (e.g.\ using digital signatures) to prevent a faulty process from impersonating other processes.
 
 \subsection{Garbage collection}
 
@@ -549,10 +553,9 @@ This ensures the integrity of the DAG.
 Arbitrary $\mathsf{needs}$ messages sent by a faulty process have no consequence, since they do not affect the state of the recipient.
 Thus, a faulty process cannot corrupt the state of a correct process in a way that would prevent the correct process from later synchronising its set of updates with another correct process.
 
-Note also that it is possible for one process to complete reconciliation while the other times out due to one-sided message loss.
-Thus, when we load the heads from the previous reconciliation in Algorithm~\ref{fig:algorithm2}, the local and the remote process' heads may differ.
+Note also that it is possible for one process to complete reconciliation while the other times out, due to one-sided message loss.
+Thus, when we load the heads from the previous reconciliation in Algorithm~\ref{fig:algorithm2}, the local and the remote process' $\mathit{oldHeads}$ may differ.
 This does not affect the correctness of the algorithm.
-% and that's why we include oldHeads in the heads message
 
 \begin{figure}
   \includegraphics[width=\textwidth,keepaspectratio=true]{figs/evaluation.pdf}
@@ -565,6 +568,7 @@ This does not affect the correctness of the algorithm.
 To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2} we implemented both algorithms and measured their behaviour in a simulated network.
 In our experiments, we use four replicas, where every pair of replicas reconciles their states once per second.
 Each replica concurrently generates new updates, and we vary the rate at which new updates are generated.
+% 6 pairwise reconciliations take place every second
 
 Whenever a process generates a new update, that process' previous heads become the predecessors of the new update, and the new update becomes the new head.
 This keeps the number of heads small, as described in \S~\ref{sec:algorithm1}.
@@ -587,50 +591,41 @@ The grey line represents a hypothetical optimal algorithm that transmits only ne
 Compared to this optimum, Algorithm~\ref{fig:algorithm2} incurs a near-constant overhead of less than 500 bytes per reconciliation for the heads hashes, Bloom filter, and occasional additional round trips.
 In contrast, Algorithm~\ref{fig:algorithm} uses more than two times the optimal network bandwidth, primarily because it sends many $\mathsf{needs}$ messages containing hashes, and it sends updates in many small messages rather than batched into one message.
 
+Thus, we can see that in terms of network performance, Algorithm~\ref{fig:algorithm2} is close to the optimum of one round trip, and incurs only a small overhead in terms of bytes transmitted.
+We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future work.
+
 \section{Related Work}\label{sec:relwork}
 
 Byzantine agreement has been subject of extensive research and has seen a recent renewal of interest due to its application in permissioned blockchains~\cite{Bano:2019}.
-Many Byzantine agreement algorithms~\cite{Castro:1999,Kotla:2007,Bessani:2014,Aublin:2015,Cowling:2006,Abd:2005} for asynchronous environments assume $n \ge 3f+1$ and require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
+Many Byzantine agreement algorithms including PBFT~\cite{Castro:1999}, HQ~\cite{Cowling:2006}, Zyzzyva~\cite{Kotla:2007}, BFT-SMART~\cite{Bessani:2014}, Aliph~\cite{Aublin:2015} and HotStuff~\cite{Yin:2019} assume that $n=3f+1$, whereas Q/U~\cite{Abd:2005} and FaB~\cite{Martin:2006} require that $n=5f+1$.
+Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and assumes $n=2u+r+1$.
+Most algorithms also require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
 Zeno~\cite{Singh:2009} makes progress with just $f+1$ processes, but safety depends on less than $\frac{1}{3}$ of processes being Byzantine-faulty.
-Byzec~\cite{Shoker:2017}, as well as work by Chai and Zhao~\cite{Chai:2014}, also considers eventual consistency in the context of Byzantine faults but again assumes that $f$ of $3f+1$ processes are faulty.
+Byzec~\cite{Shoker:2017}, as well as work by Chai and Zhao~\cite{Chai:2014}, also consider eventual consistency in the context of Byzantine faults but again assume that no more than $f$ of $3f+1$ processes are faulty.
 
 Depot~\cite{Mahajan:2011} tolerates arbitrary numbers of faulty processes; however, its consistency model (fork-join-causal) and replication protocol are considerably more complicated than ours, making them difficult to analyse.
-In BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again.
+In SPORC~\cite{Feldman:2010wl}, BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again, so these systems do not satisfy the liveness property of BEC.
 
-Beyond the field of Byzantine fault tolerance, the closely related problems of computing the difference, union or intersection between sets on remote hosts has been studied previously in various domains including peer-to-peer systems such as BitTorrent, deduplication of backups and error-correction.
-Approaches taken include using Bloom Filters~\cite{Skjegstad:2011}, Invertible Bloom Filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2006}.
+Beyond the field of Byzantine fault tolerance, the closely related problems of computing the difference, union or intersection between sets on remote hosts has been studied previously in various domains, including peer-to-peer systems such as BitTorrent, deduplication of backups and error-correction.
+Approaches taken include using Bloom filters~\cite{Skjegstad:2011} similar to Algorithm 2, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2006}.
+These approaches are not designed to tolerate Byzantine faults.
 
-Byzantine Eventual Consistency is based on \emph{Strong Eventual Consistency} (SEC)~\cite{Shapiro:2011}, a non-Byzantine consistency model in which replicas eventually converge towards the same state.
-Conflict-free Replicated Data Types (CRDTs) provide SEC by ensuring that whenever any two replicas have seen the same set of updates (possibly in a different order), those replicas are in the same state~\cite{Shapiro:2011}.
-We can strengthen CRDTs to provide Byzantine Eventual Consistency by making each operation an update, and using the algorithm of \S~\ref{sec:algorithm} to reconcile the sets of operations.
+BEC is designed to complement Strong Eventual Consistency~\cite{Shapiro:2011}, allowing CRDTs to be adapted to a Byzantine fault tolerant model, as discussed in \S~\ref{sec:applications}.
+Snapdoc~\cite{Kollmann:2019hf} has previously examined cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
+Truong et al.~\cite{Truong:2012et} present a scheme for authenticating CRDT history, but do not include a reconciliation protocol.
 
-The hash chaining approach of our algorithm resembles a Git commit history, a blockchain~\cite{Bano:2019}, or a Merkle tree~\cite{Merkle:1987}.
-Our algorithm in \S~\ref{sec:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
+Hash chaining is widely used: in blockchains~\cite{Bano:2019}, Git commit histories, Merkle trees~\cite{Merkle:1987}, and systems such as IPLD~\cite{IPLD}.
+Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
 However, to our knowledge the Git protocol has not yet been the subject of much study, and particularly not in a context of Byzantine fault tolerance.
+Kang et al.~\cite{Kang:2003} also discuss replicated hash graphs, but don't present an efficient reconcilation algorithm.
 
-% Snapdoc \cite{Kollmann:2019hf}
-
-% IPLD does some kind of hash graph traversal? https://ipld.io/
 
 % https://github.com/sipa/minisketch
 
 % Merkle clocks https://hector.link/presentations/merkle-crdts/merkle-crdts.pdf
 
-% SPORC: Group Collaboration using Untrusted Cloud Resources
-% (uses fork-causal consistency)
-% https://www.usenix.org/conference/osdi10/sporc-group-collaboration-using-untrusted-cloud-resources
-
-% Secure Untrusted Data Repository (SUNDR)
-% https://www.usenix.org/legacy/event/osdi04/tech/full_papers/li_j/li_j.pdf
-
 % Roy Friedman and Roni Licher. Hardening Cassandra Against Byzantine Failures.
 % https://arxiv.org/pdf/1610.02885.pdf
-
-% Ali Shoker et al. As Secure as Possible Eventual Consistency: Work in Progress (PaPoC 2017)
-% https://dl.acm.org/doi/10.1145/3064889.3064895
-
-% Wenbing Zhao and Mamdouh Babi. Byzantine fault tolerant collaborative editing.
-% https://pdfs.semanticscholar.org/587b/c024d5e877608c79f484112666489d90f041.pdf
 
 % Git fetch negotiation algorithm, How does this compare to git fetch negotiation algorithms, default and skipping?  
 % https://stackoverflow.com/questions/40484929/will-a-git-pull-develop-fetch-all-the-commits-reacheable-from-develop
@@ -652,11 +647,15 @@ However, to our knowledge the Git protocol has not yet been the subject of much 
 \section{Conclusions}
 
 Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty processes and are thus not suitable applications for Byzantine agreement.
-In this paper, we have defined BEC and proposed an algorithm that implements it.
-We hope BEC will inspire further research to ensure the correctness of eventually consistent systems in the presence of arbitrary numbers of Byzantine faults.
+In this paper, we have defined Byzantine Eventual Consistency (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty processes in a system, and without making any synchrony assumptions.
+We have proposed reconciliation algorithms that implement BEC, proved the correctness of those algorithms, and evaluated their performance.
+Our results show that our optimised algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it immediately applicable in practice.
 
-%BEC is an important building block
-%We hope that future research will further develop the theory and practice of Byzantine Eventual Consistency.
+We believe that the abstraction provided by BEC (ensuring that replicas converge to the same set of updates) is an important building block for a wide range of systems.
+In particular, many existing non-Byzantine systems are currently based on a similar model of replicated sets of updates; adopting our reconciliation protocol may allow those systems to gain robustness against Byzantine faults without major changes to their existing non-Byzantine algorithms.
+For systems that currently require all nodes to be trusted, and hence can only deployed in trusted datacenter networks, adding Byzantine fault tolerance may open up new opportunities for deployment in untrusted settings, e.g.\ on the public Internet.
+
+We hope that BEC will inspire further research to ensure the correctness of eventually consistent systems in the presence of arbitrary numbers of Byzantine faults.
 
 \bibliographystyle{plainurl}
 \bibliography{references}
