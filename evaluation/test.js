@@ -72,20 +72,20 @@ describe('Replica', () => {
     const a = new Replica('a'), b = new Replica('b')
     for (let i = 0; i < 50; i++) a.generateUpdate()
     for (let i = 0; i < 50; i++) b.generateUpdate()
-    assert.deepStrictEqual(a.reconcileV1(b), {hashes: 102, updates: 100, messages: 202, roundtrips: 51})
+    assert.deepStrictEqual(a.reconcileV1(b), {hashes: 200, updates: 100, messages: 202, roundtrips: 51})
     for (let i = 0; i < 50; i++) a.generateUpdate()
     for (let i = 0; i < 50; i++) b.generateUpdate()
-    assert.deepStrictEqual(a.reconcileV1(b), {hashes: 102, updates: 100, messages: 202, roundtrips: 51})
+    assert.deepStrictEqual(a.reconcileV1(b), {hashes: 204, updates: 100, messages: 202, roundtrips: 51})
   })
 
   it('should produce stats in V2 mode', () => {
     const a = new Replica('a'), b = new Replica('b')
     for (let i = 0; i < 50; i++) a.generateUpdate()
     for (let i = 0; i < 50; i++) b.generateUpdate()
-    assert.deepStrictEqual(a.reconcileV2(b), {hashes: 2, bloomBits: 1024, updates: 100, messages: 2, roundtrips: 1})
+    assert.deepStrictEqual(a.reconcileV2(b), {hashes: 2, bloomBits: 1024, updates: 100, messages: 4, roundtrips: 1})
     for (let i = 0; i < 50; i++) a.generateUpdate()
     for (let i = 0; i < 50; i++) b.generateUpdate()
-    assert.deepStrictEqual(a.reconcileV2(b), {hashes: 6, bloomBits: 1024, updates: 100, messages: 2, roundtrips: 1})
+    assert.deepStrictEqual(a.reconcileV2(b), {hashes: 10, bloomBits: 1024, updates: 100, messages: 4, roundtrips: 1})
   })
 
   it('should sync between multiple replicas', () => {

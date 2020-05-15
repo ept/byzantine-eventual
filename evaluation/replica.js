@@ -75,6 +75,7 @@ class Replica {
     if (sent.length > 0) {
       stats.updates += sent.length
       stats.messages += 1
+      for (let update of sent) stats.hashes += update.pred.length
       other.addUpdates(sent)
     }
   }
@@ -98,6 +99,7 @@ class Replica {
       stats.hashes += missing.length
       stats.updates += received.length
       stats.messages += 2
+      for (let update of received) stats.hashes += update.pred.length
       allReceived.unshift(...received)
       missing = this.missingPreds(allReceived)
     }
@@ -114,6 +116,13 @@ class Replica {
     const bloomNegative = otherUpdates.filter(update => !filter.test(update.id))
     const received = other.allSuccessors(bloomNegative.map(update => update.id), true)
     stats.updates += received.length
+    stats.messages += 1
+    for (let update of received) {
+      for (let pred of update.pred) {
+        // Need to transmit hashes only if they can't be computed from another update in the same message
+        if (!received.find(u => u.id === pred)) stats.hashes += 1
+      }
+    }
     const missing = this.missingPreds(received)
     return this.traversePredecessors(other, newHeads.concat(missing), stats, received)
   }
@@ -143,10 +152,6 @@ class Replica {
     let oldHeads = this.oldHeads[other.name] || []
     stats.hashes += sendHeads.length + recvHeads.length + 2 * oldHeads.length
     stats.messages += 2
-
-    this.fastForward(other, recvHeads, stats)
-    other.fastForward(this, sendHeads, stats)
-
     stats.roundtrips = 1 + Math.max(
       this.bloomCheck(other, oldHeads, sendHeads, stats),
       other.bloomCheck(this, oldHeads, recvHeads, stats)

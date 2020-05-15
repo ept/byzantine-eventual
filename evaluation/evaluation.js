@@ -9,7 +9,7 @@ const ALGORITHM_VERSION = 2 // 1 or 2
 // Every pair of replicas reconciles once per round.
 const NUM_ROUNDS = 100
 
-const BITS_PER_HASH = 256, BYTES_PER_UPDATE = 100, BYTES_PER_MESSAGE = 50
+const BITS_PER_HASH = 256, BYTES_PER_UPDATE = 400, BYTES_PER_MESSAGE = 50
 
 const replicas = DETERMINISTIC ?
   ['a', 'b', 'c', 'd'].map(name => new Replica(name)) :
@@ -32,8 +32,8 @@ function reconcile(replica1, replica2, total) {
   if (stats.roundtrips < total.histogram.length) total.histogram[stats.roundtrips - 1] += 1
 }
 
-console.log('updates/sec/process,payload bytes/sec,' +
-            `v${ALGORITHM_VERSION} total bytes/sec,v${ALGORITHM_VERSION} messages/sync,v${ALGORITHM_VERSION} average round trips,` +
+console.log('updates/sec/process,payload kb/sec,' +
+            `v${ALGORITHM_VERSION} total kb/sec,v${ALGORITHM_VERSION} messages/sync,v${ALGORITHM_VERSION} average round trips,` +
             (ALGORITHM_VERSION == 2 ? '1-rt count,2-rt count,3-rt count,4-rt count' : ''))
 
 // One initial update, so that we have a head even when the update rate is zero
@@ -66,7 +66,7 @@ for (let rate of [0, 1, 2, 5, 10, 15, 20]) {
   const overhead = Math.ceil((BITS_PER_HASH * stats.hashes + (stats.bloomBits || 0)) / 8) + stats.messages * BYTES_PER_MESSAGE
   const payload = stats.updates * BYTES_PER_UPDATE
   console.log([
-    rate, Math.round(payload/NUM_ROUNDS), Math.round((payload + overhead)/NUM_ROUNDS + 6 * BYTES_PER_MESSAGE),
+    rate, payload / NUM_ROUNDS / 1000, ((payload + overhead)/NUM_ROUNDS + 6 * BYTES_PER_MESSAGE) / 1000,
     stats.messages / (6 * NUM_ROUNDS), stats.roundtrips / (6 * NUM_ROUNDS)
   ].concat(ALGORITHM_VERSION == 2 ? stats.histogram : []).join(','))
 }
