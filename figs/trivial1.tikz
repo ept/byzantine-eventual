@@ -11,8 +11,8 @@
 \draw (r-start) -- (r-end);
 
 % Messages
-\draw[thick,->] (2, 0) to node [above] {$A$} (0, -1.2) node [left] {$\mathcal{U}_p = \{A\}$};
+\draw[thick,->] (2, 0) to node [above] {$A$} (0, -1.2) node [left] {$\mathcal{M}_p = \{A\}$};
 
-\draw[thick,->] (2, -0.1) to node [above] {$B$} (4, -1.3) node [right] {$\mathcal{U}_r = \{B\}$};
+\draw[thick,->] (2, -0.1) to node [above] {$B$} (4, -1.3) node [right] {$\mathcal{M}_r = \{B\}$};
 
 \end{tikzpicture}
