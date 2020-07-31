@@ -7,7 +7,7 @@
 
 \hyphenation{time-stamp time-stamps}
 
-\title{Byzantine Eventual Consistency}
+\title{Byzantine Eventual Consistency and Byzantine Causal Broadcast}
 
 \author{Martin Kleppmann}{University of Cambridge}{mk428@cst.cam.ac.uk}{https://orcid.org/0000-0001-7252-6958}{Supported by a Leverhulme Trust Early Career Fellowship and by the Isaac Newton Trust.}
 
@@ -18,23 +18,35 @@
 
 \begin{CCSXML}
 <ccs2012>
-   <concept>
-       <concept_id>10003752.10003809.10010172</concept_id>
-       <concept_desc>Theory of computation~Distributed algorithms</concept_desc>
-       <concept_significance>500</concept_significance>
-       </concept>
-   <concept>
-       <concept_id>10002951.10003152.10003166.10003172</concept_id>
-       <concept_desc>Information systems~Remote replication</concept_desc>
-       <concept_significance>300</concept_significance>
-       </concept>
- </ccs2012>
+  <concept>
+    <concept_id>10003752.10003809.10010172</concept_id>
+    <concept_desc>Theory of computation~Distributed algorithms</concept_desc>
+    <concept_significance>500</concept_significance>
+  </concept>
+  <concept>
+    <concept_id>10002951.10003152.10003166.10003172</concept_id>
+    <concept_desc>Information systems~Remote replication</concept_desc>
+    <concept_significance>300</concept_significance>
+  </concept>
+  <concept>
+    <concept_id>10010520.10010575</concept_id>
+    <concept_desc>Computer systems organization~Dependable and fault-tolerant systems and networks</concept_desc>
+    <concept_significance>300</concept_significance>
+  </concept>
+  <concept>
+    <concept_id>10002978.10003014.10003015</concept_id>
+    <concept_desc>Security and privacy~Security protocols</concept_desc>
+    <concept_significance>300</concept_significance>
+  </concept>
+</ccs2012>
 \end{CCSXML}
 
 \ccsdesc[500]{Theory of computation~Distributed algorithms}
 \ccsdesc[300]{Information systems~Remote replication}
+\ccsdesc[300]{Computer systems organization~Dependable and fault-tolerant systems and networks}
+\ccsdesc[300]{Security and privacy~Security protocols}
 
-\keywords{replication, Byzantine fault tolerance, eventual consistency}
+\keywords{replication, Byzantine fault tolerance, eventual consistency, CRDTs, broadcast protocols}
 
 \begin{document}
 \maketitle
@@ -43,9 +55,11 @@
     However, if more faults occur, we can still guarantee weaker consistency models. 
     In this paper we define one such model, which we call \emph{Byzantine Eventual Consistency} (BEC).
     It builds upon a \emph{Byzantine Causal Broadcast} protocol; we introduce algorithms that implement this protocol, even in a system with arbitrarily many Byzantine-faulty processes, and we prove their correctness.
-    The performance of our final algorithm is near optimal in terms of network bandwidth and round-trips.
+    We show that the performance of our final algorithm is near optimal in terms of network bandwidth and round-trips.
 \end{abstract}
-\maketitle
+\maketitle\\[20pt]
+This paper is not eligible for the best student paper award.
+\newpage
 
 \section{Introduction}
 
@@ -56,7 +70,7 @@ If more than $f$ processes are faulty, neither safety (agreement) nor liveness c
 In practice, the assumption that no more than $f$ processes are faulty is not always a realistic threat model.
 Byzantine failures are not necessarily independent: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes, since they are probably all running the same software. 
 Similarly, non-malicious software bugs are likely to affect many of the processes at once.
-This issue was acknowledged in the pBFT paper, which states that: ``{\dots}each node should run different implementations of the service code and operating system{\dots}''~\cite{Castro:1999}~--- an assumption that is unrealistic for any system with more than a few processes, and is seldom true in practice today.
+This issue was acknowledged in the pBFT paper~\cite{Castro:1999}, which states that: ``{\dots}each node should run different implementations of the service code and operating system{\dots}''~--- an assumption that is unrealistic for any system with more than a few processes, and is seldom true in practice today.
 In some systems, such as open peer-to-peer networks that anybody can join, an adversary can spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002}).
 
 This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model \emph{can} we achieve under that assumption?
@@ -65,47 +79,70 @@ In this paper we propose \emph{Byzantine Eventual Consistency} (BEC), a novel co
 BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with arbitrarily many Byzantine-faulty processes.
 Essentially, BEC ensures that faulty replicas cannot permanently corrupt the state of correct replicas.
 
-BEC builds upon \emph{Byzantine Causal Broadcast}, which we define in \S~\ref{sec:properties}.
-We then introduce and compare several algorithms in \S~\ref{sec:algorithm}, and we prove these algorithms correct in Appendix~\ref{sec:proof}.
-Finally, we evaluate the performance of two variants of our algorithm in \S~\ref{sec:evaluation}, showing that our optimised algorithm achieves near-optimal performance in terms of network communication.
+In addition to defining BEC, our contributions in this paper are to present a novel, Byzantine fault tolerant causal broadcast algorithm (\S~\ref{sec:algorithm}), to prove its correctness (Appendix~\ref{sec:proof}), and to demonstrate that it has near-optimal network communication cost (\S~\ref{sec:evaluation}).
+We also show how to use Byzantine causal broadcast together with existing non-Byzantine \emph{Conflict-free Replicated Data Type} (CRDT) algorithms to implement replicated data with BEC (\S~\ref{sec:byzantine-crdts}).
 
 
-\section{Background}\label{sec:properties}
+\section{Background}\label{sec:background}
 
-Algorithms for Byzantine agreement (or consensus) are often used to create an append-only log of values such as a blockchain~\cite{Bano:2019}, or, equivalently, a \emph{total order broadcast} protocol~\cite{Defago:2004ji}.
-On top of this, the \emph{state machine replication} approach~\cite{Schneider:1990} can be used to implement strongly consistent (linearizable) replicated storage.
-In analogy to this layering, we introduce BEC by first defining a broadcast protocol.
-
-\subsection{Total Order Broadcast and Causal Broadcast}\label{sec:broadcast}
-
-State machine replication treats every replica as a deterministic state machine, where the inputs are commands.
-If all replicas observe the same commands in the same order, they all go through the same sequence of state transitions, resulting in the same final state.
-This can be achieved by using a \emph{total order broadcast} (also known as \emph{atomic broadcast}) protocol to disseminate commands.
-A total order broadcast protocol satisfies the following properties:
+Algorithms for Byzantine agreement (or consensus) are often used to create an append-only log of values such as a blockchain~\cite{Bano:2019}, or, equivalently, a \emph{total order broadcast} protocol~\cite{Cachin:2011wt,Defago:2004ji}.
+A total order broadcast (a.k.a.\ \emph{atomic broadcast}) protocol satisfies the following properties:
 
 \begin{description}
 \item[Validity:] If a correct process delivers a message $m$, then $m$ was broadcast by a process.
+\item[Non-duplication:] A correct process does not deliver the same message more than once.
 \item[Self-delivery:] If a correct process $p$ broadcasts a message $m$, then $p$ eventually delivers $m$.
 \item[Eventual delivery:] If a correct process delivers a message $m$, then all correct processes will eventually deliver $m$.
 \item[Total order:] If a correct process delivers message $m_1$ before delivering message $m_2$, then all correct processes must deliver $m_1$ before $m_2$.
 \end{description}
 
 Byzantine agreement algorithms can ensure these properties assuming that no more than $f$ processes are Byzantine-faulty.
-To ensure eventual delivery (a liveness property) we must also assume partial synchrony~\cite{Dwork:1988}.
+To ensure eventual delivery we must also assume partial synchrony~\cite{Dwork:1988}.
+The \emph{state machine replication} approach~\cite{Schneider:1990} can be used to implement strongly consistent (linearizable) replicated storage on top of total order broadcast.
+%State machine replication treats every replica as a deterministic state machine, where the inputs are commands.
+%If all replicas observe the same commands in the same order, they all go through the same sequence of state transitions, resulting in the same final state.
 
-\emph{Causal broadcast}~\cite{Birman:1991el} is also defined by four properties, the first three of which are identical to those of total order broadcast, but the total order property is replaced with a weaker one:
+\emph{Causal broadcast}~\cite{Birman:1991el,Cachin:2011wt} is also defined by five properties, of which the first four are identical to total order broadcast.
+The total order property is replaced with a weaker one:
 
 \begin{description}
-\item[Causal order:] If one correct process sends or delivers $m_1$ before sending message $m_2$, then all correct processes must deliver $m_1$ before $m_2$.
+\item[Causal order:] If a correct process broadcasts or delivers $m_1$ before broadcasting message $m_2$, then all correct processes must deliver $m_1$ before delivering $m_2$.
 \end{description}
 
 This imposes a partial order on messages: $m_1$ must be delivered before $m_2$ if $m_2$ has a causal dependency on $m_1$, but concurrently sent messages can be delivered in any order.
 
+\subsection{Strong Eventual Consistency and CRDTs}\label{sec:applications}
+
+Eventual consistency is usually defined as: ``If no further updates are made, then eventually all replicas will be in the same state~\cite{Vogels:2009ca}.''
+This is a very weak model: it does not specify when the consistent state will be reached, and the premise ``if no further updates are made'' may never be true in a system in which updates happen continuously.
+To strengthen this model, Shapiro et al.~\cite{Shapiro:2011} introduce \emph{strong eventual consistency} (SEC), which requires that:
+
+\begin{description}
+\item[Eventual update:] For any update applied by a correct replica, all correct replicas will eventually apply that update.
+\item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state.
+\end{description}
+
+%Strong eventual consistency (SEC) is defined in a non-Byzantine system model.
+While state machine replication requires all replicas to apply updates in the same order, SEC requires convergence regardless of the order in which updates are applied.
+Replicated storage systems with SEC can be implemented using \emph{Conflict-free Replicated Data Types} (\emph{CRDTs})~\cite{Shapiro:2011}.
+These are data structures that can be concurrently modified on multiple replicas without any locking or other synchronous coordination, even while offline.
+Whenever a replica updates its copy of the shared data, operation-based CRDTs capture this update as an \emph{operation}, encode it as a message, and broadcast it to the other replicas.
+
+Typically, CRDTs use causal broadcast to disseminate operations to all replicas~\cite{Gomes:2017gy,Shapiro:2011}.
+The CRDT is designed such that concurrent (causally unrelated) operations are commutative, i.e.\ they can be applied in any order without affecting the final state.
+Thus, no matter in which order the causal broadcast delivers messages, convergence is assured.
+
+CRDTs have been used to implement distributed databases~\cite{Akkoorath2016Cure,Brown2016bigsets,Zawirski2015SwiftCloud}, multi-user collaborative text editors~\cite{AhmedNacer:2011ke,Nedelec:2016eo,Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many other applications.
+The SEC properties of several CRDTs has been formally verified~\cite{Gomes:2017gy,Zeller:2014fl}.
+
+SEC and CRDTs are defined in a non-Byzantine system model.
+In \S~\ref{sec:byzantine-crdts} we define Byzantine Eventual Consistency as a variant of SEC that can tolerate Byzantine faults.
+
 \subsection{System Model}\label{sec:system-model}
 
-Our system consists of any number of processes, each of which is either \emph{correct} or \emph{faulty}.
-A correct process follows the specified protocol, whereas a faulty process may deviate from the protocol in arbitrary ways (i.e.\ Byzantine-faulty).
-We model this by assuming a malicious adversary who controls all faulty processes.
+Our system consists of any number of processes, each of which is either \emph{correct} or \emph{faulty}, but one process does not know whether another process is faulty.
+A correct process follows the specified protocol, whereas a faulty process may deviate from the protocol in arbitrary ways (i.e.\ it is Byzantine-faulty).
+We model this by assuming a malicious adversary who controls the behaviour of all faulty processes.
 We allow any number of processes to be faulty.
 We treat all processes as equal, making no distinction e.g.\ between clients and servers.
 
@@ -117,50 +154,17 @@ Not all pairs of processes are necessarily connected with a network link.
 We assume that all messages sent over these links are signed by the sender, and the recipient ignores messages with invalid signatures.
 Thus, even if the adversary can tamper with network traffic, it can only cause message loss but not impersonate a correct process.
 We model message loss using fair-loss links: that is, if processes repeatedly retransmit a message, it will eventually be received.
-% connection is introduced later
-% We also allow a sequence of messages exchanged between two processes to be grouped together as a \emph{connection}; like with TCP, a connection may fail (time out) due to message loss, and a new connection may later be reestablished.
 
-We assume an asynchronous system with unbounded message delay and arbitrary differences in the speeds of different processes.
-For the sake of eventual delivery, we must assume that in the graph of processes (vertices) and network links (edges), the correct processes form a single connected component.
-This assumption is necessary because if there are two correct processes that can only ever communicate via faulty processes, then no algorithm can guarantee eventual delivery, because the faulty processes will always be able to block communication between the correct processes.
+We assume an asynchronous system with unbounded message delay and arbitrary differences in speed of different processes.
+For the sake of eventual delivery, we must assume that in the graph of processes and network links, the correct processes form a single connected component.
+This assumption is necessary because if there are two correct processes that can only ever communicate via faulty processes, then no algorithm can guarantee eventual delivery, because the adversary can always block communication between the correct processes.
 
 % As is standard in Byzantine systems, we can only reason about the behaviour of correct processes, since we make no assumptions about the behaviour or internal state of faulty processes.
-
-\subsection{Strong Eventual Consistency and CRDTs}\label{sec:applications}
-
-Eventual consistency is usually defined as: ``If no further updates are made, then eventually all replicas will be in the same state~\cite{Vogels:2009ca}.''
-However, this is a very weak model: it does not specify when the consistent state will be reached, and the premise ``if no further updates are made'' may never be true in a system in which updates happen continuously.
-To strengthen this model, Shapiro et al.~\cite{Shapiro:2011} introduce \emph{strong eventual consistency}, which requires that:
-
-\begin{description}
-\item[Eventual update:] For any update applied by a correct replica, all correct replicas will eventually apply that update.
-\item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state.
-\end{description}
-
-Strong eventual consistency (SEC) is defined in a non-Byzantine system model.
-Note that while state machine replication requires all replicas to apply updates in the same order, SEC requires convergence to hold regardless of the order in which updates are applied.
-
-Replicated storage systems with SEC can be implemented using \emph{Conflict-free Replicated Data Types} (\emph{CRDTs})~\cite{Preguica:2018gi,Shapiro:2011}.
-These are replicated data structures that can be concurrently modified on multiple replicas without any locking or other synchronous coordination, even while those replicas are offline.
-Whenever a replica updates its copy of the shared data, operation-based CRDTs capture this update as an \emph{operation}, encode it as a message, and broadcast it to the other replicas.
-
-Typically, CRDT algorithms assume that causal broadcast, as defined in \S~\ref{sec:broadcast}, is used to disseminate operations to all replicas~\cite{Gomes:2017gy,Shapiro:2011}.
-The CRDT is designed such that concurrent (causally unrelated) operations commute.
-Thus, no matter in which order the causal broadcast protocol delivers messages, the state of two replicas is the same if they have received the same set of messages, ensuring the convergence property.
-
-CRDTs have been used to implement distributed databases~\cite{Akkoorath2016Cure,Brown2016bigsets,Zawirski2015SwiftCloud}, multi-user collaborative text editors~\cite{AhmedNacer:2011ke,Nedelec:2016eo,Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many other applications.
-The SEC properties of several CRDTs has been formally verified~\cite{Gomes:2017gy,Zeller:2014fl}.
-
-\subsection{Byzantine Eventual Consistency}
-
-Strong eventual consistency is defined in a non-Byzantine system model.
-We now define \emph{Byzantine Eventual Consistency} (BEC) as satisfying the same two properties as strong eventual consistency (eventual update and convergence), but under the assumptions of the Byzantine system model defined in \S~\ref{sec:system-model}.
 
 
 \section{Byzantine Causal Broadcast}\label{sec:algorithm}
 
-In order to implement Byzantine Eventual Consistency, we first show in this section how to implement causal broadcast (as defined in \S~\ref{sec:broadcast}) in the Byzantine system model of \S~\ref{sec:system-model}.
-Later, in \S~\ref{sec:byzantine-crdts}, we show how to adapt CRDTs to a Byzantine system model.
+In order to implement Byzantine Eventual Consistency, we first show in this section how to implement causal broadcast in the Byzantine system model of \S~\ref{sec:system-model}.
 
 \begin{figure}
     \centering
@@ -179,15 +183,14 @@ Later, in \S~\ref{sec:byzantine-crdts}, we show how to adapt CRDTs to a Byzantin
 \subsection{Na\"{\i}ve algorithms}
 
 The simplest broadcast algorithm is as follows: every time a process wants to broadcast a message, it delivers that message to itself, and also sends that message to each other process via a pairwise link, re-transmitting until it is acknowledged.
-However, this algorithm does not provide the \emph{eventual delivery} property in the face of Byzantine-faulty processes, as shown in Figure~\ref{fig:trivial1}: a faulty process $q$ may send two different messages $A$ and $B$ to correct processes $p$ and $r$, respectively.
-Since $p$ and $r$ do not detect the discrepancy, $p$ never delivers $B$ and $r$ never delivers $A$.
+However, this algorithm does not provide the \emph{eventual delivery} property in the face of Byzantine-faulty processes, as shown in Figure~\ref{fig:trivial1}: a faulty process $q$ may send two different messages $A$ and $B$ to correct processes $p$ and $r$, respectively; then $p$ never delivers $B$ and $r$ never delivers $A$.
 
-To detect this faulty behaviour by $q$, processes $p$ and $r$ must communicate with each other (either directly, or indirectly via other correct processes).
+To address this issue, processes $p$ and $r$ must communicate with each other (either directly, or indirectly via other correct processes).
 Let $\mathcal{M}_p$ and $\mathcal{M}_r$ be the set of messages delivered by processes $p$ and $r$, respectively.
-Then, as shown in Figure~\ref{fig:trivial2}, $p$ can send its entire set $\mathcal{M}_p$ to $r$, and $r$ can send $\mathcal{M}_r$ to $p$, so that both processes can compute $\mathcal{M}_p \cup \mathcal{M}_r$, and deliver any messages not already delivered previously.
-This communication can take place as a periodic \emph{reconciliation} process between pairs of processes.
+Then, as shown in Figure~\ref{fig:trivial2}, $p$ can send its entire set $\mathcal{M}_p$ to $r$, and $r$ can send $\mathcal{M}_r$ to $p$, so that both processes can compute $\mathcal{M}_p \cup \mathcal{M}_r$, and deliver any new messages.
+Pairs of processes can thus periodically \emph{reconcile} their sets of messages.
 
-Adding this reconciliation process to the broadcast protocol ensures the validity, self-delivery, and eventual delivery properties of causal broadcast.
+Adding this reconciliation process to the broadcast protocol ensures the first four properties of causal broadcast.
 However, this algorithm is very inefficient.
 When processes periodically reconcile their state, we can expect that at the start of each round of reconciliation their sets of messages already have many elements in common.
 Sending the entire set of messages to each other thus implies transmitting a large amount of data unnecessarily.
@@ -196,13 +199,10 @@ An efficient reconciliation algorithm should determine which elements the proces
 For example, $p$ should only send $\mathcal{M}_p \setminus \mathcal{M}_r$ to $r$, and $r$ should only send $\mathcal{M}_r \setminus \mathcal{M}_p$ to $p$.
 Moreover, the algorithm should complete in a small number of round-trips.
 
-Another simple algorithm would be to send a set of hashes of elements in $\mathcal{M}_p$ rather than the elements themselves.
-However, the network communication cost of this approach is still proportional to the size of the set $|\mathcal{M}_p|$, which scales poorly as the set grows.
-
 \begin{figure}
     \centering
     \input{figs/vectorclocks.tikz}
-    \caption{Processes $p$ and $r$ believe to be in the same state because their vector timestamps are the same, when in fact their sets of messages are inconsistent due to $q$'s faulty behaviour.}
+    \caption{Processes $p$ and $r$ believe they are in the same state because their vector timestamps are the same, when in fact their sets of messages are inconsistent due to $q$'s faulty behaviour.}
     \label{fig:vectorclocks}
 \end{figure}
 
@@ -216,14 +216,13 @@ In a system where processes correctly follow the protocol, the three components 
 Thus, $p$ and $r$ should be able to reconcile their sets of messages by first sending each other their latest vector timestamps, which serve as a concise summary of the set of messages they have seen.
 However, in the example of Figure~\ref{fig:vectorclocks}, this approach fails due to $q$'s earlier faulty behaviour: $p$ and $r$ detect that their vector timestamps are equal, and thus incorrectly believe that they are in the same state, even though their sets of messages are different.
 
-Since a vector clock can be corrupted by a faulty process in this way, a Byzantine causal broadcast algorithm must find a different way of summarising sets of messages that is not vulnerable to such corruption.
+Thus, vector clocks can be corrupted by a faulty process; a Byzantine causal broadcast algorithm must not be vulnerable to such corruption.
 
 \subsection{A Byzantine fault-tolerant reconciliation algorithm}\label{sec:algorithm1}
 
 We now present a reconciliation algorithm that ensures two processes have delivered the same set of messages, in causal order.
 Our algorithm is efficient in the sense that when two correct processes are communicating, they only exchange broadcast messages that the other process does not already have.
 The algorithm tolerates any number of Byzantine-faulty processes.
-We prove its correctness in Appendix~\ref{sec:proof}, and we examine its performance in \S~\ref{sec:evaluation}.
 
 Let the set of broadcast messages $\mathcal{M}$ be a set of triples $(v, \mathit{hs}, \mathit{sig})$, where $v$ is any value, $\mathit{sig}$ is a digital signature over $(v, \mathit{hs})$ using the sender's private key, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
 We assume that $H$ is collision-resistant, i.e.\ that it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$.
@@ -367,15 +366,16 @@ We prove the correctness of this algorithm in Appendix~\ref{sec:proof}.
 
 \subsection{A more efficient reconciliation algorithm}\label{sec:algorithm2}
 
-A limitation of Algorithm~\ref{fig:algorithm} is that the number of round trips required can be up to the length of the longest path in the graph of predecessor hashes.
-When performing reconciliation over a high-latency network, it is desirable to reduce the number of round-trips as much as possible, while still avoiding sending messages that the other process already has.
+A downside of Algorithm~\ref{fig:algorithm} is that the number of round trips can be up to the length of the longest path in the predecessor graph, making it slow when performing reconciliation over a high-latency network.
+We now show how to reduce the number of round-trips.
 
-Note that Algorithm~\ref{fig:algorithm} does not store any information about the outcome of the last reconciliation with a particular process; if two processes periodically reconcile their states, they need to discover each other's states from scratch on every protocol run.
-As per \S~\ref{sec:system-model} we are already assuming that communication between processes is authenticated with digital signatures, and thus a process knows the identity of the other process it is communicating with.
-We can therefore record the outcome of a protocol run with a particular communication partner, and use that information in the next reconciliation with the same partner.
-We will do this by adding the following instruction after line~\ref{line:update-m} of Algorithm~\ref{fig:algorithm}, where $q$ is the identity of the current connection's remote process:
+Note that Algorithm~\ref{fig:algorithm} does not store any information about the outcome of the last reconciliation with a particular process; if two processes periodically reconcile their states, they need to discover each other's state from scratch on every protocol run.
+As per \S~\ref{sec:system-model} we assume that communication between processes is authenticated, and thus a process knows the identity of the other process it is communicating with.
+We can therefore record the outcome of a protocol run with a particular process, and use that information in the next reconciliation with the same process.
+We do this by adding the following instruction after line~\ref{line:update-m} of Algorithm~\ref{fig:algorithm}, where $q$ is the identity of the current connection's remote process:
 \[ \textsc{StoreHeads}(q, \mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})) \]
 which updates a key-value store in stable storage, associating the value $\mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})$ with the key $q$ (overwriting any previous value for that key if appropriate).
+We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``on initial connection'' and ``on receiving heads'' functions of Algorithm~\ref{fig:algorithm}, while leaving the rest of Algorithm~\ref{fig:algorithm} unchanged.
 
 \begin{algorithm}[t]
     \begin{algorithmic}[1]
@@ -403,9 +403,6 @@ which updates a key-value store in stable storage, associating the value $\mathr
     \end{algorithmic}
     \caption{Optimising Algorithm~\ref{fig:algorithm} to reduce the number of round-trips.}\label{fig:algorithm2}
 \end{algorithm}
-
-We use this information in Algorithm~\ref{fig:algorithm2} to reduce the number of round trips.
-Algorithm~\ref{fig:algorithm2} replaces the ``on initial connection'' and ``on receiving heads'' functions of Algorithm~\ref{fig:algorithm}, while leaving the rest of Algorithm~\ref{fig:algorithm} unchanged.
 
 First, when process $p$ establishes a connection with process $q$, $p$ calls $\textsc{LoadHeads}(q)$ to load the heads from the previous reconciliation with $q$ from the key-value store (Algorithm~\ref{fig:algorithm2}, line~\ref{line:load-heads}).
 This function returns the empty set if this is the first reconciliation with $q$.
@@ -437,18 +434,18 @@ We formally analyse the correctness of this algorithm in Appendix~\ref{sec:proof
 \subsection{Discussion}
 
 A potential issue with Algorithms~\ref{fig:algorithm} and~\ref{fig:algorithm2} is the unbounded growth of storage requirements, since the set $\mathcal{M}$ grows monotonically (much like most algorithms for Byzantine agreement, which produce an append-only log without considering how that log might be truncated).
-However, since the set of processes in the system is known, we can perform garbage collection using the following observation: once some message $m$ is known to all of the processes, the reconciliation algorithm no longer needs to refer to any of the predecessors of $m$, and so all of those predecessors can be removed from $\mathcal{M}$ without affecting the algorithm.
-Thus, by keeping track of the latest heads for each process in the system, and propagating this information between processes, we can determine which messages can be safely discarded.
+Since the set of processes in the system is known, we can truncate history as follows: once every process has delivered a message $m$ (i.e.\ $m$ is \emph{stable}~\cite{Birman:1991el}), the algorithm no longer needs to refer to any of the predecessors of $m$, and so all of those predecessors can be safely removed from $\mathcal{M}$ without affecting the algorithm.
+Stability can be determined by keeping track of the latest heads for each process, and propagating this information between processes.
 
 When one of the communicating processes is Byzantine-faulty, the reconciliation algorithm may never terminate, e.g.\ because the faulty process may send hashes that do not resolve to any message, and so the state $\mathit{missing} = \{\}$ is never reached.
-However, in a non-terminating protocol run $\mathcal{M}$ is never updated, and so the actions of the faulty process have no effect on the global state of the correct process.
+However, in a non-terminating protocol run no messages are delivered and $\mathcal{M}$ is never updated, and so the actions of the faulty process have no effect on the state of the correct process.
 Reconciliations with other processes are unaffected, since processes may perform multiple reconciliations concurrently.
 
-In a protocol run that terminates, the only things a Byzantine-faulty process can do is to omit heads, or to extend the set $\mathcal{M}$ with well-formed messages (i.e.\ messages containing only hashes that resolve to other messages, signed with a private key of one of the processes in the system).
+In a protocol run that terminates, the only things a Byzantine-faulty process can do is to omit heads, or to extend the set $\mathcal{M}$ with well-formed messages (i.e.\ messages containing only hashes that resolve to other messages, signed with the private key of one of the processes in the system).
 Any omitted messages will eventually be received through reconciliations with other correct processes, and any added messages will be forwarded to other processes; either way, the eventual delivery property of causal broadcast is preserved.
 
 Arbitrary $\mathsf{needs}$ requests sent by a faulty process have no consequence, since they do not affect the state of the recipient.
-Thus, a faulty process cannot corrupt the state of a correct process in a way that would prevent the correct process from later synchronising its set of messages with another correct process.
+Thus, a faulty process cannot corrupt the state of a correct process in a way that would prevent it from later reconciling with another correct process.
 
 Note also that it is possible for one process in a connection to complete reconciliation while the other times out and aborts, due to one-sided message loss.
 Thus, when we load the heads from the previous reconciliation in Algorithm~\ref{fig:algorithm2}, the local and the remote process' $\mathit{oldHeads}$ may differ.
@@ -459,37 +456,37 @@ This does not affect the correctness of the algorithm.
 We say a replicated storage system provides Byzantine Eventual Consistency (BEC) if it satisfies the following properties in the Byzantine system model of \S~\ref{sec:system-model}:
 
 \begin{description}
-\item[Validity:] Any update applied by a correct replica was generated by a replica in the system.
-\item[Self-update:] If a replica generates an update, it applies that update to its own state.
+\item[Validity:] Any update applied by a correct replica was generated by a process in the system.
+\item[Non-duplication:] A correct replica does not apply the same update more than once.
+\item[Self-update:] If a correct replica generates an update, it applies that update to its own state.
 \item[Eventual update:] For any update applied by a correct replica, all correct replicas will eventually apply that update.
 \item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state.
 \end{description}
 
-These properties are a slight strengthening of strong eventual consistency (SEC)~\cite{Shapiro:2011}; the main difference between BEC and SEC is that SEC assumes a non-Byzantine system.
+These properties are a slight strengthening of strong eventual consistency (SEC); the main difference between BEC and SEC is that SEC assumes a non-Byzantine system~\cite{Shapiro:2011}.
 
 We can implement BEC replicated state using Byzantine causal broadcast (\S~\ref{sec:algorithm}) and operation-based CRDTs (\S~\ref{sec:applications}).
 Whenever a replica wishes to update the state of a CRDT, it generates an \emph{operation} describing that update, encodes that operation as a message, and sends it to the other replicas via Byzantine causal broadcast.
 On delivering that message, each replica (including the sender) applies the operation to its local CRDT state.
-The first three properties of BEC then follow immediately from the \emph{validity}, \emph{self-delivery}, and \emph{eventual delivery} properties of causal broadcast.
+Each operation has a unique timestamp as specified below.
+The first four properties of BEC then follow immediately from the first four properties of causal broadcast.
 
 The CRDT algorithm ensures that concurrent operations commute: thus, any operations whose order is left ambiguous by the \emph{causal order} property of causal broadcast can be applied in any order without affecting the final state.
 On the other hand, any operations that are predecessors or successors of one another need not be commutative, since causal broadcast will deliver them in the same order at each replica.
 Hence we obtain the \emph{convergence} property of BEC.
-For space reasons we elide a detailed discussion of how CRDTs achieve this commutativity for different types of data structure, and we refer the interested reader to extensive discussions of this topic in the CRDT literature~\cite{Gomes:2017gy,Preguica:2018gi,Shapiro:2011wy,Weiss:2009ht}.
+For space reasons we elide a detailed discussion of how CRDTs achieve this commutativity for different types of data structures, and we refer the interested reader to extensive discussions of this topic in the CRDT literature~\cite{Gomes:2017gy,Shapiro:2011wy,Weiss:2009ht}.
 
 In addition to causal broadcast, many CRDT algorithms require that each operation has a globally unique logical timestamp.
-For example, in a last-writer-wins register, if several replicas concurrently write to the register, then the merged final value of the register is the value written by the operation with the greatest logical timestamp.
+For example, in a last-writer-wins register, if several replicas concurrently write to the register, then the merged final value of the register is the value written by the operation with the greatest logical timestamp~\cite{Shapiro:2011wy}.
 
 When using our causal broadcast algorithms from \S~\ref{sec:algorithm} we can assign such timestamps as follows.
-For every message $m$ let the logical timestamp $T(m)$ of that message be:
+For every message $m$ let the logical timestamp $T(m) = (t, h)$ of that message be:
 \[ T(m) = (0, H(m)) \quad\text{if } \mathrm{pred}^1(m) = \{\}, \quad
 T(m) = \left(1 + \max_{p \in \mathrm{pred}^1(m)} T(p),\; H(m)\right) \quad\text{otherwise.} \]
 We define a total order lexicographically by breaking ties using the message hash:
 \[ T(m_1) < T(m_2) \iff (t_1, h_1) < (t_2, h_2) \iff (t_1 < t_2 \,\vee\, (t_1 = t_2 \wedge h_1 < h_2)). \]
 This construction is similar to Lamport timestamps~\cite{Lamport:1978}: a successor always has a higher timestamp than its predecessors, making the timestamp order a linear extension of the causal order.
-Since the hash of each message is assumed to be unique (due to collision-freedom), each message timestamp is globally unique, and any two correct processes will compute the same timestamp for the same message.
-When a CRDT algorithm encodes an operation as a message, it can use the timestamp of the message as the timestamp of the operation.
-
+Since the hash of each message is assumed to be unique (due to collision-freedom), each message timestamp is globally unique, and all correct processes will compute the same timestamp for the same message, and hence for the operation.
 
 \begin{figure}
   \includegraphics[width=\textwidth,keepaspectratio=true]{figs/evaluation.pdf}
@@ -500,24 +497,20 @@ When a CRDT algorithm encodes an operation as a message, it can use the timestam
 \section{Evaluation}\label{sec:evaluation}
 
 To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2} we implemented both algorithms and measured their behaviour in a simulated network.
-In our experiments, we use four replicas, where every pair of replicas reconciles their states once per second.
+In our experiments we use four replicas, where every pair of replicas reconciles their states once per second.
 Each replica concurrently broadcasts new messages, and we vary the rate at which new messages are broadcast.
 % 6 pairwise reconciliations take place every second
-
-Whenever a process broadcasts a new message, that process' previous heads become the predecessors of the new message, and the new message becomes the new head.
-This keeps the number of heads small, as described in \S~\ref{sec:algorithm1}.
 
 First, we measure the average number of round-trips required to complete one reconciliation (Figure~\ref{fig:evaluation} left).
 The higher the rate of broadcasts, the longer the paths in the predecessor graph.
 Therefore, when Algorithm~\ref{fig:algorithm} is used, the number of round trips increases linearly with the rate at which messages are broadcast.
-
 However, Algorithm~\ref{fig:algorithm2} reduces each reconciliation to 1.03 round trips on average, and this number remains constant as the rate of broadcasts grows.
 97\% of reconciliations complete in one round trip, while only 2.9\% require two round trips, and 0.02\% of reconciliations require three or more round trips.
 These figures are based on using Bloom filters with 10 bits per entry and 7 hash functions.
 
 Next, we estimate the network traffic resulting from the use of our algorithms.
-For this we assume that each broadcast message is 400 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element as before.
-Moreover, we assume that each request or response incurs an additional constant overhead of 50 bytes (e.g.\ for TCP/IP packet headers).
+For this we assume that each broadcast message is 400 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element.
+Moreover, we assume that each request or response incurs an additional constant overhead of 50 bytes (e.g.\ for TCP/IP packet headers and signatures).
 We compute the number of kilobytes sent per second (in both directions) using each reconciliation algorithm.
 
 Figure~\ref{fig:evaluation} (right) shows the results from this experiment.
