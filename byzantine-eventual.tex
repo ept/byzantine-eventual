@@ -533,8 +533,8 @@ Byzec~\cite{Shoker:2017}, as well as work by Chai and Zhao~\cite{Chai:2014}, als
 Depot~\cite{Mahajan:2011} tolerates arbitrary numbers of faulty processes; however, its consistency model (fork-join-causal) and replication protocol are considerably more complicated than ours, making them difficult to analyse.
 In SPORC~\cite{Feldman:2010wl}, BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again, so these systems do not satisfy the \emph{eventual update} property of BEC.
 
-Beyond the field of Byzantine fault tolerance, the closely related problems of computing the difference, union or intersection between sets on remote hosts has been studied previously in various domains, including peer-to-peer systems such as BitTorrent, deduplication of backups and error-correction.
-Approaches taken include using Bloom filters~\cite{Skjegstad:2011} similar to Algorithm 2, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2006}.
+Beyond the field of Byzantine fault tolerance, the problems of computing the difference, union or intersection between sets on remote hosts has been studied in various domains, including peer-to-peer systems, deduplication of backups, and error-correction.
+Approaches include using Bloom filters~\cite{Skjegstad:2011} similar to Algorithm 2, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2006}.
 These approaches are not designed to tolerate Byzantine faults.
 
 Snapdoc~\cite{Kollmann:2019hf} has previously examined cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
@@ -581,7 +581,7 @@ Kang et al.~\cite{Kang:2003} also discuss replicated hash graphs, but don't pres
 Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty processes and are thus not suitable applications for Byzantine agreement.
 In this paper, we have defined Byzantine Eventual Consistency (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty processes in a system, and without making any synchrony assumptions.
 We have proposed reconciliation algorithms that implement Byzantine causal broadcast, proved their correctness, and evaluated their performance.
-Our optimised algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it usable in practice.
+Our optimised algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it immediately applicable in practice.
 
 As shown in \S~\ref{sec:applications}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
 Adopting our approach will allow those systems to gain robustness against Byzantine faults without significant changes to their existing CRDT algorithms.
@@ -591,13 +591,33 @@ We hope that BEC will inspire further research to ensure the correctness of even
 
 \bibliographystyle{plainurl}
 \bibliography{references}
-\appendix
+\newpage\appendix
 
 \section{Proof of correctness}\label{sec:proof}
 
-In this section we show that Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} satisfy the BEC properties.
+In this section we show that Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} implement causal broadcast, as defined in \S~\ref{sec:background}, in the Byzantine system model of \S~\ref{sec:system-model}.
 If a lemma does not specify which of the two algorithms it applies to, it holds for both.
 
+\begin{lemma}\label{lemma:easy-properties}
+Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} satisfy the \emph{validity}, \emph{non-duplication}, \emph{self-delivery}, and \emph{causal order} properties of causal broadcast.
+\end{lemma}
+\begin{proof}
+The \emph{validity} property holds because when a broadcast message is delivered, it was either sent by the local process, or it was received from another process in a reconciliation.
+In the latter case, messages are in the set $\mathcal{M}$ only if they were broadcast, and we discard any messages that do not have a valid signature from a process in the system (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}).
+Thus, in either case, a correct process delivers a message only if it was broadcast by a process.
+
+The \emph{non-duplication} property holds because newly broadcast messages are assumed to be unique, and messages delivered during reconciliation are limited to those not already in $\mathcal{M}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver}).
+Since $\mathcal{M}$ is immediately updated to include all delivered messages, this ensures that no correct process delivers the same message more than once.
+
+The \emph{self-delivery} property holds trivially, because we assume that whenever a correct process broadcasts a message, it immediately delivers that message to itself.
+
+The \emph{causal order} property holds because when a correct process broadcasts a message, the predecessor hashes are computed such that every message previously broadcast or delivered by this process becomes a (direct or indirect) predecessor of the new message.
+Any correct process delivers messages in topologically sorted order, i.e.\ any predecessors of $m$ are delivered before $m$.
+The reconciliation algorithm delivers messages only once all hashes have been resolved (once all direct and indirect predecessor messages have been received), so we know that there are no missing predecessors.
+Thus, whenever a correct process broadcasts or delivers $m_1$ before broadcasting $m_2$, all correct processes deliver $m_1$ before delivering $m_2$.
+\end{proof}
+
+This leaves the \emph{eventual delivery} property, which is the focus of the remainder of this appendix.
 We consider two correct processes $p$ and $q$, with initial sets of messages $\mathcal{M}_p$ and $\mathcal{M}_q$ respectively at the start of the execution.
 Assume that in this run of the algorithm, $p$ and $q$ both complete the reconciliation by reaching line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}.
 Let $\mathit{recvd}_p$ be the contents of the variable $\mathit{recvd}$ at process $p$ when the reconciliation is complete, and likewise $\mathit{recvd}_q$ at process $q$.
@@ -612,14 +632,14 @@ Thus, elements are only added to the set $\mathcal{M}$, and therefore $\mathcal{
 \end{proof}
 
 \begin{lemma}\label{lemma:no-dangling}
-Let $m = (v, \mathit{hs})$ such that $m \in \mathcal{M}_p$.
+Let $m = (v, \mathit{hs}, \mathit{sig})$ and $m \in \mathcal{M}_p$.
 Then $\forall h \in \mathit{hs}.\; \exists m' \in \mathcal{M}_p.\; H(m') = h$.
 \end{lemma}
 \begin{proof}
 There are two ways how $m$ can become a member of $\mathcal{M}_p$ for a correct process $p$:
 \begin{enumerate}
-    \item $m$ is generated by process $p$.
-    In this case, since $p$ is assumed to be correct, $\mathit{hs} = \{H(m') \mid m' \in \mathcal{M} \wedge \mathrm{succ}^1(\mathcal{M}, m') = \{\}\,\}$ for some earlier state $\mathcal{M}$, as per \S~\ref{sec:algorithm1}.
+    \item $m$ is broadcast by process $p$.
+    In this case, since $p$ is assumed to be correct, the hashes $\mathit{hs}$ are computed as $\mathit{hs} = \{H(m') \mid m' \in \mathcal{M} \wedge \mathrm{succ}^1(\mathcal{M}, m') = \{\}\,\}$ for some earlier state $\mathcal{M}$, as per \S~\ref{sec:algorithm1}.
     As $\mathcal{M}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}), $\mathcal{M} \subseteq \mathcal{M}_p$, and thus we can deduce that $\forall h \in \mathit{hs}.\; \exists m' \in \mathcal{M}_p.\; H(m') = h$.
     \item $m$ is received during reconciliation with another process (which might be faulty).
     In this case, during the run of the protocol at which $p$ received $m$, we have $m \in \mathit{recvd}$ and $\mathit{missing} = \{\}$ at line~\ref{line:update-m} of Algorithm~\ref{fig:algorithm}.
@@ -630,13 +650,13 @@ There are two ways how $m$ can become a member of $\mathcal{M}_p$ for a correct 
 \end{proof}
 
 \begin{lemma}\label{lemma:no-collision}
-Let $m = (v, \mathit{hs})$ such that $m \in \mathcal{M}_p$ and $m \in \mathcal{M}_q$.
-Then $\{m' \in \mathcal{M}_p \mid H(m') \in \mathit{hs}\} = \{m' \in \mathcal{M}_q \mid H(m') \in \mathit{hs}\}$.
+Let $m = (v, \mathit{hs}, \mathit{sig})$ such that $m \in \mathcal{M}_p$ and $m \in \mathcal{M}_q$.
+Then the hashes $\mathit{hs}$ resolve to the same messages at $p$ and $q$, i.e.\ $\{m' \in \mathcal{M}_p \mid H(m') \in \mathit{hs}\} = \{m' \in \mathcal{M}_q \mid H(m') \in \mathit{hs}\}$.
 \end{lemma}
 \begin{proof}
 We use proof by contradiction.\\
 Assume there exists $h \in \mathit{hs}$ such that $\{m' \in \mathcal{M}_p \mid H(m') = h\} \neq \{m' \in \mathcal{M}_q \mid H(m') = h\}$.\\
-From Lemma~\ref{lemma:no-dangling} we have that $\{m' \in \mathcal{M}_p \mid H(m') = h\} \neq \{\}$ and $\{m' \in \mathcal{M}_q \mid H(m') = h\} \neq \{\}$.\\
+By Lemma~\ref{lemma:no-dangling} we have $\{m' \in \mathcal{M}_p \mid H(m') = h\} \neq \{\}$ and $\{m' \in \mathcal{M}_q \mid H(m') = h\} \neq \{\}$.\\
 Hence, there exist $m' \in \mathcal{M}_p$ and $m'' \in \mathcal{M}_q$ such that $m' \neq m''$ and $H(m') = H(m'') = h$.\\
 However, this contradicts our assumption in \S~\ref{sec:algorithm} that the hash function $H(\cdot)$ is collision-resistant.
 \end{proof}
@@ -696,31 +716,53 @@ Since $m \notin \mathcal{M}_q$ then process $q$ must have received a message con
 Since $m \notin \mathcal{M}_p$ then process $p$ will not send this message and therefore the message $m$ does not exist.
 \end{proof}
 
-\begin{theorem}\label{theorem:convergence}
+\begin{lemma}\label{lemma:reconcile-equal}
 When two correct processes $p$ and $q$, with initial sets of messages $\mathcal{M}_p$ and $\mathcal{M}_q$, have completed reconciliation (i.e.\ both have reached line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}), then their final sets of messages $\mathcal{M}'_p$ and $\mathcal{M}'_q$  are both equal to $\mathcal{M}_p \cup \mathcal{M}_q$.
-\end{theorem}
+\end{lemma}
 \begin{proof}
 We have $\mathcal{M}_p \subseteq \mathcal{M}'_p$ by lemma \ref{lemma:no-p-missing}, $\mathcal{M}_q \subseteq \mathcal{M}'_p$ by lemmas \ref{lemma:no-q-missing} and \ref{lemma:no-q-missing2}, and $\mathcal{M}'_p \subseteq \mathcal{M}_p \cup \mathcal{M}_q$ from lemma \ref{lemma:no-extras}.
 From these facts we have $\mathcal{M}'_p = \mathcal{M}_q \cup \mathcal{M}_q$.\\
 Similarly, by swapping $p$ and $q$ we can show that $\mathcal{M}'_q = \mathcal{M}_q \cup \mathcal{M}_q$.
 \end{proof}
 
-This concludes the proof that the reconciliation algorithm of \S~\ref{sec:algorithm} satisfies the convergence property of BEC.
-The proof of the validity property is obvious (the only way how a message in $\mathcal{M}$ can come into existence is by being broadcast by one of the processes).
-It remains only to show the liveness property:
+\begin{lemma}\label{lemma:termination}
+If two correct processes attempt reconciliation an infinite number of times, then there is an infinite number of protocol runs in which the algorithm terminates (i.e.\ both processes reach line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}), assuming the system model of \S~\ref{sec:system-model}.
+\end{lemma}
+\begin{proof}
+Our system model assumes fair-loss links.
+This implies that if a message is sent an infinite number of times, it will be delivered an infinite number of times.
+Moreover, the same holds for a connection in which a finite number of messages are exchanged: if an infinite number of connections are attempted, there will be an infinite number of connections in which no messages are lost.
 
-\begin{theorem}\label{theorem:liveness}
-Assuming that any two correct processes execute the reconciliation protocol an unbounded number of times, and assuming fair-loss links, an message broadcast by one process will eventually be in the set of messages for all correct processes.
+The graph of messages $\mathcal{M}_p$ at any correct process $p$ is finite and contains no cycles.
+Therefore, every vertex $m' \in \mathcal{M}_p$ can be reached in a finite number of steps by starting a graph traversal at $\mathrm{heads}(\mathcal{M}_p)$ and, in each step, moving from each vertex to its predecessors.
+Moreover, by Lemma~\ref{lemma:no-dangling}, $\mathcal{M}_p$ at any correct process $p$ contains only hashes that are the hash of another message in $\mathcal{M}_p$.
+Hence, in a connection in which no messages are lost and both processes are correct, the algorithm will always reach the state $\mathit{missing} = \{\}$ and terminate (i.e.\ reach line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}) in a finite number of round-trips of $\mathsf{needs}$ requests and $\mathsf{msgs}$ responses.
+
+Since there are an infinite number of connection attempts that are free from message loss, and the algorithm always terminates for these connections, we can conclude that there are an infinite number of protocol runs in which the algorithm terminates.
+\end{proof}
+
+\begin{theorem}
+Algorithms~\ref{fig:algorithm} and~\ref{fig:algorithm2} implement causal broadcast, as defined in \S~\ref{sec:background}, in the Byzantine system model of \S~\ref{sec:system-model}.
 \end{theorem}
 \begin{proof}
-Since the graph of messages $\mathcal{M}_p$ at any correct process $p$ is finite and contains no cycles, every vertex $m' \in \mathcal{M}_p$ can be reached in a finite number of steps by starting a graph traversal at $\mathrm{heads}(\mathcal{M}_p)$ and, in each step, moving from each vertex to its predecessors.
-Since $\mathcal{M}_p$ at any correct process $p$ contains only hashes that are the hash of another message in $\mathcal{M}_p$ (Lemma~\ref{lemma:no-dangling}), the algorithm of Algorithm~\ref{fig:algorithm} will always reach the state $\mathit{missing} = \{\}$ and terminate (i.e.\ reach line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}) in a finite number of round-trips of $\mathsf{needs}$ requests and $\mathsf{msgs}$ responses, when communicating with another correct process.
+Lemma~\ref{lemma:easy-properties} proves the properties apart from \emph{eventual delivery}.
+To prove eventual delivery, for any two correct processes $p$ and $q$, we must show that a message delivered by $p$ will also be delivered by $q$.
+We assume in \S~\ref{sec:system-model} that the correct processes form a connected component in the graph of processes and network links.
+Thus, either there is a direct network link between $p$ and $q$, or there is a path of network links on which all of the intermediate links are also correct.
 
-With fair-loss links each request/response has a nonzero probability of being delivered.
-For any finite protocol execution, the probability that no messages are lost is therefore also nonzero.
-Thus, there will be an infinite number of executions of the protocol for any two correct processes $p$ and $q$ in which no messages are lost.
-Thus, by Theorem~\ref{theorem:convergence}, any message known to $p$ will eventually be known to $q$ and vice versa.
-Since every pair of processes eventually reconciles, any message known to $p$ will eventually be known to all processes.
+Assume that any two adjacent processes on this path periodically attempt a reconciliation without a bound on the number of reconciliations.
+Thus, in an execution of infinite duration, there will be an infinite number of reconciliations between any two adjacent processes.
+By Lemma~\ref{lemma:termination}, an infinite number of these reconciliations will complete.
+By Lemma~\ref{lemma:reconcile-equal}, at the instant in which one of these reconciliations completes, the set of messages delivered by one process equals the set of messages delivered by the other process, with the exception of any messages delivered by concurrent reconciliations.
+
+Any messages delivered by one process while the reconciliation with the other process was in progress will be sent in the next reconciliation, which always exists, since we are assuming an infinite number of reconciliations.
+After a reconciliation where one process completes while the other does not (e.g.\ due to one-sided message loss), the sets of messages delivered by the two processes may be different, but again the missing messages will be sent in the next reconciliation.
+
+Let $m$ be a message that has been delivered by $p$ at some point in time.
+We have $m \in \mathcal{M}_p$ from that time onward, since $\mathcal{M}_p$ is exactly the set of delivered messages, and it grows monotonically (Lemma~\ref{lemma:no-p-missing}).
+Thus, $m$ will eventually be delivered by any correct process to which $p$ has a direct network link.
+These processes will eventually relay $m$ to their direct neighbours, and so on, until $m$ is delivered to $q$ through successive reconciliations along the path from $p$ to $q$.
+Therefore, $m$ is eventually delivered by $q$.
 \end{proof}
 
 \section{Experimenting with simplifying algorithm 2}
