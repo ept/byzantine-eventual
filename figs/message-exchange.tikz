@@ -1,14 +1,14 @@
 \begin{tikzpicture}
 \newlength{\width}\setlength{\width}{2cm}
-\newlength{\latency}\setlength{\latency}{1.2cm}
-\newlength{\replydelay}\setlength{\replydelay}{0.4cm}
+\newlength{\latency}\setlength{\latency}{0.9cm}
+\newlength{\replydelay}\setlength{\replydelay}{0.3cm}
 \tikzstyle{msg}=[thick,->]
 
 % Timelimes
 \node (p1-start) at (0, 0.5cm) {$p$};
 \node (p2-start) at (\width, 0.5cm) {$q$};
-\node (p1-end) at (0,-8.5cm) {};
-\node (p2-end) at (\width,-8.5cm) {};
+\node (p1-end) at (0,-6.5cm) {};
+\node (p2-end) at (\width,-6.5cm) {};
 \draw (p1-start) -- (p1-end);
 \draw (p2-start) -- (p2-end);
 
@@ -33,10 +33,10 @@
 \draw[msg] (0, -3.0\latency) node[left] {$\langle\mathsf{needs}: \{H(F)\}\rangle$} -- (\width,\replydelay-4.0\latency);
 
 \draw[msg] (0, -4.0\latency) node[left] {$\langle\mathsf{msgs}: \{D\}\rangle$} -- (\width,\replydelay-5.0\latency);
-\draw[msg] (\width, -4.0\latency) node[right] {$\langle\mathsf{msgs}: \{F\}\rangle$} -- (0,\replydelay-5.0\latency) node[left] {finish};
+\draw[msg] (\width, -4.0\latency) node[right] {$\langle\mathsf{msgs}: \{F\}\rangle$} -- (0,\replydelay-5.0\latency) node[left] {reconciliation complete};
 
 \draw[msg] (\width, -5.0\latency) node[right] {$\langle\mathsf{needs}: \{H(C)\}$} -- (0,\replydelay-6.0\latency);
 
-\draw[msg] (0, -6.0\latency) node[left] {$\langle\mathsf{msgs}: \{C\}\rangle$} -- (\width,\replydelay-7.0\latency) node[right] {finish};
+\draw[msg] (0, -6.0\latency) node[left] {$\langle\mathsf{msgs}: \{C\}\rangle$} -- (\width,\replydelay-7.0\latency) node[right] {reconciliation complete};
 
 \end{tikzpicture}

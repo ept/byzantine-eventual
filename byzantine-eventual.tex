@@ -1,4 +1,5 @@
 \documentclass[a4paper,anonymous,USenglish]{lipics-v2019}
+%\nolinenumbers\hideLIPIcs
 \usepackage[utf8]{inputenc}
 \usepackage{algorithm}
 \usepackage{algpseudocode} % for pseudocode
@@ -73,23 +74,25 @@ Similarly, non-malicious software bugs are likely to affect many of the processe
 This issue was acknowledged in the pBFT paper~\cite{Castro:1999}, which states that: ``{\dots}each node should run different implementations of the service code and operating system{\dots}''~--- an assumption that is unrealistic for any system with more than a few processes, and is seldom true in practice today.
 In some systems, such as open peer-to-peer networks that anybody can join, an adversary can spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002}).
 
-This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, what consistency model \emph{can} we achieve under that assumption?
+This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, is there a consistency model we \emph{can} achieve under this assumption?
 
 In this paper we propose \emph{Byzantine Eventual Consistency} (BEC), a novel consistency model that can be achieved regardless of the number of Byzantine-faulty processes.
 BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with arbitrarily many Byzantine-faulty processes.
 Essentially, BEC ensures that faulty replicas cannot permanently corrupt the state of correct replicas.
 
-In addition to defining BEC, our contributions in this paper are to present a novel, Byzantine fault tolerant causal broadcast algorithm (\S~\ref{sec:algorithm}), to prove its correctness (Appendix~\ref{sec:proof}), and to demonstrate that it has near-optimal network communication cost (\S~\ref{sec:evaluation}).
-We also show how to use Byzantine causal broadcast together with existing non-Byzantine \emph{Conflict-free Replicated Data Type} (CRDT) algorithms to implement replicated data with BEC (\S~\ref{sec:byzantine-crdts}).
+In addition to defining BEC, we present two novel broadcast algorithms which implement \emph{Byzantine Causal Broadcast} (\S~\ref{sec:algorithm}). 
+Unlike broadcast algorithms based on vector clocks, both algorithms provide casual broadcast in the presence of any number of Byzantine-faulty processes.
+We subsequently prove the correctness of our algorithms (Appendix~\ref{sec:proof}), and demonstrate that one of our algorithms has near-optimal network communication cost (\S~\ref{sec:evaluation}).
+We also show how to use Byzantine Causal Broadcast together with existing non-Byzantine \emph{Conflict-free Replicated Data Type} (CRDT) algorithms to implement replicated data with BEC (\S~\ref{sec:byzantine-crdts}).
 
 
 \section{Background}\label{sec:background}
 
 Algorithms for Byzantine agreement (or consensus) are often used to create an append-only log of values such as a blockchain~\cite{Bano:2019}, or, equivalently, a \emph{total order broadcast} protocol~\cite{Cachin:2011wt,Defago:2004ji}.
-A total order broadcast (a.k.a.\ \emph{atomic broadcast}) protocol satisfies the following properties:
+A total order broadcast (a.k.a.\ \emph{atomic broadcast}) protocol is defined in terms of the two primitives, \emph{broadcast} and \emph{deliver}, and must satisfy the following properties:
 
 \begin{description}
-\item[Validity:] If a correct process delivers a message $m$, then $m$ was broadcast by a process.
+\item[Validity:] If a correct process delivers a message $m$ with sender $s$, then $m$ was broadcast by $s$.
 \item[Non-duplication:] A correct process does not deliver the same message more than once.
 \item[Self-delivery:] If a correct process $p$ broadcasts a message $m$, then $p$ eventually delivers $m$.
 \item[Eventual delivery:] If a correct process delivers a message $m$, then all correct processes will eventually deliver $m$.
@@ -118,7 +121,7 @@ This is a very weak model: it does not specify when the consistent state will be
 To strengthen this model, Shapiro et al.~\cite{Shapiro:2011} introduce \emph{strong eventual consistency} (SEC), which requires that:
 
 \begin{description}
-\item[Eventual update:] If an update is applied by a correct replica, all correct replicas will eventually apply that update.
+\item[Eventual update:] If an update is applied by a correct replica, then all correct replicas will eventually apply that update.
 \item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state (even if the updates were applied in a different order).
 \end{description}
 
@@ -143,7 +146,7 @@ We allow any number of processes to be faulty.
 We treat all processes as equal, making no distinction e.g.\ between clients and servers.
 
 We assume that each process has a distinct private key that can be used for digital signatures, and that the corresponding public key is known to all processes.
-We assume that the adversary does not know the private keys of correct processes, and thus cannot forge signatures by correct processes.
+We assume that no process knows the private key of another process, and thus signatures cannot be forged.
 
 Processes communicate by sending messages over pairwise network links.
 Not all pairs of processes are necessarily connected with a network link.
@@ -165,20 +168,25 @@ This assumption is necessary because if there are two correct processes that can
 In order to implement Byzantine Eventual Consistency, we first show in this section how to implement causal broadcast in the Byzantine system model of \S~\ref{sec:system-model}.
 
 \begin{figure}
+\centering
+\begin{minipage}{.5\textwidth}
     \centering
     \input{figs/trivial1.tikz}
-    \caption{Byzantine-faulty process $q$ sends conflicting messages to correct processes $p$ and $r$.}
+    \captionsetup{width=.95\linewidth}
+    \caption{Byzantine-faulty process $q$ sends conflicting messages to correct processes $p$ and $r$.
+    The sets $\mathcal{M}_p$ and ${M}_r$ do not converge.}
     \label{fig:trivial1}
-\end{figure}
-
-\begin{figure}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
     \centering
     \input{figs/trivial2.tikz}
+    \captionsetup{width=.95\linewidth}
     \caption{As correct processes $p$ and $r$ reconcile their sets of messages, they converge to the same set $\mathcal{M}_p' = \mathcal{M}_r' = \{A,B\}$.}
     \label{fig:trivial2}
+\end{minipage}
 \end{figure}
 
-\subsection{Na\"{\i}ve algorithms}
+\subsection{Na\"{\i}ve broadcast algorithms}
 
 The simplest broadcast algorithm is as follows: every time a process wants to broadcast a message, it delivers that message to itself, and also sends that message to each other process via a pairwise link, re-transmitting until it is acknowledged.
 However, this algorithm does not provide the \emph{eventual delivery} property in the face of Byzantine-faulty processes, as shown in Figure~\ref{fig:trivial1}: a faulty process $q$ may send two different messages $A$ and $B$ to correct processes $p$ and $r$, respectively; then $p$ never delivers $B$ and $r$ never delivers $A$.
@@ -189,13 +197,14 @@ Then, as shown in Figure~\ref{fig:trivial2}, $p$ can send its entire set $\mathc
 Pairs of processes can thus periodically \emph{reconcile} their sets of messages.
 
 Adding this reconciliation process to the broadcast protocol ensures the first four properties of causal broadcast.
-However, this algorithm is very inefficient.
+However, additional mechanisms are required to ensure casual ordering, the fifth property of causal broadcast, and this algorithm is very inefficient.
 When processes periodically reconcile their state, we can expect that at the start of each round of reconciliation their sets of messages already have many elements in common.
 Sending the entire set of messages to each other thus implies transmitting a large amount of data unnecessarily.
 
-An efficient reconciliation algorithm should determine which elements the processes' sets of messages already have in common, and transmit only those messages that are unknown to the other process.
-For example, $p$ should only send $\mathcal{M}_p \setminus \mathcal{M}_r$ to $r$, and $r$ should only send $\mathcal{M}_r \setminus \mathcal{M}_p$ to $p$.
-Moreover, the algorithm should complete in a small number of round-trips.
+A reconciliation algorithm should determine which messages have already been delivered by both processes, and transmit only those messages that are unknown to the other process.
+For example, process $p$ should only send $\mathcal{M}_p \setminus \mathcal{M}_r$ to process $r$, and process $r$ should only send $\mathcal{M}_r \setminus \mathcal{M}_p$ to process $p$.
+Ideally, a reconciliation algorithm should also complete in a small number of round-trips and minimise the size of messages send.
+These goals rule out other na\"{\i}ve approaches too, for example, where process $p$ sends a set of message hashes which can be used by other processes to determine which messages they are missing, since the size of this message is still $O(|\mathcal{M}_{p}|)$.
 
 \begin{figure}
     \centering
@@ -222,7 +231,7 @@ We now present a reconciliation algorithm that ensures two processes have delive
 Our algorithm is efficient in the sense that when two correct processes are communicating, they only exchange broadcast messages that the other process does not already have.
 The algorithm tolerates any number of Byzantine-faulty processes.
 
-Let the set of broadcast messages $\mathcal{M}$ be a set of triples $(v, \mathit{hs}, \mathit{sig})$, where $v$ is any value, $\mathit{sig}$ is a digital signature over $(v, \mathit{hs})$ using the sender's private key, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
+Let the set of delivered messages $\mathcal{M}$ be a set of triples $(v, \mathit{hs}, \mathit{sig})$, where $v$ is any value, $\mathit{sig}$ is a digital signature over $(v, \mathit{hs})$ using the sender's private key, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
 We assume that $H$ is collision-resistant, i.e.\ that it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$.
 For convenience, we assume that messages broadcast by correct processes are distinct (for example by incorporating a unique identifier as part of the value).
 When a process wishes to broadcast a message with value $v$, it computes $\mathit{hs}$ as specified below, computes the signature $\mathit{sig}$, adds $(v, \mathit{hs}, \mathit{sig})$ to $\mathcal{M}$, and delivers the message to itself.
@@ -262,25 +271,50 @@ However, if two processes repeatedly try, eventually they will succeed in creati
 When one process connects to another, both processes execute Algorithm~\ref{fig:algorithm}.
 We will illustrate the operation of this algorithm using the example in Figure~\ref{fig:example-dags}; the requests/responses sent in the course of the execution are shown in Figure~\ref{fig:messages}.
 
-\begin{figure}[p]
+% hspace is an ugly hack to get the figure to line up as dag-after has some extra whitespace
+\begin{figure}
     \centering
-    \begin{subfigure}{0.45\textwidth}
-    \input{figs/dag-before-p.tikz}
-    \caption{Graph of messages at $p$ before reconciliation}
-    \end{subfigure}\hfill
-    \begin{subfigure}{0.45\textwidth}
-    \input{figs/dag-before-q.tikz}
-    \caption{Graph of messages at $q$ before reconciliation}
-    \end{subfigure}\\[10pt]
-    \begin{subfigure}{0.4\textwidth}
+    \begin{subfigure}[b]{0.35\textwidth}
+    \centering
+    \input{figs/dag-before-p.tikz}\hspace{0.5cm}
+    \captionsetup{width=.9\linewidth}
+    \caption{Messages at $p$ before reconciliation.}
+    \end{subfigure}%
+    \begin{subfigure}[b]{0.26\textwidth}
+    \centering
+    \input{figs/dag-before-q.tikz}\hspace{0.5cm}
+    \captionsetup{width=.9\linewidth}
+    \caption{Messages at $q$ before reconciliation.}
+    \end{subfigure}%
+    \begin{subfigure}[b]{0.35\textwidth}
+    \centering
     \input{figs/dag-after.tikz}
-    \caption{Graph of messages at $p$ and $q$ after reconciliation}
+    \captionsetup{width=.9\linewidth}
+    \caption{Messages at $p$ and $q$ after reconciliation.}
     \end{subfigure}
-    \caption{Example DAGs of broadcast messages. Arrows represent a message referencing the hash of its predecessor, and heads (messages with no successors) are marked with circles.}
+    \caption{Example DAGs of delivered messages. Arrows represent a message referencing the hash of its predecessor, and heads (messages with no successors) are marked with circles.}
     \label{fig:example-dags}
 \end{figure}
 
-\begin{figure}[p]
+% \begin{figure}[p]
+%     \centering
+%     \begin{subfigure}{0.43\textwidth}
+%     \input{figs/dag-before-p.tikz}
+%     \caption{Graph of messages at $p$ before reconciliation}
+%     \end{subfigure}\hfill
+%     \begin{subfigure}{0.45\textwidth}
+%     \input{figs/dag-before-q.tikz}
+%     \caption{Graph of messages at $q$ before reconciliation}
+%     \end{subfigure}\\[10pt]
+%     \begin{subfigure}{0.4\textwidth}
+%     \input{figs/dag-after.tikz}
+%     \caption{Graph of messages at $p$ and $q$ after reconciliation}
+%     \end{subfigure}
+%     \caption{Example DAGs of broadcast messages. Arrows represent a message referencing the hash of its predecessor, and heads (messages with no successors) are marked with circles.}
+%     \label{fig:example-dags}
+% \end{figure}
+
+\begin{figure}
     \input{figs/message-exchange.tikz}
     \caption{Requests/responses sent in the course of running the reconciliation process in Algorithm~\ref{fig:algorithm} with the example in Figure~\ref{fig:example-dags}.}
     \label{fig:messages}
@@ -288,7 +322,7 @@ We will illustrate the operation of this algorithm using the example in Figure~\
 
 \algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
 \algblockdefx{Mutex}{EndMutex}{\textbf{within a per-process mutex do}}{\textbf{end mutex}}
-\begin{algorithm}[p]
+\begin{algorithm}
     \begin{algorithmic}[1]
     \On{connecting to another process} \label{line:connect-begin}
         \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \label{line:init}\Comment{connection-local variables}
@@ -335,7 +369,7 @@ We will illustrate the operation of this algorithm using the example in Figure~\
 Initially, when a connection is established between two processes, they send each other their heads (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-heads}).
 In the example of Figure~\ref{fig:example-dags}, $p$ sends $\langle\mathsf{heads}: \{H(E),H(M)\}\rangle$ to $q$, while $q$ sends $\langle\mathsf{heads}: \{H(G),H(K)\}\rangle$ to $p$.
 
-Each process also initialises variables $\mathit{sent}$ and $\mathit{recvd}$ to contain the set of messages sent to/received from the other process within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a copy of this process' set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
+Each process also initialises variables $\mathit{sent}$ and $\mathit{recvd}$ to contain the set of messages sent to/received from the other process within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a read-only copy of this process' set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
 A process may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{recvd}$, $\mathit{missing}$, and $\mathcal{M}_\mathsf{conn}$, while $\mathcal{M}$ is a global variable that is shared between all connections.
 $\mathcal{M}$ should be maintained in stable storage, while the other variables may be lost in case of a crash.
 
@@ -354,9 +388,10 @@ In successive rounds of this protocol, the processes work their way from the hea
 
 Eventually, when there are no unresolved hashes, we perform a topological sort of the graph of received messages to put them in causal order, deliver them to the application, update the global set $\mathcal{M}$ to reflect the messages we have delivered, and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
 We perform these final steps within a mutex lock (critical section), so that if a process is performing multiple reconciliations concurrently, lines~\ref{line:deliver}--\ref{line:finish} that update the global state $\mathcal{M}$ are executed only by one reconciliation thread at a time.
+Once a process completes reconciliation (line~\ref{line:finish}), it can conclude that its current set of delivered messages is a superset of the set of delivered messages on the other process at the start of reconciliation.
 
 Assuming that the number of heads is small compared to the total number of messages in $\mathcal{M}$, the initial $\mathsf{heads}$ message will be small, yielding a big performance improvement compared to sending the whole of $\mathcal{M}$.
-In order to keep the number of heads small, whenever a correct process broadcasts a new message $(v, \mathit{hs}, \mathit{sig})$, it should set $\mathit{hs}$ to be the set of hashes of the current heads:
+In order to provide casual ordering and to keep the number of heads small, whenever a correct process broadcasts a new message $(v, \mathit{hs}, \mathit{sig})$, it should set $\mathit{hs}$ to be the set of hashes of the current heads:
 $\mathit{hs} = \mathrm{heads}(\mathcal{M})$.
 In this construction, the number of heads is bounded by the number of processes broadcasting messages concurrently.
 A Byzantine-faulty process may generate a large number of heads, which will affect the performance of the algorithm, but not its correctness.
@@ -406,7 +441,7 @@ First, when process $p$ establishes a connection with process $q$, $p$ calls $\t
 This function returns the empty set if this is the first reconciliation with $q$.
 In the example of Figure~\ref{fig:example-dags}, the previous reconciliation heads might be $\{H(B)\}$.
 
-We then find all of the broadcast messages that were added to $\mathcal{M}$ since this last reconciliation (i.e.\ all messages that are not among the last reconciliation's heads or their predecessors), and construct a Bloom filter~\cite{Bloom:1970} containing those messages.
+We then find all of the delivered messages that were added to $\mathcal{M}$ since this last reconciliation (i.e.\ all messages that are not among the last reconciliation's heads or their predecessors), and construct a Bloom filter~\cite{Bloom:1970} containing those messages.
 In the example of Figure~\ref{fig:example-dags}, $p$'s Bloom filter would contain $\{C, D, E, J, K, L, M\}$, while $q$'s filter contains $\{F, G, J, K\}$.
 We send this Bloom filter to the other process, along with the heads (lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
 
@@ -449,12 +484,12 @@ Note also that it is possible for one process in a connection to complete reconc
 Thus, when we load the heads from the previous reconciliation in Algorithm~\ref{fig:algorithm2}, the local and the remote process' $\mathit{oldHeads}$ may differ.
 This does not affect the correctness of the algorithm.
 
-\section{Implementing BEC Replication using Byzantine Causal Broadcast}\label{sec:byzantine-crdts}
+\section{Byzantine Eventual Consistency}\label{sec:byzantine-crdts}
 
 We say a replicated storage system provides Byzantine Eventual Consistency (BEC) if it satisfies the following properties in the Byzantine system model of \S~\ref{sec:system-model}:
 
 \begin{description}
-\item[Validity:] Any update applied by a correct replica was generated by a process in the system.
+\item[Validity:] If a correct replica applies an update that is labelled as originating from process $s$, then that update was generated by process $s$.
 \item[Non-duplication:] A correct replica does not apply the same update more than once.
 \item[Self-update:] If a correct replica generates an update, it applies that update to its own state.
 \item[Eventual update:] For any update applied by a correct replica, all correct replicas will eventually apply that update.
@@ -525,10 +560,9 @@ We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future wor
 \section{Related Work}\label{sec:relwork}
 
 Byzantine agreement has been subject of extensive research and has seen a recent renewal of interest due to its application in permissioned blockchains~\cite{Bano:2019}.
-Many Byzantine agreement algorithms including PBFT~\cite{Castro:1999}, HQ~\cite{Cowling:2006}, Zyzzyva~\cite{Kotla:2007}, BFT-SMART~\cite{Bessani:2014}, Aliph~\cite{Aublin:2015} and HotStuff~\cite{Yin:2019} assume that $n=3f+1$, whereas Q/U~\cite{Abd:2005} and FaB~\cite{Martin:2006} require that $n=5f+1$.
-
-Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and assumes $n=2u+r+1$.
-Most algorithms also require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
+Byzantine agreement algorithms typically require $3f+1$ processes~\cite{Castro:1999,Kotla:2007,Bessani:2014}, and others even require $5f+1$ processes~\cite{Abd:2005,Martin:2006}.
+Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and uses $2u+r+1$ processes.
+% Most algorithms also require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
 Zeno~\cite{Singh:2009} makes progress with just $f+1$ processes, but safety depends on less than $\frac{1}{3}$ of processes being Byzantine-faulty.
 Byzec~\cite{Shoker:2017}, as well as work by Chai and Zhao~\cite{Chai:2014}, also consider eventual consistency in the context of Byzantine faults but again assume that no more than $f$ of $3f+1$ processes are faulty.
 Byzantine Lattice Agreement~\cite{DiLuna:2020} weakens the ordering requirements and uses commutative operations, but still assumes $3f+1$.
@@ -538,7 +572,6 @@ In SPORC~\cite{Feldman:2010wl}, BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:20
 Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadcast while tolerating arbitrary numbers of faulty processes.
 OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot uses a more complex algorithm that is not precisely specified, involving both version vectors and hash chains.
 Depot's consistency model (fork-join-causal) is considerably more complicated than BEC, and it is unclear which is more useful in practice.
-
 
 Beyond the field of Byzantine fault tolerance, the problems of computing the difference, union or intersection between sets on remote hosts has been studied in various domains, including peer-to-peer systems, deduplication of backups, and error-correction.
 Approaches include using Bloom filters~\cite{Skjegstad:2011} similar to Algorithm 2, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2006}.
@@ -552,8 +585,6 @@ Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \text
 Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs, but don't present efficient reconcilation algorithms.
 
 % Tseng et al.~\cite{Tseng:2019jb} prove that Byzantine causal memory can only be done with $3f+1$ processes?!
-
-% TODO: compare to (Byzantine) Lattice Agreement
 
 % https://github.com/sipa/minisketch
 
@@ -767,112 +798,5 @@ Thus, $m$ will eventually be delivered by any correct process to which $p$ has a
 These processes will eventually relay $m$ to their direct neighbours, and so on, until $m$ is delivered to $q$ through successive reconciliations along the path from $p$ to $q$.
 Therefore, $m$ is eventually delivered by $q$.
 \end{proof}
-
-\section{Experimenting with simplifying algorithm 2}
-
-\begin{algorithm}[p]
-    \begin{algorithmic}[1]
-    \On{connecting to process $q$}
-        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables}
-        \State $\mathit{oldHeads} := \Call{LoadHeads}{q}$\label{line:load-heads2}
-        \State $\mathit{filter} := \textsc{MakeBloomFilter}(\Call{MessagesSince}{\mathit{oldHeads}})$\label{line:make-bloom2}
-        \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{M}_\mathsf{conn}),\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$ \label{line:a2-send-heads2}
-    \EndOn
-    \State
-    \On{receiving $\langle\mathsf{heads}: \mathit{hs},\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$}
-        \State $\mathit{bloomNegative} := \{m \in \Call{MessagesSince}{\mathit{oldHeads}} \mid \neg\Call{BloomMember}{\mathit{filter}, m}\}$\label{line:bloom-member2}
-        \State $\mathit{reply} := \left(\mathit{bloomNegative} \cup \bigcup_{m \in \mathit{bloomNegative}} \mathrm{succ}^*(\mathcal{M}_\mathsf{conn}, m)\right) \setminus \mathit{sent}$\label{line:bloom-succ2}
-        \If{$\mathit{reply} \neq \{\}$}
-            \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
-            \State \textbf{send} $\langle\mathsf{msgs}: \mathit{reply}\rangle$ \label{line:a2-heads-reply2}
-        \EndIf
-        \State \Call{HandleMissing}{$\{h \in \mathit{hs} \mid \nexists m \in \mathcal{M}_\mathsf{conn}.\; H(m) = h\}$} \label{line:a2-heads-missing2}
-    \EndOn
-    \State
-    \On{receiving $\langle\mathsf{msgs}: \mathit{new}\rangle$} \label{line:recv-msgs2}
-        \State $\mathit{recvd} := \mathit{recvd} \,\cup\, \mathit{new}$ \label{line:msgs-recvd2}
-        \State $\mathit{unresolved} := \{h \mid \exists (v, \mathit{hs}) \in \mathit{recvd}.\; h \in \mathit{hs} \;\wedge\; \nexists m \in (\mathcal{M}_\mathsf{conn} \cup \mathit{recvd}).\; H(m) = h\}$ \label{line:msgs-missing2}
-        \State \Call{HandleMissing}{$\mathit{unresolved}$} \label{line:msgs-handle-missing2}
-    \EndOn
-    \State
-    \On{receiving $\langle\mathsf{needs}: \mathit{hashes}\rangle$} \label{line:recv-needs2}
-        \State $\mathit{reply} := \{m \in \mathcal{M}_\mathsf{conn} \mid H(m) \in \mathit{hashes} \wedge m \notin \mathit{sent}\}$ \label{line:needs-reply2}
-        \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
-        \State \textbf{send} $\langle\mathsf{msgs}: \mathit{reply}\rangle$ \label{line:send-msgs2}
-    \EndOn\label{line:end-needs2}
-    \State
-    \Function{HandleMissing}{$\mathit{hashes}$}
-        \State $\mathit{missing} := (\mathit{missing} \cup \mathit{hashes}) \setminus \{H(m) \mid m \in \mathit{recvd}\}$
-        \If{$\mathit{missing} = \{\}$} \label{line:missing-empty2}
-            \State $\mathcal{M} := \mathcal{M} \cup \mathit{recvd}$ \label{line:update-m2}
-            \State $\textsc{StoreHeads}(q, \mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd}))$
-            \State \textbf{reconciliation complete} \label{line:finish2}
-        \Else
-            \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$ \label{line:send-missing2}
-        \EndIf
-    \EndFunction
-    \State
-    \Function{MessagesSince}{$\mathit{oldHeads}$}
-        \State $\mathit{known} := \{m \in \mathcal{M}_\mathsf{conn} \mid H(m) \in \mathit{oldHeads}\}$
-        \State \textbf{return} $\mathcal{M}_\mathsf{conn} \setminus \left(\mathit{known} \cup \bigcup_{m \in \mathit{known}} \mathrm{pred}^*(\mathcal{M}_\mathsf{conn}, m)\right)$
-    \EndFunction
-    \end{algorithmic}
-    \caption{Complete original algorithm 2.}
-\end{algorithm}
-
-
-\begin{algorithm}[p]
-    \begin{algorithmic}[1]
-    \On{connecting to process $q$}
-        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables}
-        \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{M}_\mathsf{conn})\rangle$
-    \EndOn
-    \State
-    \On{receiving $\langle\mathsf{heads}: \mathit{hs}\rangle$} \label{line:recv-heads3}
-        \State $hashes := \{h \in \mathit{hs} \mid \nexists m \in \mathcal{M}_\mathsf{conn}.\; H(m) = h\}$ 
-        \State $\mathit{missing} := (\mathit{missing} \cup \mathit{hashes}) \setminus \{H(m) \mid m \in \mathit{recvd}\}$
-        \If{$\mathit{missing} = \{\}$} \label{line:missing-empty3}
-             \State $\textsc{StoreHeads}(q, \mathit{hs})$
-            \State \textbf{reconciliation complete} \label{line:finish3}
-        \Else
-             \State $\mathit{oldHeads} := \Call{LoadHeads}{q}$\label{line:load-heads3}
-            \State $\mathit{filter} := \textsc{MakeBloomFilter}(\Call{MessagesSince}{\mathit{oldHeads}})$\label{line:make-bloom3}
-            \State \textbf{send} $\langle \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$ \label{line:a2-send-heads3}
-        \EndIf
-    \EndOn\label{line:recv-heads-end3}
-    \State
-    \On{receiving $\langle \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$}
-        \State $\mathit{bloomNegative} := \{m \in \Call{MessagesSince}{\mathit{oldHeads}} \mid \neg\Call{BloomMember}{\mathit{filter}, m}\}$\label{line:bloom-member3}
-        \State $\mathit{reply} := \left(\mathit{bloomNegative} \cup \bigcup_{m \in \mathit{bloomNegative}} \mathrm{succ}^*(\mathcal{M}_\mathsf{conn}, m)\right) \setminus \mathit{sent}$\label{line:bloom-succ3}
-        \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
-        \State \textbf{send} $\langle\mathsf{msgs}: \mathit{reply}\rangle$
-    \EndOn
-    \State
-    \On{receiving $\langle\mathsf{msgs}: \mathit{new}\rangle$} \label{line:recv-msgs3}
-        \State $\mathit{recvd} := \mathit{recvd} \,\cup\, \mathit{new}$ \label{line:msgs-recvd3}
-        \State $\mathit{unresolved} := \{h \mid \exists (v, \mathit{hs}) \in \mathit{recvd}.\; h \in \mathit{hs} \;\wedge\; \nexists m \in (\mathcal{M}_\mathsf{conn} \cup \mathit{recvd}).\; H(m) = h\}$ \label{line:msgs-missing3}
-        \State $\mathit{missing} := (\mathit{missing} \cup \mathit{unresolved}) \setminus \{H(m) \mid m \in \mathit{recvd}\}$
-        \If{$\mathit{missing} = \{\}$}
-            \State $\mathcal{M} := \mathcal{M} \cup \mathit{recvd}$ \label{line:update-m3}
-            \State $\textsc{StoreHeads}(q, \mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd}))$
-            \State \textbf{reconciliation complete}
-        \Else
-            \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$ \label{line:send-missing3}
-        \EndIf
-    \EndOn
-    \State
-    \On{receiving $\langle\mathsf{needs}: \mathit{hashes}\rangle$} \label{line:recv-needs3}
-        \State $\mathit{reply} := \{m \in \mathcal{M}_\mathsf{conn} \mid H(m) \in \mathit{hashes} \wedge m \notin \mathit{sent}\}$ \label{line:needs-reply3}
-        \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
-        \State \textbf{send} $\langle\mathsf{msgs}: \mathit{reply}\rangle$ \label{line:send-msgs3}
-    \EndOn\label{line:end-needs3}
-    \State
-    \Function{MessagesSince}{$\mathit{oldHeads}$}
-        \State $\mathit{known} := \{m \in \mathcal{M}_\mathsf{conn} \mid H(m) \in \mathit{oldHeads}\}$
-        \State \textbf{return} $\mathcal{M}_\mathsf{conn} \setminus \left(\mathit{known} \cup \bigcup_{m \in \mathit{known}} \mathrm{pred}^*(\mathcal{M}_\mathsf{conn}, m)\right)$
-    \EndFunction
-    \end{algorithmic}
-    \caption{Revised algorithm 2.}
-\end{algorithm}
 
 \end{document}
