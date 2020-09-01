@@ -6,7 +6,8 @@
 \usepackage{tikz} % for figures
 \usepackage{subcaption} % for subfigures
 
-\hyphenation{time-stamp time-stamps}
+\hyphenation{time-stamp time-stamps re-con-cilia-tion}
+\renewcommand{\floatpagefraction}{.8}%
 
 \title{Byzantine Eventual Consistency and Byzantine Causal Broadcast}
 
@@ -80,7 +81,7 @@ In this paper we propose \emph{Byzantine Eventual Consistency} (BEC), a novel co
 BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with arbitrarily many Byzantine-faulty processes.
 Essentially, BEC ensures that faulty replicas cannot permanently corrupt the state of correct replicas.
 
-In addition to defining BEC, we present two novel broadcast algorithms which implement \emph{Byzantine Causal Broadcast} (\S~\ref{sec:algorithm}). 
+In addition to defining BEC, we present two novel algorithms that implement \emph{Byzantine Causal Broadcast} (\S~\ref{sec:algorithm}). 
 Unlike broadcast algorithms based on vector clocks, both algorithms provide casual broadcast in the presence of any number of Byzantine-faulty processes.
 We subsequently prove the correctness of our algorithms (Appendix~\ref{sec:proof}), and demonstrate that one of our algorithms has near-optimal network communication cost (\S~\ref{sec:evaluation}).
 We also show how to use Byzantine Causal Broadcast together with existing non-Byzantine \emph{Conflict-free Replicated Data Type} (CRDT) algorithms to implement replicated data with BEC (\S~\ref{sec:byzantine-crdts}).
@@ -89,7 +90,7 @@ We also show how to use Byzantine Causal Broadcast together with existing non-By
 \section{Background}\label{sec:background}
 
 Algorithms for Byzantine agreement (or consensus) are often used to create an append-only log of values such as a blockchain~\cite{Bano:2019}, or, equivalently, a \emph{total order broadcast} protocol~\cite{Cachin:2011wt,Defago:2004ji}.
-A total order broadcast (a.k.a.\ \emph{atomic broadcast}) protocol is defined in terms of the two primitives, \emph{broadcast} and \emph{deliver}, and must satisfy the following properties:
+A total order broadcast (a.k.a.\ \emph{atomic broadcast}) protocol is defined in terms of two primitives, \emph{broadcast} and \emph{deliver}, and must satisfy the following properties:
 
 \begin{description}
 \item[Validity:] If a correct process delivers a message $m$ with sender $s$, then $m$ was broadcast by $s$.
@@ -197,14 +198,14 @@ Then, as shown in Figure~\ref{fig:trivial2}, $p$ can send its entire set $\mathc
 Pairs of processes can thus periodically \emph{reconcile} their sets of messages.
 
 Adding this reconciliation process to the broadcast protocol ensures the first four properties of causal broadcast.
-However, additional mechanisms are required to ensure casual ordering, the fifth property of causal broadcast, and this algorithm is very inefficient.
-When processes periodically reconcile their state, we can expect that at the start of each round of reconciliation their sets of messages already have many elements in common.
+Additional mechanisms are required to ensure the fifth property, \emph{casual order}.
+However, this algorithm is very inefficient: when processes periodically reconcile their state, we can expect that at the start of each round of reconciliation their sets of messages already have many elements in common.
 Sending the entire set of messages to each other thus implies transmitting a large amount of data unnecessarily.
 
-A reconciliation algorithm should determine which messages have already been delivered by both processes, and transmit only those messages that are unknown to the other process.
+An efficient reconciliation algorithm should determine which messages have already been delivered by both processes, and transmit only those messages that are unknown to the other process.
 For example, process $p$ should only send $\mathcal{M}_p \setminus \mathcal{M}_r$ to process $r$, and process $r$ should only send $\mathcal{M}_r \setminus \mathcal{M}_p$ to process $p$.
-Ideally, a reconciliation algorithm should also complete in a small number of round-trips and minimise the size of messages send.
-These goals rule out other na\"{\i}ve approaches too, for example, where process $p$ sends a set of message hashes which can be used by other processes to determine which messages they are missing, since the size of this message is still $O(|\mathcal{M}_{p}|)$.
+The algorithm should also complete in a small number of round-trips and minimise the size of messages sent.
+These goals rule out other na\"{\i}ve approaches too: for example, instead of sending all messages in $\mathcal{M}_p$, process $p$ could send the hash of each message in $\mathcal{M}_p$, which can be used by other processes to determine which messages they are missing; this is still inefficient, as the message size is $O(|\mathcal{M}_{p}|)$.
 
 \begin{figure}
     \centering
@@ -227,14 +228,13 @@ Thus, vector clocks can be corrupted by a faulty process; a Byzantine causal bro
 
 \subsection{A Byzantine fault-tolerant reconciliation algorithm}\label{sec:algorithm1}
 
-We now present a reconciliation algorithm that ensures two processes have delivered the same set of messages, in causal order.
-Our algorithm is efficient in the sense that when two correct processes are communicating, they only exchange broadcast messages that the other process does not already have.
-The algorithm tolerates any number of Byzantine-faulty processes.
+We now present a causal broadcast algorithm that tolerates any number of Byzantine-faulty processes.
+At its core is a reconciliation algorithm that ensures two processes have delivered the same set of broadcast messages, in causal order.
+The reconciliation is efficient in the sense that when two correct processes are communicating, they only exchange broadcast messages that the other process does not already have.
 
-Let the set of delivered messages $\mathcal{M}$ be a set of triples $(v, \mathit{hs}, \mathit{sig})$, where $v$ is any value, $\mathit{sig}$ is a digital signature over $(v, \mathit{hs})$ using the sender's private key, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
+Let $\mathcal{M}$ be the set of broadcast messages delivered by the current process.
+$\mathcal{M}$ is a set of triples $(v, \mathit{hs}, \mathit{sig})$, where $v$ is any value, $\mathit{sig}$ is a digital signature over $(v, \mathit{hs})$ using the sender's private key, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
 We assume that $H$ is collision-resistant, i.e.\ that it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$.
-For convenience, we assume that messages broadcast by correct processes are distinct (for example by incorporating a unique identifier as part of the value).
-When a process wishes to broadcast a message with value $v$, it computes $\mathit{hs}$ as specified below, computes the signature $\mathit{sig}$, adds $(v, \mathit{hs}, \mathit{sig})$ to $\mathcal{M}$, and delivers the message to itself.
 
 Let $A, B \in \mathcal{M}$, where $B = (v, \mathit{hs}, \mathit{sig})$ and $H(A) \in \mathit{hs}$.
 Then we call $A$ a \emph{predecessor} of $B$, and $B$ a \emph{successor} of $A$.
@@ -263,13 +263,60 @@ We define the set of predecessors of $m$ similarly:
 Let $\mathrm{heads}(\mathcal{M})$ denote the set of hashes of those messages in $\mathcal{M}$ that have no successors:
 \[ \mathrm{heads}(\mathcal{M}) = \{H(m) \mid m \in \mathcal{M} \wedge \mathrm{succ}^1(\mathcal{M}, m) = \{\}\;\}. \]
 
-We define the reconciliation process as taking place over a \emph{connection}.
+We assume that communication between two processes takes place over a \emph{connection}.
 This connection is a logical grouping of a bidirectional sequence of related request/response messages between two processes (in practice, it can be implemented as a TCP connection).
 Connections have the same fair-loss assumption as individual message delivery: messages may be dropped, resulting in the connection eventually timing out, and the reconciliation process being cancelled.
 However, if two processes repeatedly try, eventually they will succeed in creating a connection of finite duration that is free from message loss.
 
-When one process connects to another, both processes execute Algorithm~\ref{fig:algorithm}.
-We will illustrate the operation of this algorithm using the example in Figure~\ref{fig:example-dags}; the requests/responses sent in the course of the execution are shown in Figure~\ref{fig:messages}.
+When a correct process wishes to broadcast a message with value $v$, it executes lines~\ref{line:broadcast-begin}--\ref{line:broadcast-end} of Algorithm~\ref{fig:algorithm}: it constructs a message $m$ containing the current heads and a signature, sends $m$ via all connections, delivers $m$ to itself, and adds $m$ to the set of locally delivered messages $\mathcal{M}$.
+However, this is not sufficient to ensure eventual delivery, since some processes may be disconnected, and faulty nodes might not correctly follow this protocol.
+
+\algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
+\begin{algorithm}
+    \begin{algorithmic}[1]
+    \On{request to broadcast $v$}\label{line:broadcast-begin}
+        \State $\mathit{hs} := \mathrm{heads}(\mathcal{M})$
+        \State $\mathit{sig} := \text{signature over } (v, \mathit{hs}) \text{ using this process's private key}$
+        \State $m := (v, \mathit{hs}, \mathit{sig})$
+        \State \textbf{send} $\langle\mathsf{msgs}: \{m\}\rangle$ via all active connections\label{line:eager-send}
+        \State \textbf{deliver} $m$ to self
+        \State $\mathcal{M} := \mathcal{M} \cup \{m\}$
+    \EndOn\label{line:broadcast-end}
+    \State
+    \On{connecting to another process} \label{line:connect-begin}
+        \State $\mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \label{line:init}\Comment{connection-local variables}
+        \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{M}_\mathsf{conn})\rangle$ via current connection \label{line:send-heads}
+    \EndOn \label{line:connect-end}
+    \State
+    \On{receiving $\langle\mathsf{heads}: \mathit{hs}\rangle$ via a connection} \label{line:recv-heads}
+        \State \Call{HandleMissing}{$\{h \in \mathit{hs} \mid \nexists m \in \mathcal{M}_\mathsf{conn}.\; H(m) = h\}$} \label{line:heads-missing}
+    \EndOn\label{line:recv-heads-end}
+    \State
+    \On{receiving $\langle\mathsf{msgs}: \mathit{new}\rangle$ via a connection} \label{line:recv-msgs}
+        \State $\mathit{recvd} := \mathit{recvd} \,\cup\, \{(v, \mathit{hs}, \mathit{sig}) \in \mathit{new} \mid \mathit{sig}\text{ is a valid process' signature over }(v, \mathit{hs}) \}$ \label{line:msgs-recvd}
+        \State $\mathit{unresolved} := \{h \mid \exists (v, \mathit{hs}, \mathit{sig}) \in \mathit{recvd}.\; h \in \mathit{hs} \;\wedge\; \nexists m \in (\mathcal{M}_\mathsf{conn} \cup \mathit{recvd}).\; H(m) = h\}$ \label{line:msgs-missing}
+        \State \Call{HandleMissing}{$\mathit{unresolved}$} \label{line:msgs-handle-missing}
+    \EndOn\label{line:recv-msgs-end}
+    \State
+    \On{receiving $\langle\mathsf{needs}: \mathit{hashes}\rangle$ via a connection} \label{line:recv-needs}
+        \State $\mathit{reply} := \{m \in \mathcal{M}_\mathsf{conn} \mid H(m) \in \mathit{hashes}\}$ \label{line:needs-reply}
+        \State \textbf{send} $\langle\mathsf{msgs}: \mathit{reply}\rangle$ via current connection \label{line:send-msgs}
+    \EndOn\label{line:end-needs}
+    \State
+    \Function{HandleMissing}{$\mathit{hashes}$}
+        \State $\mathit{missing} := (\mathit{missing} \cup \mathit{hashes}) \setminus \{H(m) \mid m \in \mathit{recvd}\}$
+        \If{$\mathit{missing} = \{\}$} \label{line:missing-empty}
+            \State \textbf{deliver} all of the messages in $\mathit{recvd} \setminus \mathcal{M}$ in topologically sorted order\label{line:deliver}
+            \State $\mathcal{M} := \mathcal{M} \cup \mathit{recvd}$ \label{line:update-m}
+            \State optionally \textbf{send} $\langle\mathsf{msgs}: \mathit{recvd} \setminus \mathcal{M}\rangle$ via all other connections\label{line:eager-relay}
+            \State \textbf{reconciliation complete} \label{line:finish}
+        \Else
+            \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$ via current connection \label{line:send-missing}
+        \EndIf
+    \EndFunction
+    \end{algorithmic}
+    \caption{A Byzantine fault tolerant causal broadcast algorithm.}\label{fig:algorithm}
+\end{algorithm}
 
 % hspace is an ugly hack to get the figure to line up as dag-after has some extra whitespace
 \begin{figure}
@@ -296,88 +343,26 @@ We will illustrate the operation of this algorithm using the example in Figure~\
     \label{fig:example-dags}
 \end{figure}
 
-% \begin{figure}[p]
-%     \centering
-%     \begin{subfigure}{0.43\textwidth}
-%     \input{figs/dag-before-p.tikz}
-%     \caption{Graph of messages at $p$ before reconciliation}
-%     \end{subfigure}\hfill
-%     \begin{subfigure}{0.45\textwidth}
-%     \input{figs/dag-before-q.tikz}
-%     \caption{Graph of messages at $q$ before reconciliation}
-%     \end{subfigure}\\[10pt]
-%     \begin{subfigure}{0.4\textwidth}
-%     \input{figs/dag-after.tikz}
-%     \caption{Graph of messages at $p$ and $q$ after reconciliation}
-%     \end{subfigure}
-%     \caption{Example DAGs of broadcast messages. Arrows represent a message referencing the hash of its predecessor, and heads (messages with no successors) are marked with circles.}
-%     \label{fig:example-dags}
-% \end{figure}
-
 \begin{figure}
     \input{figs/message-exchange.tikz}
     \caption{Requests/responses sent in the course of running the reconciliation process in Algorithm~\ref{fig:algorithm} with the example in Figure~\ref{fig:example-dags}.}
     \label{fig:messages}
 \end{figure}
 
-\algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
-\algblockdefx{Mutex}{EndMutex}{\textbf{within a per-process mutex do}}{\textbf{end mutex}}
-\begin{algorithm}
-    \begin{algorithmic}[1]
-    \On{connecting to another process} \label{line:connect-begin}
-        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \label{line:init}\Comment{connection-local variables}
-        \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{M}_\mathsf{conn})\rangle$ \label{line:send-heads}
-    \EndOn \label{line:connect-end}
-    \State
-    \On{receiving $\langle\mathsf{heads}: \mathit{hs}\rangle$} \label{line:recv-heads}
-        \State $\mathit{reply} := \{m' \mid \exists m \in \mathcal{M}_\mathsf{conn}.\; H(m) \in \mathit{hs} \,\wedge\, m' \in \mathrm{succ}^*(\mathcal{M}_\mathsf{conn}, m) \,\wedge\, m' \notin \mathit{sent}\}$ \label{line:succ}
-        \If{$\mathit{reply} \neq \{\}$}
-            \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
-            \State \textbf{send} $\langle\mathsf{msgs}: \mathit{reply}\rangle$ \label{line:heads-reply}
-        \EndIf
-        \State \Call{HandleMissing}{$\{h \in \mathit{hs} \mid \nexists m \in \mathcal{M}_\mathsf{conn}.\; H(m) = h\}$} \label{line:heads-missing}
-    \EndOn\label{line:recv-heads-end}
-    \State
-    \On{receiving $\langle\mathsf{msgs}: \mathit{new}\rangle$} \label{line:recv-msgs}
-        \State $\mathit{recvd} := \mathit{recvd} \,\cup\, \{(v, \mathit{hs}, \mathit{sig}) \in \mathit{new} \mid \mathit{sig}\text{ is a valid process' signature over }(v, \mathit{hs}) \}$ \label{line:msgs-recvd}
-        \State $\mathit{unresolved} := \{h \mid \exists (v, \mathit{hs}, \mathit{sig}) \in \mathit{recvd}.\; h \in \mathit{hs} \;\wedge\; \nexists m \in (\mathcal{M}_\mathsf{conn} \cup \mathit{recvd}).\; H(m) = h\}$ \label{line:msgs-missing}
-        \State \Call{HandleMissing}{$\mathit{unresolved}$} \label{line:msgs-handle-missing}
-    \EndOn
-    \State
-    \On{receiving $\langle\mathsf{needs}: \mathit{hashes}\rangle$} \label{line:recv-needs}
-        \State $\mathit{reply} := \{m \in \mathcal{M}_\mathsf{conn} \mid H(m) \in \mathit{hashes} \wedge m \notin \mathit{sent}\}$ \label{line:needs-reply}
-        \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
-        \State \textbf{send} $\langle\mathsf{msgs}: \mathit{reply}\rangle$ \label{line:send-msgs}
-    \EndOn\label{line:end-needs}
-    \State
-    \Function{HandleMissing}{$\mathit{hashes}$}
-        \State $\mathit{missing} := (\mathit{missing} \cup \mathit{hashes}) \setminus \{H(m) \mid m \in \mathit{recvd}\}$
-        \If{$\mathit{missing} = \{\}$} \label{line:missing-empty}
-            \Mutex
-            \State \textbf{deliver} all of the messages in $\mathit{recvd} \setminus \mathcal{M}$ in topological sort order\label{line:deliver}
-            \State $\mathcal{M} := \mathcal{M} \cup \mathit{recvd}$ \label{line:update-m}
-            \State \textbf{reconciliation complete} \label{line:finish}
-            \EndMutex
-        \Else
-            \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$ \label{line:send-missing}
-        \EndIf
-    \EndFunction
-    \end{algorithmic}
-    \caption{A reconciliation algorithm to sync messages between two processes.}\label{fig:algorithm}
-\end{algorithm}
+To ensure eventual delivery, we assume that processes periodically attempt to reconnect to each other.
+When such a connection is established, the processes reconcile their sets of messages to discover any missing messages.
+If two processes are not able to connect directly, they can still exchange messages by periodically reconciling with one or more correct intermediary processes (as stated in \S~\ref{sec:system-model}, we assume that such intermediaries exist).
 
+We illustrate the operation of the reconciliation algorithm using the example in Figure~\ref{fig:example-dags}; the requests/responses sent in the course of the execution are shown in Figure~\ref{fig:messages}.
 Initially, when a connection is established between two processes, they send each other their heads (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-heads}).
 In the example of Figure~\ref{fig:example-dags}, $p$ sends $\langle\mathsf{heads}: \{H(E),H(M)\}\rangle$ to $q$, while $q$ sends $\langle\mathsf{heads}: \{H(G),H(K)\}\rangle$ to $p$.
 
-Each process also initialises variables $\mathit{sent}$ and $\mathit{recvd}$ to contain the set of messages sent to/received from the other process within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a read-only copy of this process' set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
-A process may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{recvd}$, $\mathit{missing}$, and $\mathcal{M}_\mathsf{conn}$, while $\mathcal{M}$ is a global variable that is shared between all connections.
+Each process also initialises the variable $\mathit{recvd}$ to contain the set of messages received from the other process within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a read-only copy of this process' set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
+A process may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{recvd}$, $\mathit{missing}$, and $\mathcal{M}_\mathsf{conn}$, while $\mathcal{M}$ is a global variable that is shared between all connections.
 $\mathcal{M}$ should be maintained in stable storage, while the other variables may be lost in case of a crash.
 
-On receiving the heads from the other process (line~\ref{line:recv-heads}), the recipient first checks if its local set $\mathcal{M}_\mathsf{conn}$ contains successors for any of the sender's heads; if so, those successors, and any transitive successors, are sent immediately to the other process (lines~\ref{line:succ}--\ref{line:heads-reply}).
-By definition of $\mathit{heads}$, these successors are not yet known to the other process.
-In Figure~\ref{fig:example-dags}, $p$'s messages $L$ and $M$ are successors of $q$'s head $K$, so $p$ immediately sends $\langle\mathsf{msgs}: \{L, M\}\rangle$ to $q$.
-
-If the recipient does not know some of the head hashes, it replies with a $\mathsf{needs}$ request for the messages matching those hashes (lines~\ref{line:heads-missing} and \ref{line:send-missing}).
+On receiving the heads from the other process (line~\ref{line:recv-heads}), the recipient checks whether the recipient's $\mathcal{M}_\mathsf{conn}$ contains a matching message for each hash.
+If any hashes are unknown, it replies with a $\mathsf{needs}$ request for the messages matching those hashes (lines~\ref{line:heads-missing} and \ref{line:send-missing}).
 In our running example, $p$ needs $H(G)$, while $q$ needs $H(E)$ and $H(M)$.
 A process responds to such a $\mathsf{needs}$ request by returning all the matching messages in a $\mathsf{msgs}$ response (lines~\ref{line:recv-needs}--\ref{line:end-needs}).
 
@@ -387,15 +372,17 @@ If there are any predecessor hashes that do not resolve to a known message in $\
 In successive rounds of this protocol, the processes work their way from the heads along the paths of predecessors, until they reach the common ancestors of both processes' heads.
 
 Eventually, when there are no unresolved hashes, we perform a topological sort of the graph of received messages to put them in causal order, deliver them to the application, update the global set $\mathcal{M}$ to reflect the messages we have delivered, and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
-We perform these final steps within a mutex lock (critical section), so that if a process is performing multiple reconciliations concurrently, lines~\ref{line:deliver}--\ref{line:finish} that update the global state $\mathcal{M}$ are executed only by one reconciliation thread at a time.
+We assume that the update to $\mathcal{M}$ on line~\ref{line:update-m} happens atomically if the process has multiple concurrent reconciliations.
 Once a process completes reconciliation (line~\ref{line:finish}), it can conclude that its current set of delivered messages is a superset of the set of delivered messages on the other process at the start of reconciliation.
 
-Assuming that the number of heads is small compared to the total number of messages in $\mathcal{M}$, the initial $\mathsf{heads}$ message will be small, yielding a big performance improvement compared to sending the whole of $\mathcal{M}$.
-In order to provide casual ordering and to keep the number of heads small, whenever a correct process broadcasts a new message $(v, \mathit{hs}, \mathit{sig})$, it should set $\mathit{hs}$ to be the set of hashes of the current heads:
-$\mathit{hs} = \mathrm{heads}(\mathcal{M})$.
-In this construction, the number of heads is bounded by the number of processes broadcasting messages concurrently.
-A Byzantine-faulty process may generate a large number of heads, which will affect the performance of the algorithm, but not its correctness.
-We prove the correctness of this algorithm in Appendix~\ref{sec:proof}.
+When a message $m$ is broadcast, it is also sent as $\langle\mathsf{msgs}: m\rangle$ on line~\ref{line:eager-send}, and the recipient treats it the same as $\mathsf{msgs}$ received during reconciliation (lines~\ref{line:recv-msgs}--\ref{line:recv-msgs-end}).
+Sending messages in this way is not strictly necessary, as the periodic reconciliations will eventually deliver such messages, but broadcasting them eagerly can reduce latency.
+Moreover, when a recipient delivers messages, it may also choose to eagerly relay them to other processes it is connected to, without waiting for the next reconciliation (line~\ref{line:eager-relay}); this also reduces latency, but may result in a process redundantly receiving messages that it already has.
+The literature on gossip protocols examines in detail the question of when processes should forward messages they receive~\cite{Leitao:2009fi}; we leave a detailed discussion out of scope for this paper.
+
+We prove in Appendix~\ref{sec:proof} that this algorithm implements all five properties of causal broadcast, regardless of whether eager message sending is performed on lines~\ref{line:eager-send} and~\ref{line:eager-relay}.
+Even though Byzantine-faulty processes may send arbitrarily malformed messages, a correct node will not deliver messages without a complete predecessor graph.
+Any messages delivered by one correct node will eventually reach every other correct node through reconciliations.
 
 \subsection{A more efficient reconciliation algorithm}\label{sec:algorithm2}
 
@@ -408,12 +395,14 @@ We can therefore record the outcome of a protocol run with a particular process,
 We do this by adding the following instruction after line~\ref{line:update-m} of Algorithm~\ref{fig:algorithm}, where $q$ is the identity of the current connection's remote process:
 \[ \textsc{StoreHeads}(q, \mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})) \]
 which updates a key-value store in stable storage, associating the value $\mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})$ with the key $q$ (overwriting any previous value for that key if appropriate).
-We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``on initial connection'' and ``on receiving heads'' functions of Algorithm~\ref{fig:algorithm}, while leaving the rest of Algorithm~\ref{fig:algorithm} unchanged.
+We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``on connecting'' and ``on receiving heads'' functions of Algorithm~\ref{fig:algorithm}, while leaving the rest of Algorithm~\ref{fig:algorithm} unchanged.
+
+% FIXME (mk): I think we need to bring back the \mathit{sent} variable after all
 
 \begin{algorithm}[t]
     \begin{algorithmic}[1]
     \On{connecting to process $q$}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}}
-        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables}
+        \State $\mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables}
         \State $\mathit{oldHeads} := \Call{LoadHeads}{q}$\label{line:load-heads}
         \State $\mathit{filter} := \textsc{MakeBloomFilter}(\Call{MessagesSince}{\mathit{oldHeads}})$\label{line:make-bloom}
         \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{M}_\mathsf{conn}),\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$ \label{line:a2-send-heads}
@@ -421,9 +410,8 @@ We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``
     \State
     \On{receiving $\langle\mathsf{heads}: \mathit{hs},\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$}\Comment{Replaces lines \ref{line:recv-heads}--\ref{line:recv-heads-end}}\label{line:a2-recv-heads}
         \State $\mathit{bloomNegative} := \{m \in \Call{MessagesSince}{\mathit{oldHeads}} \mid \neg\Call{BloomMember}{\mathit{filter}, m}\}$\label{line:bloom-member}
-        \State $\mathit{reply} := \left(\mathit{bloomNegative} \cup \bigcup_{m \in \mathit{bloomNegative}} \mathrm{succ}^*(\mathcal{M}_\mathsf{conn}, m)\right) \setminus \mathit{sent}$\label{line:bloom-succ}
+        \State $\mathit{reply} := \mathit{bloomNegative} \,\cup\, \bigcup_{m \in \mathit{bloomNegative}} \mathrm{succ}^*(\mathcal{M}_\mathsf{conn}, m)$\label{line:bloom-succ}
         \If{$\mathit{reply} \neq \{\}$}
-            \State $\mathit{sent} := \mathit{sent} \cup \mathit{reply}$
             \State \textbf{send} $\langle\mathsf{msgs}: \mathit{reply}\rangle$ \label{line:a2-heads-reply}
         \EndIf
         \State \Call{HandleMissing}{$\{h \in \mathit{hs} \mid \nexists m \in \mathcal{M}_\mathsf{conn}.\; H(m) = h\}$} \label{line:a2-heads-missing}

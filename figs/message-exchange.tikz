@@ -24,15 +24,15 @@
 \draw[msg] (\width,0) node[right] {$\langle\mathsf{heads}: \{H(G),H(K)\}\rangle$} -- (0,\replydelay-\latency);
 
 \draw[msg] (\width, -\latency) node[right] {$\langle\mathsf{needs}: \{H(E),H(M)\}\rangle$} -- (0,\replydelay-2.0\latency);
-\draw[msg] (0, -\latency) node[left] {$\langle\mathsf{msgs}: \{L, M\} \rangle,\; \langle\mathsf{needs}: \{H(G)\}\rangle$} -- (\width,\replydelay-2.0\latency);
+\draw[msg] (0, -\latency) node[left] {$\langle\mathsf{needs}: \{H(G)\}\rangle$} -- (\width,\replydelay-2.0\latency);
 
-\draw[msg] (0, -2.0\latency) node[left] {$\langle\mathsf{msgs}: \{E\}\rangle$} -- (\width,\replydelay-3.0\latency);
+\draw[msg] (0, -2.0\latency) node[left] {$\langle\mathsf{msgs}: \{E,M\}\rangle$} -- (\width,\replydelay-3.0\latency);
 \draw[msg] (\width, -2.0\latency) node[right] {$\langle\mathsf{msgs}: \{G\}\rangle$} -- (0,\replydelay-3.0\latency);
 
-\draw[msg] (\width, -3.0\latency) node[right] {$\langle\mathsf{needs}: \{H(D)\}$} -- (0,\replydelay-4.0\latency);
+\draw[msg] (\width, -3.0\latency) node[right] {$\langle\mathsf{needs}: \{H(D),H(L)\}$} -- (0,\replydelay-4.0\latency);
 \draw[msg] (0, -3.0\latency) node[left] {$\langle\mathsf{needs}: \{H(F)\}\rangle$} -- (\width,\replydelay-4.0\latency);
 
-\draw[msg] (0, -4.0\latency) node[left] {$\langle\mathsf{msgs}: \{D\}\rangle$} -- (\width,\replydelay-5.0\latency);
+\draw[msg] (0, -4.0\latency) node[left] {$\langle\mathsf{msgs}: \{D,L\}\rangle$} -- (\width,\replydelay-5.0\latency);
 \draw[msg] (\width, -4.0\latency) node[right] {$\langle\mathsf{msgs}: \{F\}\rangle$} -- (0,\replydelay-5.0\latency) node[left] {reconciliation complete};
 
 \draw[msg] (\width, -5.0\latency) node[right] {$\langle\mathsf{needs}: \{H(C)\}$} -- (0,\replydelay-6.0\latency);
@@ -40,3 +40,4 @@
 \draw[msg] (0, -6.0\latency) node[left] {$\langle\mathsf{msgs}: \{C\}\rangle$} -- (\width,\replydelay-7.0\latency) node[right] {reconciliation complete};
 
 \end{tikzpicture}
+\centering
