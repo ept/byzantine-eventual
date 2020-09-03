@@ -55,9 +55,9 @@
 \begin{abstract}
     Byzantine agreement algorithms guarantee consistency and liveness on the condition that a bounded number of processes (typically $1/3$) are faulty; they provide no guarantees if that bound is exceeded.
     However, if more faults occur, we can still guarantee weaker consistency models. 
-    In this paper we define one such model, which we call \emph{Byzantine Eventual Consistency} (BEC).
+    In this paper, we define one such model, which we call \emph{Byzantine Eventual Consistency} (BEC).
     It builds upon a \emph{Byzantine Causal Broadcast} protocol; we introduce algorithms that implement this protocol, even in a system with arbitrarily many Byzantine-faulty processes, and we prove their correctness.
-    We show that the performance of our final algorithm is near optimal in terms of network bandwidth and round-trips.
+    We show that the performance of our final algorithm is near-optimal in terms of network bandwidth and round-trips.
 \end{abstract}
 \maketitle\\[20pt]
 This paper is not eligible for the best student paper award.
@@ -70,11 +70,11 @@ It is well established that without synchrony, Byzantine agreement is impossible
 If more than $f$ processes are faulty, neither safety (agreement) nor liveness can be guaranteed.
 
 In practice, the assumption that no more than $f$ processes are faulty is not always a realistic threat model.
-Byzantine failures are not necessarily independent: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes, since they are probably all running the same software. 
+Byzantine failures are not necessarily independent: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes since they are probably all running the same software. 
 Similarly, non-malicious software bugs are likely to affect many of the processes at once.
 This issue was acknowledged in the pBFT paper~\cite{Castro:1999}, which states that: ``{\dots}each node should run different implementations of the service code and operating system{\dots}''~--- an assumption that is unrealistic for any system with more than a few processes, and is seldom true in practice today.
 Moreover, in some systems, such as open peer-to-peer networks that anybody can join, an adversary can spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002}).
-In such systems it is not appropriate to assume a bound on the number of Byzantine-faulty processes.
+In such systems, it is not appropriate to assume a bound on the number of Byzantine-faulty processes.
 
 This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, is there a consistency model we \emph{can} achieve under this assumption?
 
@@ -83,7 +83,7 @@ Unlike previous approaches, e.g.\ using vector clocks, our algorithms provide ca
 We prove the correctness of our algorithms (Appendix~\ref{sec:proof}) and demonstrate experimentally that our second algorithm has near-optimal network communication cost (\S~\ref{sec:evaluation}).
 
 We then combine Byzantine causal broadcast with existing work on \emph{Conflict-free Replicated Data Types} (CRDTs) to implement Byzantine fault-tolerant replicated storage  (\S~\ref{sec:byzantine-crdts}).
-For this storage we propose \emph{Byzantine Eventual Consistency} (BEC), a novel consistency model that can be achieved in systems with arbitrarily many Byzantine-faulty processes.
+For this storage, we propose \emph{Byzantine Eventual Consistency} (BEC), a novel consistency model that can be achieved in systems with arbitrarily many Byzantine-faulty processes.
 BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with any number of Byzantine-faulty processes.
 Essentially, BEC ensures that faulty replicas cannot permanently corrupt the state of correct replicas.
 
@@ -191,9 +191,9 @@ We assume that all messages sent over these links are signed by the sender, and 
 Thus, even if the adversary can tamper with network traffic, it can only cause message loss but not impersonate a correct process.
 We model message loss using fair-loss links~\cite{Cachin:2011wt}: that is, if processes repeatedly retransmit a message, it will eventually be received.
 
-We assume an asynchronous system with unbounded message delay and arbitrary differences in speed of different processes.
+We assume an asynchronous system with unbounded message delay and arbitrary differences in the speed of different processes.
 For the sake of eventual delivery, we must assume that in the graph of processes and network links, the correct processes form a single connected component.
-This assumption is necessary because if there are two correct processes that can only ever communicate via faulty processes, then no algorithm can guarantee eventual delivery, because the adversary can always block communication between the correct processes.
+This assumption is necessary because if two correct processes can only communicate via faulty processes, then no algorithm can guarantee eventual delivery, as the adversary can block communication between the correct processes.
 
 % State the assumption of a collision-free hash function as part of the system model?
 
@@ -206,7 +206,7 @@ We now present two causal broadcast algorithms that tolerate any number of Byzan
 At their core is a reconciliation algorithm that ensures two processes have delivered the same set of broadcast messages, in causal order.
 The reconciliation is efficient in the sense that when two correct processes communicate, they only exchange broadcast messages that the other process has not already delivered.
 
-\subsection{A hash graph of messages}
+\subsection{Definitions}
 
 Let $\mathcal{M}$ be the set of broadcast messages delivered by the current process.
 $\mathcal{M}$ is a set of triples $(v, \mathit{hs}, \mathit{sig})$, where $v$ is any value, $\mathit{sig}$ is a digital signature over $(v, \mathit{hs})$ using the sender's private key, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
@@ -239,7 +239,7 @@ We define the set of predecessors of $m$ similarly:
 Let $\mathrm{heads}(\mathcal{M})$ denote the set of hashes of those messages in $\mathcal{M}$ that have no successors:
 \[ \mathrm{heads}(\mathcal{M}) = \{H(m) \mid m \in \mathcal{M} \wedge \mathrm{succ}^1(\mathcal{M}, m) = \{\}\;\}. \]
 
-\subsection{A first Byzantine fault-tolerant reconciliation algorithm}\label{sec:algorithm1}
+\subsection{Algorithm for Byzantine Causal Broadcast}\label{sec:algorithm1}
 
 We assume that communication between two processes takes place over a \emph{connection}.
 This connection is a logical grouping of a bidirectional sequence of related request/response messages between two processes (in practice, it can be implemented as a TCP connection).
@@ -298,7 +298,7 @@ If two processes are not able to connect directly, they can still exchange messa
         \EndIf
     \EndFunction
     \end{algorithmic}
-    \caption{A Byzantine fault tolerant causal broadcast algorithm.}\label{fig:algorithm}
+    \caption{A Byzantine causal broadcast algorithm.}\label{fig:algorithm}
 \end{algorithm}
 
 % hspace is an ugly hack to get the figure to line up as dag-after has some extra whitespace
@@ -347,7 +347,7 @@ A process responds to such a $\mathsf{needs}$ request by returning all the match
 
 On receiving $\mathsf{msgs}$, we first discard any broadcast messages that are not correctly signed by a legitimate process in the system (line~\ref{line:msgs-recvd}).
 We then inspect the hashes in each valid message received.
-If there are any predecessor hashes that do not resolve to a known message in $\mathcal{M}_\mathsf{conn}$ or $\mathit{recvd}$, we send another $\mathsf{needs}$ request with those hashes (lines~\ref{line:msgs-missing}--\ref{line:msgs-handle-missing}).
+If any predecessor hashes do not resolve to a known message in $\mathcal{M}_\mathsf{conn}$ or $\mathit{recvd}$, we send another $\mathsf{needs}$ request with those hashes (lines~\ref{line:msgs-missing}--\ref{line:msgs-handle-missing}).
 In successive rounds of this protocol, the processes work their way from the heads along the paths of predecessors, until they reach the common ancestors of both processes' heads.
 
 Eventually, when there are no unresolved hashes, we perform a topological sort of the graph of received messages to put them in causal order, deliver them to the application, update the global set $\mathcal{M}$ to reflect the messages we have delivered, and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
@@ -364,7 +364,7 @@ Even though Byzantine-faulty processes may send arbitrarily malformed messages, 
 Any messages delivered by one correct node will eventually reach every other correct node through reconciliations.
 After reconciliation, both processes have delivered the same set of messages.
 
-\subsection{A more efficient reconciliation algorithm}\label{sec:algorithm2}
+\subsection{Reducing the number of round trips}\label{sec:algorithm2}
 
 A downside of Algorithm~\ref{fig:algorithm} is that the number of round trips can be up to the length of the longest path in the predecessor graph, making it slow when performing reconciliation over a high-latency network.
 We now show how to reduce the number of round-trips.
@@ -414,7 +414,7 @@ We send this Bloom filter to the other process, along with the heads (lines~\ref
 
 On receiving the heads and Bloom filter, we identify any messages that were added since the last reconciliation that are \emph{not} present in the Bloom filter's membership check (line~\ref{line:bloom-member}).
 In the example, $q$ looks up $\{F, G, J, K\}$ in the Bloom filter received from $p$; \textsc{BloomMember} returns true for $J$ and $K$. For $F$ and $G$, \textsc{BloomMember} is likely to return false, but may return true.
-In this example we assume that the Bloom membership check returns false for $F$ and true for $G$ (a false positive in the case of $G$).
+In this example, we assume that the Bloom membership check returns false for $F$ and true for $G$ (a false positive in the case of $G$).
 
 Any Bloom-negative messages are definitely unknown to the other process, so we send those in reply.
 Moreover, we also send any successors of Bloom-negative messages (line~\ref{line:bloom-succ}): since the set $\mathcal{M}$ for a correct process cannot contain messages whose predecessors are missing, we know that these messages must also be missing from the other process.
@@ -449,7 +449,7 @@ Thus, a faulty process cannot corrupt the state of a correct process in a way th
 
 If message loss occurs during reconciliation, the connection times out and no messages are delivered.
 The next reconciliation attempt then starts afresh.
-Note also that it is possible for one process in a connection to complete reconciliation while the other times out and aborts, due to one-sided message loss.
+Note also that one process in a connection can complete reconciliation while the other times out and aborts, due to one-sided message loss.
 Thus, when we load the heads from the previous reconciliation on line~\ref{line:load-heads} of Algorithm~\ref{fig:algorithm2}, the local and the remote process' $\mathit{oldHeads}$ may differ.
 This does not affect the correctness of the algorithm.
 
@@ -475,7 +475,7 @@ However, Algorithm~\ref{fig:algorithm2} reduces each reconciliation to 1.03 roun
 These figures are based on using Bloom filters with 10 bits per entry and 7 hash functions.
 
 Next, we estimate the network traffic resulting from the use of our algorithms.
-For this we assume that each broadcast message is 400 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element.
+For this, we assume that each broadcast message is 400 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element.
 Moreover, we assume that each request or response incurs an additional constant overhead of 50 bytes (e.g.\ for TCP/IP packet headers and signatures).
 We compute the number of kilobytes sent per second (in both directions) using each reconciliation algorithm.
 
@@ -487,7 +487,12 @@ In contrast, Algorithm~\ref{fig:algorithm} incurs an approximately 40\% overhead
 Thus, we can see that in terms of network performance, Algorithm~\ref{fig:algorithm2} is close to the optimum of one round trip, and incurs only a small overhead in terms of bytes transmitted.
 We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future work.
 
-\section{Implementing replicated storage using causal broadcast}\label{sec:byzantine-crdts}
+\section{Byzantine Eventual Consistency}\label{sec:byzantine-crdts}
+
+We now outline how Byzantine causal broadcast can be used to implement replicated storage and provide Byzantine Eventual Consistency (BEC).
+We begin by reviewing how Conflict-free Replicated Data Types (CRDTs) are used to implement Strong Eventual Consistency (SEC) in the non-Byzantine system model.
+
+\subsection{Strong Eventual Consistency \& CRDTs}
 
 Eventual consistency is usually defined as: ``If no further updates are made, then eventually all replicas will be in the same state~\cite{Vogels:2009ca}.''
 This is a very weak model: it does not specify when the consistent state will be reached, and the premise ``if no further updates are made'' may never be true in a system in which updates happen continuously.
@@ -511,7 +516,7 @@ For space reasons we elide a detailed discussion of how CRDTs achieve this commu
 CRDTs can replicate data in generic data models such as key-value stores~\cite{Akkoorath2016Cure,Zawirski2015SwiftCloud} and relational databases, as well as various other datatypes: there are CRDT-based multi-user collaborative text editors~\cite{Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many other applications.
 The SEC properties of several CRDTs has been formally verified~\cite{Gomes:2017gy,Zeller:2014fl}.
 
-\subsection{Defining and implementing Byzantine Eventual Consistency}
+\subsection{Definition}
 
 We say a replicated storage system provides Byzantine Eventual Consistency (BEC) if it satisfies the following properties in the Byzantine system model of \S~\ref{sec:system-model}:
 
@@ -527,6 +532,8 @@ We say a replicated storage system provides Byzantine Eventual Consistency (BEC)
 BEC is a slight strengthening of SEC; the main difference is that SEC assumes a non-Byzantine system~\cite{Shapiro:2011}, and SEC does not explicitly require causal consistency (even though many CRDTs provide this property anyway).
 Unlike Byzantine agreement (\S~\ref{sec:relwork}), BEC is not strong enough to implement a cryptocurrency, since it cannot prevent double-spending.
 However, it is sufficient for many applications that currently use CRDTs.
+
+\subsection{Implementation}
 
 We can implement BEC replicated state using Byzantine causal broadcast (\S~\ref{sec:algorithm}) and operation-based CRDTs.
 Whenever a replica wishes to update the state of a CRDT, it generates an \emph{operation} describing that update, encodes that operation as a message, and sends it to the other replicas via Byzantine causal broadcast.
@@ -552,7 +559,7 @@ Since we assume that the hash function is collision-free, the (timestamp, hash) 
 
 \section{Related Work}\label{sec:relwork}
 
-Byzantine agreement has been subject of extensive research and has seen a recent renewal of interest due to its application in permissioned blockchains~\cite{Bano:2019}.
+Byzantine agreement has been the subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
 To tolerate $f$ faults, Byzantine agreement algorithms typically require $3f+1$ processes~\cite{Castro:1999,Kotla:2007,Bessani:2014}, and some even require $5f+1$ processes~\cite{Abd:2005,Martin:2006}.
 Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and uses $2u+r+1$ processes.
 % Most algorithms also require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
@@ -564,7 +571,7 @@ Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadc
 OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot uses a more complex algorithm that is not precisely specified, involving both version vectors and hash chains.
 Depot's consistency model (fork-join-causal) is considerably more complicated than BEC, and it is unclear which is more useful in practice.
 
-Beyond the field of Byzantine fault tolerance, the problems of computing the difference, union or intersection between sets on remote hosts has been studied in various domains, including peer-to-peer systems, deduplication of backups, and error-correction.
+Beyond the field of Byzantine fault tolerance, the problems of computing the difference, union, or intersection between sets on remote hosts has been studied in various domains, including peer-to-peer systems, deduplication of backups, and error-correction.
 Approaches include using Bloom filters~\cite{Skjegstad:2011} similar to Algorithm 2, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2006}.
 These approaches are not designed to tolerate Byzantine faults.
 
@@ -573,7 +580,9 @@ Truong et al.~\cite{Truong:2012et} present another scheme for authenticating CRD
 
 Hash chaining is widely used: in blockchains~\cite{Bano:2019}, Git commit histories, Merkle trees~\cite{Merkle:1987}, and peer-to-peer storage systems such as IPLD~\cite{IPLD}.
 Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
-Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs, but don't present efficient reconcilation algorithms.
+Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs, but do not present efficient reconciliation algorithms.
+
+% Albert van der Linde et al. on weak consistency for insecure settings http://www.vldb.org/pvldb/vol13/p2590-linde.pdf
 
 % Tseng et al.~\cite{Tseng:2019jb} prove that Byzantine causal memory can only be done with $3f+1$ processes?!
 
@@ -610,7 +619,7 @@ Our optimised algorithm incurs only a small network communication overhead compa
 
 As shown in \S~\ref{sec:byzantine-crdts}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
 Adopting our approach will allow those systems to gain robustness against Byzantine faults without significant changes to their existing CRDT algorithms.
-For systems that currently require all nodes to be trusted, and hence can only deployed in trusted datacenter networks, adding Byzantine fault tolerance opens up new opportunities for deployment in untrusted settings, e.g.\ on the public Internet.
+For systems that currently require all nodes to be trusted, and hence can only deployed in trusted datacentre networks, adding Byzantine fault tolerance opens up new opportunities for deployment in untrusted settings, e.g.\ on the public Internet.
 
 We hope that BEC will inspire further research to ensure the correctness of eventually consistent systems in the presence of arbitrary numbers of Byzantine faults.
 
