@@ -174,7 +174,7 @@ However, in the example of Figure~\ref{fig:vectorclocks}, this approach fails du
 
 Thus, vector clocks can be corrupted by a faulty process; a Byzantine-fault-tolerant causal broadcast algorithm must not be vulnerable to such corruption.
 
-\subsection{System Model}\label{sec:system-model}
+\subsection{System model}\label{sec:system-model}
 
 Our system consists of any number of processes, each of which is either \emph{correct} or \emph{faulty}, but one process does not know whether another process is faulty.
 A correct process follows the specified protocol, whereas a faulty process may deviate from the protocol in arbitrary ways (i.e.\ it is Byzantine-faulty).
@@ -214,6 +214,8 @@ We assume that $H$ is collision-resistant, i.e.\ that it is computationally infe
 
 Let $A, B \in \mathcal{M}$, where $B = (v, \mathit{hs}, \mathit{sig})$ and $H(A) \in \mathit{hs}$.
 Then we call $A$ a \emph{predecessor} of $B$, and $B$ a \emph{successor} of $A$.
+Predecessors are also known as \emph{causal dependencies}.
+
 Define a graph with a vertex for each message in $\mathcal{M}$, and a directed edge from each message to each of its predecessors.
 We can assume that this graph is acyclic because the presence of a cycle would imply knowledge of a collision in the hash function.
 Figure~\ref{fig:example-dags} shows examples of such graphs.
@@ -261,8 +263,8 @@ If two processes are not able to connect directly, they can still exchange messa
         \State $\mathit{sig} := \text{signature over } (v, \mathit{hs}) \text{ using this process's private key}$
         \State $m := (v, \mathit{hs}, \mathit{sig})$
         \State \textbf{send} $\langle\mathsf{msgs}: \{m\}\rangle$ via all active connections\label{line:eager-send}
-        \State \textbf{deliver} $m$ to self
-        \State $\mathcal{M} := \mathcal{M} \cup \{m\}$
+        \State \textbf{deliver} $m$ to self\label{line:deliver-local}
+        \State $\mathcal{M} := \mathcal{M} \cup \{m\}$\label{line:update-m-local}
     \EndOn\label{line:broadcast-end}
     \State
     \On{connecting to another process} \label{line:connect-begin}
@@ -490,9 +492,9 @@ We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future wor
 \section{Byzantine Eventual Consistency}\label{sec:byzantine-crdts}
 
 We now outline how Byzantine causal broadcast can be used to implement replicated storage and provide Byzantine Eventual Consistency (BEC).
-We begin by reviewing how Conflict-free Replicated Data Types (CRDTs) are used to implement Strong Eventual Consistency (SEC) in the non-Byzantine system model.
+We begin by reviewing how Conflict-free Replicated Data Types (CRDTs) are used to implement Strong Eventual Consistency (SEC) in a non-Byzantine system model.
 
-\subsection{Strong Eventual Consistency \& CRDTs}
+\subsection{Strong Eventual Consistency and CRDTs}
 
 Eventual consistency is usually defined as: ``If no further updates are made, then eventually all replicas will be in the same state~\cite{Vogels:2009ca}.''
 This is a very weak model: it does not specify when the consistent state will be reached, and the premise ``if no further updates are made'' may never be true in a system in which updates happen continuously.
@@ -508,15 +510,14 @@ Replicated storage systems with SEC can be implemented using \emph{Conflict-free
 These are data structures that can be concurrently modified on multiple replicas without any locking or other synchronous coordination, even while offline.
 Whenever a replica updates its copy of the shared data, operation-based CRDTs capture this update as an \emph{operation}, encode it as a message, and broadcast it to the other replicas.
 
+CRDTs can replicate data in generic data models such as key-value stores~\cite{Akkoorath2016Cure,Zawirski2015SwiftCloud} and relational databases, as well as various other datatypes: there are CRDT-based multi-user collaborative text editors~\cite{Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many other applications.
+
 Operation-based CRDTs typically use causal broadcast to disseminate operations to all replicas~\cite{Gomes:2017gy,Shapiro:2011}.
 The CRDT is designed such that concurrent (causally unrelated) operations are commutative, i.e.\ they can be applied in any order without affecting the final state.
-Thus, no matter in which order the causal broadcast protocol delivers messages, convergence is assured.
-For space reasons we elide a detailed discussion of how CRDTs achieve this commutativity for different types of data structures, and we refer the interested reader to extensive discussions of this topic in the CRDT literature~\cite{Gomes:2017gy,Shapiro:2011wy,Weiss:2009ht}.
+For space reasons we elide a detailed discussion of how CRDTs achieve this commutativity for different types of data structures, and we refer the interested reader to extensive discussions of this topic in the CRDT literature~\cite{Shapiro:2011wy,Weiss:2009ht}.
+It has been formally proved that this approach ensures SEC convergence in all possible orders in which the causal broadcast protocol may deliver messages~\cite{Gomes:2017gy}.
 
-CRDTs can replicate data in generic data models such as key-value stores~\cite{Akkoorath2016Cure,Zawirski2015SwiftCloud} and relational databases, as well as various other datatypes: there are CRDT-based multi-user collaborative text editors~\cite{Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many other applications.
-The SEC properties of several CRDTs has been formally verified~\cite{Gomes:2017gy,Zeller:2014fl}.
-
-\subsection{Definition}
+\subsection{Definition of Byzantine Eventual Consistency}
 
 We say a replicated storage system provides Byzantine Eventual Consistency (BEC) if it satisfies the following properties in the Byzantine system model of \S~\ref{sec:system-model}:
 
@@ -529,7 +530,7 @@ We say a replicated storage system provides Byzantine Eventual Consistency (BEC)
 \item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state.
 \end{description}
 
-BEC is a slight strengthening of SEC; the main difference is that SEC assumes a non-Byzantine system~\cite{Shapiro:2011}, and SEC does not explicitly require causal consistency (even though many CRDTs provide this property anyway).
+BEC is a slight strengthening of SEC; the main differences are that SEC assumes a non-Byzantine system~\cite{Shapiro:2011}, and SEC does not explicitly require causal consistency (even though many CRDTs provide this property anyway).
 Unlike Byzantine agreement (\S~\ref{sec:relwork}), BEC is not strong enough to implement a cryptocurrency, since it cannot prevent double-spending.
 However, it is sufficient for many applications that currently use CRDTs.
 
@@ -629,24 +630,24 @@ We hope that BEC will inspire further research to ensure the correctness of even
 
 \section{Proof of correctness}\label{sec:proof}
 
-In this section we show that Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} implement causal broadcast, as defined in \S~\ref{sec:background}, in the Byzantine system model of \S~\ref{sec:system-model}.
-If a lemma does not specify which of the two algorithms it applies to, it holds for both.
+In this section, we show that Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} implement causal broadcast, as defined in \S~\ref{sec:background}, in the Byzantine system model of \S~\ref{sec:system-model}.
+Where a lemma does not specify which of the two algorithms it applies to, it holds for both.
 
 \begin{lemma}\label{lemma:easy-properties}
 Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} satisfy the \emph{validity}, \emph{non-duplication}, \emph{self-delivery}, and \emph{causal order} properties of causal broadcast.
 \end{lemma}
 \begin{proof}
-The \emph{validity} property holds because when a broadcast message is delivered, it was either sent by the local process, or it was received from another process in a reconciliation.
+The \emph{validity} property holds because when a broadcast message is delivered, it was either sent by the local process (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver-local}), or it was received from another process (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver}).
 In the latter case, messages are in the set $\mathcal{M}$ only if they were broadcast, and we discard any messages that do not have a valid signature from a process in the system (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}).
 Thus, in either case, a correct process delivers a message only if it was broadcast by a process.
 
 The \emph{non-duplication} property holds because newly broadcast messages are assumed to be unique, and messages delivered during reconciliation are limited to those not already in $\mathcal{M}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver}).
 Since $\mathcal{M}$ is immediately updated to include all delivered messages, this ensures that no correct process delivers the same message more than once.
 
-The \emph{self-delivery} property holds trivially, because we assume that whenever a correct process broadcasts a message, it immediately delivers that message to itself.
+The \emph{self-delivery} property holds trivially, because each time a correct process broadcasts a message, it immediately delivers that message to itself (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver-local}).
 
-The \emph{causal order} property holds because when a correct process broadcasts a message, the predecessor hashes are computed such that every message previously broadcast or delivered by this process becomes a (direct or indirect) predecessor of the new message.
-Any correct process delivers messages in topologically sorted order, i.e.\ any predecessors of $m$ are delivered before $m$.
+The \emph{causal order} property holds because when a correct process broadcasts a message, the predecessor hashes are computed such that every message previously broadcast or delivered by this process becomes a (direct or indirect) predecessor of the new message (Algorithm~\ref{fig:algorithm}, line \ref{line:broadcast-heads}).
+Any correct process delivers messages in topologically sorted order, i.e.\ any predecessors of $m$ are delivered before $m$ (Algorithm~\ref{fig:algorithm}, line \ref{line:deliver}).
 The reconciliation algorithm delivers messages only once all hashes have been resolved (once all direct and indirect predecessor messages have been received), so we know that there are no missing predecessors.
 Thus, whenever a correct process broadcasts or delivers $m_1$ before broadcasting $m_2$, all correct processes deliver $m_1$ before delivering $m_2$.
 \end{proof}
@@ -661,7 +662,7 @@ Further, let $\mathcal{M}'_p = \mathcal{M}_p \cup \mathit{recvd}_p$ and $\mathca
 The set of messages $\mathcal{M}$ of a correct process $p$ grows monotonically.
 \end{lemma}
 \begin{proof}
-The process $p$ only modifies $\mathcal{M}$ by unioning it with the set $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:update-m}), or by generating new operations, which are added to $\mathcal{M}$.
+The process $p$ only modifies $\mathcal{M}$ by generating new operations, which are added to $\mathcal{M}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:update-m-local}), or by unioning it with the set $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:update-m}).
 Thus, elements are only added to the set $\mathcal{M}$, and therefore $\mathcal{M}$ grows monotonically.
 \end{proof}
 
@@ -670,17 +671,17 @@ Let $m = (v, \mathit{hs}, \mathit{sig})$ and $m \in \mathcal{M}_p$.
 Then $\forall h \in \mathit{hs}.\; \exists m' \in \mathcal{M}_p.\; H(m') = h$.
 \end{lemma}
 \begin{proof}
-There are two ways how $m$ can become a member of $\mathcal{M}_p$ for a correct process $p$:
-\begin{enumerate}
-    \item $m$ is broadcast by process $p$.
+There are two ways $m$ can become a member of $\mathcal{M}_p$ for a correct process $p$:
+\begin{description}
+    \item[Case] $m$ is broadcast by process $p$:\\
     In this case, since $p$ is assumed to be correct, the hashes $\mathit{hs}$ are computed as $\mathit{hs} = \{H(m') \mid m' \in \mathcal{M} \wedge \mathrm{succ}^1(\mathcal{M}, m') = \{\}\,\}$ for some earlier state $\mathcal{M}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:broadcast-heads}).
     As $\mathcal{M}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}), $\mathcal{M} \subseteq \mathcal{M}_p$, and thus we can deduce that $\forall h \in \mathit{hs}.\; \exists m' \in \mathcal{M}_p.\; H(m') = h$.
-    \item $m$ is received from another process (which might be faulty).
+    \item[Case] $m$ is received from another process (which might be faulty):\\
     In this case, during the run of the protocol at which $p$ received $m$, we have $m \in \mathit{recvd}$ and $\mathit{missing} = \{\}$ at line~\ref{line:update-m} of Algorithm~\ref{fig:algorithm}.
     Let $\mathcal{M}$ be the set of messages at $p$ immediately before that execution of line~\ref{line:update-m}.
     From $\mathit{missing} = \{\}$ and line~\ref{line:msgs-missing} of Algorithm~\ref{fig:algorithm} we can deduce that $\forall h \in \mathit{hs}.\; \exists m' \in (\mathcal{M} \cup \mathit{recvd}).\; H(m') = h$.
-    Since $\mathcal{M}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}) and $\mathit{recvd} \subseteq \mathcal{M}_p$ (line~\ref{line:update-m}) we have $\forall h \in \mathit{hs}.\; \exists m' \in \mathcal{M}_p.\; H(m') = h$.
-\end{enumerate}
+    Since $\mathcal{M}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}) and $\mathit{recvd} \subseteq \mathcal{M}_p$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:update-m}) we have $\forall h \in \mathit{hs}.\; \exists m' \in \mathcal{M}_p.\; H(m') = h$.
+\end{description}
 \end{proof}
 
 \begin{lemma}\label{lemma:no-collision}
@@ -703,15 +704,15 @@ We use proof by contradiction.\\
 Assume that $\exists m \in \mathcal{M}_q.\; m \notin  \mathcal{M}'_p$.\\
 Since $\mathit{recvd} \subseteq \mathcal{M}'_p$ and elements are only added to $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}) then $m \notin  \mathcal{M}'_p$ implies that $m \notin \mathit{recvd}$ on process $p$.\\
 Since $m \in \mathcal{M}_q$ we have either $\mathrm{succ}^1(\mathcal{M}_q, m) = \{\}$ or $\mathrm{succ}^1(\mathcal{M}_q, m) \ne \{\}$, and we now consider each case in turn.
-\begin{enumerate}
-    \item\textsc{Case} $\mathrm{succ}^1(\mathcal{M}_q, m) = \{\}$:\\
+\begin{description}
+    \item[Case] $\mathrm{succ}^1(\mathcal{M}_q, m) = \{\}$:\\
     In this case, $H(m) \in \mathrm{heads}(\mathcal{M}_q)$, and so the first $\mathsf{heads}$ request from $q$ to $p$ will contain $H(m)$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-heads}).\\
     Since $m \notin \mathcal{M}_p$, process $p$ will send a $\mathsf{needs}$ request to $q$ containing $H(m)$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:heads-missing}).\\
     Upon receiving the $\mathsf{needs}$ message containing $H(m)$, process $q$ will reply with an $\mathsf{msgs}$ response containing $m$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-msgs}).\\
     Process $p$ will receive the $\mathsf{msgs}$ response with $m$ from process $q$ and will add $m$ to $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}).\\
     This contradicts our previous finding that $m \notin \mathit{recvd}$.
     
-    \item\textsc{Case} $\mathrm{succ}^1(\mathcal{M}_q, m) \ne \{\}$:\\
+    \item[Case] $\mathrm{succ}^1(\mathcal{M}_q, m) \ne \{\}$:\\
     In this case, $H(m) \notin \mathrm{heads}(\mathcal{M}_q)$.
     Since $\mathcal{M}_q$ is a DAG, there must exist a message $m'$ such that $H(m') \in \mathrm{heads}(\mathcal{M}_q)$ and $m' \in \mathrm{succ}^*(\mathcal{M}_q, m)$.\\
     As in the previous case, $H(m') \in \mathrm{heads}(\mathcal{M}_q)$ implies that $m' \in \mathit{recvd}$.\\
@@ -720,20 +721,20 @@ Since $m \in \mathcal{M}_q$ we have either $\mathrm{succ}^1(\mathcal{M}_q, m) = 
     By induction over the path of successors from $m'$ to $m$, we observe that $m \in \mathit{recvd}$.\\
     At each step of the induction, the processes move to the predecessors of the previous step; due to Lemma~\ref{lemma:no-collision}, $p$ and $q$ agree about the identity of these predecessors.\\
     This contradicts our previous finding that $m \notin \mathit{recvd}$.
-\end{enumerate}
+\end{description}
 \end{proof}
 
 \begin{lemma}\label{lemma:no-q-missing2}
 $\mathcal{M}_q \subseteq \mathcal{M}'_p$ when executing Algorithm~\ref{fig:algorithm2}.
 \end{lemma}
 \begin{proof}
-By contradiction.
+We use proof by contradiction.\\
 Assume $m \in \mathcal{M}_q$, $m \notin \mathcal{M}_p'$ and $m \notin \mathit{recvd}$ like in Lemma~\ref{lemma:no-q-missing}.\\
-Let $\mathit{filter}$ be the Bloom filter in the initial message from $p$ to $q$ in the current protocol run.\\
-Even though we have $m \notin \mathcal{M}_p$ (by Lemma~\ref{lemma:no-p-missing}), $\textsc{BloomMember}(\mathit{filter}, m)$ may return a false positive.
+Let $\mathit{filter}$ be the Bloom filter in the initial message from $p$ to $q$ in the current protocol run (Algorithm~\ref{fig:algorithm2}, line~\ref{line:make-bloom}).\\
+Even though $m \notin \mathcal{M}_p$ (by Lemma~\ref{lemma:no-p-missing}), $\textsc{BloomMember}(\mathit{filter}, m)$ may return a false positive.
 Moreover, if it returns true, $m$ may or may not be a successor of a $\mathit{bloomNegative}$ item as computed in Algorithm~\ref{fig:algorithm2}, lines~\ref{line:bloom-member}--\ref{line:bloom-succ}.\\
-As a result it is possible for either $m \in \mathit{reply}$ or $m \notin \mathit{reply}$ after executing line~\ref{line:bloom-succ}.\\
-If $m \in \mathit{reply}$ then $p$ will receive an $\mathsf{msgs}$ response containing $m$, which will be added to $\mathit{recvd}$, contradicting our assumption that $m \notin \mathit{recvd}$.\\
+As a result it is possible that either $m \in \mathit{reply}$ or $m \notin \mathit{reply}$ after $q$ has executed line~\ref{line:bloom-succ} of Algorithm~\ref{fig:algorithm2}.\\
+If $m \in \mathit{reply}$ then $p$ will receive an $\mathsf{msgs}$ response containing $m$ from $q$, which will be added to $\mathit{recvd}$, contradicting our assumption that $m \notin \mathit{recvd}$.\\
 If $m \notin \mathit{reply}$ we continue to line~\ref{line:a2-heads-missing} of Algorithm~\ref{fig:algorithm2}, from which point onward the algorithm is the same as Algorithm~\ref{fig:algorithm}.
 Thus, we have $\mathcal{M}_q \subseteq \mathcal{M}'_p$ by Lemma~\ref{lemma:no-q-missing}.
 \end{proof}
@@ -754,8 +755,8 @@ Since $m \notin \mathcal{M}_p$ then process $p$ will not send this message and t
 When two correct processes $p$ and $q$, with initial sets of messages $\mathcal{M}_p$ and $\mathcal{M}_q$, have completed reconciliation (i.e.\ both have reached line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}), then their final sets of messages $\mathcal{M}'_p$ and $\mathcal{M}'_q$  are both equal to $\mathcal{M}_p \cup \mathcal{M}_q$.
 \end{lemma}
 \begin{proof}
-We have $\mathcal{M}_p \subseteq \mathcal{M}'_p$ by lemma \ref{lemma:no-p-missing}, $\mathcal{M}_q \subseteq \mathcal{M}'_p$ by lemmas \ref{lemma:no-q-missing} and \ref{lemma:no-q-missing2}, and $\mathcal{M}'_p \subseteq \mathcal{M}_p \cup \mathcal{M}_q$ from lemma \ref{lemma:no-extras}.
-From these facts we have $\mathcal{M}'_p = \mathcal{M}_q \cup \mathcal{M}_q$.\\
+We have shown that $\mathcal{M}_p \subseteq \mathcal{M}'_p$ by Lemma \ref{lemma:no-p-missing}, $\mathcal{M}_q \subseteq \mathcal{M}'_p$ by Lemmas \ref{lemma:no-q-missing} and \ref{lemma:no-q-missing2}, and $\mathcal{M}'_p \subseteq \mathcal{M}_p \cup \mathcal{M}_q$ from Lemma \ref{lemma:no-extras}.
+From these facts we have shown that $\mathcal{M}'_p = \mathcal{M}_q \cup \mathcal{M}_q$.\\
 Similarly, by swapping $p$ and $q$ we can show that $\mathcal{M}'_q = \mathcal{M}_q \cup \mathcal{M}_q$.
 \end{proof}
 
