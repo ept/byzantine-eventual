@@ -11,9 +11,11 @@
 
 \title{Byzantine Eventual Consistency and Byzantine Causal Broadcast}
 
-\author{Martin Kleppmann}{University of Cambridge}{mk428@cst.cam.ac.uk}{https://orcid.org/0000-0001-7252-6958}{Supported by a Leverhulme Trust Early Career Fellowship and by the Isaac Newton Trust.}
+\author{Martin Kleppmann}{University of Cambridge}{mk428@cst.cam.ac.uk}{https://orcid.org/0000-0001-7252-6958}{This work was supported by a Leverhulme Trust Early Career Fellowship and by the Isaac Newton Trust.}
 
-\author{Heidi Howard}{University of Cambridge}{hh360@cst.cam.ac.uk}{https://orcid.org/0000-0001-5256-7664}{}
+\author{Heidi Howard}{University of Cambridge}{hh360@cst.cam.ac.uk}{https://orcid.org/0000-0001-5256-7664}{TODO add funding details}
+
+\acknowledgements{Thank you to Srinivasan Keshav and Gavin Stark for feedback on a draft of this paper.}
 
 \authorrunning{M. Kleppmann and H. Howard}
 \Copyright{Martin Kleppmann and Heidi Howard}
@@ -79,7 +81,7 @@ In such systems, it is not appropriate to assume a bound on the number of Byzant
 This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, is there a consistency model we \emph{can} achieve under this assumption?
 
 To answer this question, this paper first introduces two algorithms for \emph{Byzantine causal broadcast} (\S~\ref{sec:algorithm}), a mechanism for broadcasting (multicasting) messages to a group of processes (defined in \S~\ref{sec:background}).
-Unlike previous approaches, e.g.\ using vector clocks, our algorithms provide casual broadcast in the presence of any number of Byzantine-faulty processes.
+Unlike previous approaches, e.g.\ using vector clocks, our algorithms provide causal broadcast in the presence of any number of Byzantine-faulty processes.
 We prove the correctness of our algorithms (Appendix~\ref{sec:proof}) and demonstrate experimentally that our second algorithm has near-optimal network communication cost (\S~\ref{sec:evaluation}).
 
 We then combine Byzantine causal broadcast with existing work on \emph{Conflict-free Replicated Data Types} (CRDTs) to implement Byzantine fault-tolerant replicated storage  (\S~\ref{sec:byzantine-crdts}).
@@ -146,7 +148,7 @@ Then, as shown in Figure~\ref{fig:trivial2}, $p$ can send its entire set $\mathc
 Pairs of processes can thus periodically \emph{reconcile} their sets of delivered messages.
 
 Adding this reconciliation process to the broadcast protocol ensures the first four properties of causal broadcast.
-Additional mechanisms are required to ensure the fifth property, \emph{casual order}.
+Additional mechanisms are required to ensure the fifth property, \emph{causal order}.
 However, this algorithm is very inefficient: when processes periodically reconcile their state, we can expect that at the start of each round of reconciliation their sets of messages already have many elements in common.
 Sending the entire set of messages to each other thus implies transmitting a large amount of data unnecessarily.
 
@@ -174,6 +176,7 @@ However, in the example of Figure~\ref{fig:vectorclocks}, this approach fails du
 
 Thus, vector clocks can be corrupted by a faulty process; a Byzantine-fault-tolerant causal broadcast algorithm must not be vulnerable to such corruption.
 
+% TODO: move this before the "naive broadcast algorithms" section, so that terms like "faulty" are defined?
 \subsection{System model}\label{sec:system-model}
 
 Our system consists of any number of processes, each of which is either \emph{correct} or \emph{faulty}, but one process does not know whether another process is faulty.
@@ -185,11 +188,11 @@ We treat all processes as equal, making no distinction e.g.\ between clients and
 We assume that each process has a distinct private key that can be used for digital signatures, and that the corresponding public key is known to all processes.
 We assume that no process knows the private key of another process, and thus signatures cannot be forged.
 
-Processes communicate by sending messages over pairwise network links.
+Processes communicate by sending messages over pairwise (bidirectional, unicast) network links.
 Not all pairs of processes are necessarily connected with a network link.
 We assume that all messages sent over these links are signed by the sender, and the recipient ignores messages with invalid signatures.
 Thus, even if the adversary can tamper with network traffic, it can only cause message loss but not impersonate a correct process.
-We model message loss using fair-loss links~\cite{Cachin:2011wt}: that is, if processes repeatedly retransmit a message, it will eventually be received.
+We assume fair-loss links~\cite{Cachin:2011wt}: that is, if a message is repeatedly retransmitted, it will eventually be received.
 
 We assume an asynchronous system with unbounded message delay and arbitrary differences in the speed of different processes.
 For the sake of eventual delivery, we must assume that in the graph of processes and network links, the correct processes form a single connected component.
@@ -243,8 +246,8 @@ Let $\mathrm{heads}(\mathcal{M})$ denote the set of hashes of those messages in 
 
 \subsection{Algorithm for Byzantine Causal Broadcast}\label{sec:algorithm1}
 
-We assume that communication between two processes takes place over a \emph{connection}.
-This connection is a logical grouping of a bidirectional sequence of related request/response messages between two processes (in practice, it can be implemented as a TCP connection).
+Define a \emph{connection} to be a logical grouping of a bidirectional sequence of related request/response messages between two processes (in practice, it can be implemented as a TCP connection).
+Our reconciliation algorithm runs in the context of a connection.
 Connections have the same fair-loss assumption as individual message delivery: messages may be dropped, resulting in the connection eventually timing out, and the reconciliation process being cancelled.
 However, if two processes repeatedly try, eventually they will succeed in creating a connection of finite duration that is free from message loss.
 
@@ -505,6 +508,8 @@ To strengthen this model, Shapiro et al.~\cite{Shapiro:2011} introduce \emph{str
 \item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state (even if the updates were applied in a different order).
 \end{description}
 
+Read operations can be performed on any replica at any time, and they return that replica's current state at that point in time.
+
 Strong eventual consistency (SEC) is defined in a non-Byzantine system model.
 Replicated storage systems with SEC can be implemented using \emph{Conflict-free Replicated Data Types} (\emph{CRDTs})~\cite{Shapiro:2011}.
 These are data structures that can be concurrently modified on multiple replicas without any locking or other synchronous coordination, even while offline.
@@ -515,7 +520,7 @@ CRDTs can replicate data in generic data models such as key-value stores~\cite{A
 Operation-based CRDTs typically use causal broadcast to disseminate operations to all replicas~\cite{Gomes:2017gy,Shapiro:2011}.
 The CRDT is designed such that concurrent (causally unrelated) operations are commutative, i.e.\ they can be applied in any order without affecting the final state.
 For space reasons we elide a detailed discussion of how CRDTs achieve this commutativity for different types of data structures, and we refer the interested reader to extensive discussions of this topic in the CRDT literature~\cite{Shapiro:2011wy,Weiss:2009ht}.
-It has been formally proved that this approach ensures SEC convergence in all possible orders in which the causal broadcast protocol may deliver messages~\cite{Gomes:2017gy}.
+It has been formally proved that this approach ensures the SEC convergence property~\cite{Gomes:2017gy}: for a given set of operations, all possible permutations allowed by causal broadcast result in the same state.
 
 \subsection{Definition of Byzantine Eventual Consistency}
 
@@ -530,7 +535,8 @@ We say a replicated storage system provides Byzantine Eventual Consistency (BEC)
 \item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state.
 \end{description}
 
-BEC is a slight strengthening of SEC; the main differences are that SEC assumes a non-Byzantine system~\cite{Shapiro:2011}, and SEC does not explicitly require causal consistency (even though many CRDTs provide this property anyway).
+A replica's state can be read at any time.
+BEC is a slight strengthening of SEC; the main differences are that SEC assumes a non-Byzantine system, and SEC does not require causal consistency (even though many CRDTs provide this property).
 Unlike Byzantine agreement (\S~\ref{sec:relwork}), BEC is not strong enough to implement a cryptocurrency, since it cannot prevent double-spending.
 However, it is sufficient for many applications that currently use CRDTs.
 
@@ -560,6 +566,9 @@ Since we assume that the hash function is collision-free, the (timestamp, hash) 
 
 \section{Related Work}\label{sec:relwork}
 
+% TODO: Read and cite this new paper which look very related
+% http://www.vldb.org/pvldb/vol13/p2590-linde.pdf
+
 Byzantine agreement has been the subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
 To tolerate $f$ faults, Byzantine agreement algorithms typically require $3f+1$ processes~\cite{Castro:1999,Kotla:2007,Bessani:2014}, and some even require $5f+1$ processes~\cite{Abd:2005,Martin:2006}.
 Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and uses $2u+r+1$ processes.
@@ -582,6 +591,11 @@ Truong et al.~\cite{Truong:2012et} present another scheme for authenticating CRD
 Hash chaining is widely used: in blockchains~\cite{Bano:2019}, Git commit histories, Merkle trees~\cite{Merkle:1987}, and peer-to-peer storage systems such as IPLD~\cite{IPLD}.
 Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
 Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs, but do not present efficient reconciliation algorithms.
+
+% TODO compare to Causal+ (convergent causal) consistency
+% https://www.cs.cmu.edu/~dga/papers/cops-sosp2011.pdf
+% https://people.eecs.berkeley.edu/~alig/papers/bolt-on-causal-consistency.pdf
+% http://www.vukolic.com/consistency-survey.pdf
 
 % Albert van der Linde et al. on weak consistency for insecure settings http://www.vldb.org/pvldb/vol13/p2590-linde.pdf
 
