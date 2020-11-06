@@ -623,7 +623,7 @@ OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot
 Depot's consistency model (fork-join-causal) is considerably more complicated than BEC, and it is unclear which is more useful in practice.
 
 Beyond the field of Byzantine fault tolerance, the problems of computing the difference, union, or intersection between sets on remote hosts has been studied in various domains, including peer-to-peer systems, deduplication of backups, and error-correction.
-Approaches include using Bloom filters~\cite{Skjegstad:2011} similar to Algorithm 2, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2006}.
+Approaches include using Bloom filters~\cite{Skjegstad:2011} similar to Algorithm 2, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2003}.
 These approaches are not designed to tolerate Byzantine faults.
 
 Snapdoc~\cite{Kollmann:2019hf} has previously examined cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
@@ -687,7 +687,7 @@ TODO add Heidi's funding details.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
-\newpage\appendix
+\appendix
 
 \section{Proof of correctness}\label{sec:proof}
 
