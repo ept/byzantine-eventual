@@ -14,11 +14,15 @@
 \newcommand\vldbavailabilityurl{}
 \newcommand\vldbpagestyle{plain} % use 'plain' for review versions, 'empty' for camera ready
 
-\hyphenation{time-stamp time-stamps re-con-cilia-tion}
+\hyphenation{time-stamp time-stamps re-con-cilia-tion data-center data-centre}
 \renewcommand{\floatpagefraction}{.8}%
 
+% Custom macros
+\newcommand{\I}{$\mathcal{I}\!$}
+
 \begin{document}
-\title{Byzantine Eventual Consistency and Byzantine Causal Broadcast}
+\title{Byzantine Eventual Consistency and the Fundamental Limits of Peer-to-Peer Databases}
+% Alternative title idea: Keep Calm and Carry on! Guaranteeing consistency in the face of unbounded Byzantine faults
 
 \author{Martin Kleppmann}
 \orcid{0000-0001-7252-6958}
@@ -108,27 +112,55 @@ The source code, data, and/or other artifacts have been made available at \url{\
 
 \section{Introduction}
 
-Byzantine agreement assumes that at most $f$ out of $n$ processes are Byzantine-faulty.
-It is well established that without synchrony, Byzantine agreement is impossible if $n\leq3f$~\cite{Dwork:1988,Lamport:1982}.
-If more than $f$ processes are faulty, neither safety (agreement) nor liveness can be guaranteed.
+Peer-to-peer systems are of interest to many communities for a number of reasons: their lack of central control by a single party can make them more resilient, and less susceptible to censorship and denial-of-service attacks than centralised services.
+Examples of widely deployed peer-to-peer applications include file sharing~\cite{Pouwelse:2005}, scientific dataset sharing~\cite{Robinson:2018}, decentralised social networking~\cite{Tarr:2019}, cryptocurrencies~\cite{Nakamoto:2008}, and blockchains~\cite{Bano:2019}.
 
-In practice, the assumption that no more than $f$ processes are faulty is not always a realistic threat model.
-Byzantine failures are not necessarily independent: if an adversary can compromise one of the processes (e.g. due to a software vulnerability), it is likely that they can compromise a majority of processes since they are probably all running the same software. 
-Similarly, non-malicious software bugs are likely to affect many of the processes at once.
-This issue was acknowledged in the pBFT paper~\cite{Castro:1999}, which states that: ``{\dots}each node should run different implementations of the service code and operating system{\dots}''~--- an assumption that is unrealistic for any system with more than a few processes, and is seldom true in practice today.
-Moreover, in some systems, such as open peer-to-peer networks that anybody can join, an adversary can spawn a large number of processes, and thus create a majority of Byzantine-faulty processes (this is known as a Sybil attack~\cite{Douceur:2002}).
-In such systems, it is not appropriate to assume a bound on the number of Byzantine-faulty processes.
+Many peer-to-peer systems are essentially replicated database systems, albeit often with an application-specific data model.
+For example, in a cryptocurrency, the replicated state comprises the balance of each user's account; in BitTorrent, it is the files being shared.
+Some blockchains support more general data storage and smart contracts (essentially, deterministic stored procedures) that are executed as serialisable transactions by a consensus algorithm.
 
-This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty processes, is there a consistency model we \emph{can} achieve under this assumption?
+The central challenge faced by peer-to-peer systems is that peers cannot be trusted because anybody in the world can add peers to the network.
+Thus, we must assume that some subset of peers are malicious; such peers are also called \emph{Byzantine-faulty}, which means that they may deviate from the specified protocol in arbitrary ways.
+Moreover, a malicious party may perform a \emph{Sybil attack}~\cite{Douceur:2002}: launching a large number of peers, potentially causing the Byzantine-faulty peers to outnumber the honest ones.
 
-To answer this question, this paper first introduces two algorithms for \emph{Byzantine causal broadcast} (\S~\ref{sec:algorithm}), a mechanism for broadcasting (multicasting) messages to a group of processes (defined in \S~\ref{sec:background}).
-Unlike previous approaches, e.g.\ using vector clocks, our algorithms provide causal broadcast in the presence of any number of Byzantine-faulty processes.
-We prove the correctness of our algorithms (Appendix~\ref{sec:proof}) and demonstrate experimentally that our second algorithm has near-optimal network communication cost (\S~\ref{sec:evaluation}).
+Several countermeasures against Sybil attacks are used.
+Bitcoin introduced the concept of \emph{proof-of-work}~\cite{Nakamoto:2008}, in which a peer's voting power depends on the computational effort it expends.
+Unfortunately, proof-of-work is extraordinarily expensive: it has been estimated that as of 2020, Bitcoin alone represents almost half of worldwide datacenter electricity use~\cite{deVries:2020}.
+\emph{Permissioned} blockchains avoid this huge carbon footprint, but they have the downside of requiring central control over the peers that may join the system, undermining the principle of decentralisation.
+Other mechanisms, such as \emph{proof-of-stake}~\cite{Bano:2019}, are not yet widely deployed.
 
-We then combine Byzantine causal broadcast with existing work on \emph{Conflict-free Replicated Data Types} (CRDTs) to implement Byzantine fault-tolerant replicated storage  (\S~\ref{sec:byzantine-crdts}).
-For this storage, we propose \emph{Byzantine Eventual Consistency} (BEC), a novel consistency model that can be achieved in systems with arbitrarily many Byzantine-faulty processes.
-BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with any number of Byzantine-faulty processes.
-Essentially, BEC ensures that faulty replicas cannot permanently corrupt the state of correct replicas.
+The reason why permissioned blockchains must control membership is that they rely on Byzantine agreement, which assumes that at most $f$ out of $n$ nodes are Byzantine-faulty.
+It is well established that without synchrony, Byzantine agreement is impossible if $n<3f+1$~\cite{Dwork:1988,Lamport:1982}; if synchrony is assumed, the bound is lowered to $2f+1$~\cite{Abraham:2017}.
+If more than $f$ nodes are faulty, these algorithms can guarantee neither safety (agreement) nor liveness (progress).
+Thus, a Sybil attack that causes the bound of $f$ faulty nodes to be exceeded can result in the system's guarantees being violated; for example, in a cryptocurrency, they could allow the same coin to be spent multiple times (a \emph{double-spending} attack).
+
+This state of affairs raises the question: if Byzantine agreement cannot be achieved in the face of arbitrary numbers of Byzantine-faulty nodes, what properties \emph{can} be guaranteed in this case?
+
+A system that tolerates arbitrary numbers of Byzantine-faulty nodes is immune to Sybil attacks: even if the malicious peers outnumber the honest ones, it is still able to function correctly.
+This makes such systems of large practical importance: being immune to Sybil attacks means neither proof-of-work nor the central control of permissioned blockchains is required.
+
+In this paper we provide, for the first time, a precise characterisation of the types of problems that can and cannot be solved in the face of arbitrary numbers of Byzantine-faulty nodes.
+We provide this characterisation by viewing peer-to-peer networks through the lens of distributed database systems and their consistency models.
+Our analysis is based on using \emph{invariants}~-- predicates over database states~-- to express any properties, such as integrity constraints, that the application requires to be true.
+
+Our key result is a theorem stating that it is possible for a peer-to-peer database to be immune to Sybil attacks if and only if all of the possible transactions are \emph{\I-confluent} (invariant confluent) with respect to all of the application's invariants on the database.
+\I-confluence, defined in Section TODO, was originally introduced for non-Byzantine systems~\cite{Bailis:2014}, and our result shows that it is also applicable in a Byzantine context.
+Our result does not solve the problem of Bitcoin electricity consumption, because (as we show later) a cryptocurrency is not \I-confluent.
+However, there is a wide range of applications that \emph{are} \I-confluent, and which can therefore be implemented in a permissionless peer-to-peer system without resorting to proof-of-work.
+Our work shows how to do this.
+
+Our contributions in this paper are as follows:
+\begin{enumerate}
+    \item We define a consistency model for replicated databases, called \emph{Byzantine eventual consistency} (BEC), which can be achieved in systems with arbitrary numbers of Byzantine-faulty nodes.
+    \item We introduce replication algorithms that ensure BEC, and prove their correctness without bounding the number of Byzantine faults.
+    Our approach first defines \emph{Byzantine causal broadcast}, a mechanism for reliably multicasting messages to a group of nodes, and then uses it for BEC replication.
+    \item We evaluate the performance of a prototype implementation of our algorithms.
+    We demonstrate that our optimised algorithm incurs only a small network communication overhead, making it viable for use in practical systems.
+    \item We prove that \I-confluence is a necessary and sufficient condition for the existence of a BEC replication algorithm, and we use this result to determine which applications can be immune to Sybil attacks.
+\end{enumerate}
+
+% BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with any number of Byzantine-faulty processes.
+% Essentially, BEC ensures that faulty replicas cannot permanently corrupt the state of correct replicas.
 
 \section{Background}\label{sec:background}
 
@@ -241,6 +273,7 @@ This assumption is necessary because if two correct processes can only communica
 
 % As is standard in Byzantine systems, we can only reason about the behaviour of correct processes, since we make no assumptions about the behaviour or internal state of faulty processes.
 
+% Full replication (could be extended to partial replication/sharding though)
 
 \section{Byzantine Causal Broadcast}\label{sec:algorithm}
 
@@ -411,7 +444,7 @@ After reconciliation, both processes have delivered the same set of messages.
 \subsection{Reducing the number of round trips}\label{sec:algorithm2}
 
 A downside of Algorithm~\ref{fig:algorithm} is that the number of round trips can be up to the length of the longest path in the predecessor graph, making it slow when performing reconciliation over a high-latency network.
-We now show how to reduce the number of round-trips.
+We now show how to reduce the number of round-trips using bloom filters~\cite{Bloom:1970} and a small amount of additional state.
 
 Note that Algorithm~\ref{fig:algorithm} does not store any information about the outcome of the last reconciliation with a particular process; if two processes periodically reconcile their states, they need to discover each other's state from scratch on every protocol run.
 As per \S~\ref{sec:system-model} we assume that communication between processes is authenticated, and thus a process knows the identity of the other process it is communicating with.
@@ -453,6 +486,9 @@ This function returns the empty set if this is the first reconciliation with $q$
 In the example of Figure~\ref{fig:example-dags}, the previous reconciliation heads might be $\{H(B)\}$.
 
 In lines~\ref{line:msg-since-begin}--\ref{line:msg-since-end} we find all of the delivered messages that were added to $\mathcal{M}$ since this last reconciliation (i.e.\ all messages that are not among the last reconciliation's heads or their predecessors), and construct a Bloom filter~\cite{Bloom:1970} containing those messages.
+A bloom filter is a space-efficient data structure for testing set membership.
+We assume $\textsc{MakeBloomFilter}(S)$ creates a bloom filter from set $S$ and $\textsc{BloomMember}(F,s)$ tests if the element $s$ is a member of the bloom filter $F$.
+\textsc{BloomMember} may return false positives and the false positive rate is a function of the number of elements, the size of the bloom filter and the number of hashing functions used~\cite{Bloom:1970,Bose:2008,Christensen:2010}.
 In the example of Figure~\ref{fig:example-dags}, $p$'s Bloom filter would contain $\{C, D, E, J, K, L, M\}$, while $q$'s filter contains $\{F, G, J, K\}$.
 We send this Bloom filter to the other process, along with the heads (lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
 
@@ -502,6 +538,8 @@ This does not affect the correctness of the algorithm.
   \caption{left: number of round trips until reconciliation is complete; right: network bandwidth used to reconcile four processes once per second (lower is better).}
   \label{fig:evaluation}
 \end{figure*}
+
+% TODO: rather than msgs/sec on x axis, have new msgs/reconciliation?
 
 \subsection{Evaluation}\label{sec:evaluation}
 
@@ -607,17 +645,16 @@ Since we assume that the hash function is collision-free, the (timestamp, hash) 
 
 \section{Related Work}\label{sec:relwork}
 
-% TODO: Read and cite this new paper which look very related
-% http://www.vldb.org/pvldb/vol13/p2590-linde.pdf
-
 Byzantine agreement has been the subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
 To tolerate $f$ faults, Byzantine agreement algorithms typically require $3f+1$ processes~\cite{Castro:1999,Kotla:2007,Bessani:2014}, and some even require $5f+1$ processes~\cite{Abd:2005,Martin:2006}.
 Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and uses $2u+r+1$ processes.
+Byzantine quorum systems~\cite{Malkhi:1998} generalise from a threshold $f$ of failures to a set of possible failures.
 % Most algorithms also require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
 Zeno~\cite{Singh:2009} makes progress with just $f+1$ processes, but safety depends on less than $\frac{1}{3}$ of processes being Byzantine-faulty.
-Previous work on Byzantine fault tolerant CRDTs~\cite{Chai:2014,Shoker:2017,Zhao:2016}, Secure Causal Atomic Broadcast~\cite{Cachin:2001cj,Duan:2017} and Byzantine Lattice Agreement~\cite{DiLuna:2020} also assumes $3f+1$ processes.
+Previous work on Byzantine fault tolerant CRDTs~\cite{Chai:2014,Shoker:2017,Zhao:2016}, Secure Reliable Multicast~\cite{Malki:1996,Malkhi:2000}, Secure Causal Atomic Broadcast~\cite{Cachin:2001cj,Duan:2017} and Byzantine Lattice Agreement~\cite{DiLuna:2020} also assumes $3f+1$ processes.
 
 In SPORC~\cite{Feldman:2010wl}, BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again, so these systems do not satisfy the \emph{eventual update} property of BEC.
+Drabkin et al.~\cite{Drabkin:2005} present an algorithm for Byzantine reliable broadcast in the context of wireless networks, however this is insufficient to provide causal ordering.
 Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadcast while tolerating arbitrary numbers of faulty processes.
 OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot uses a more complex algorithm that is not precisely specified, involving both version vectors and hash chains.
 Depot's consistency model (fork-join-causal) is considerably more complicated than BEC, and it is unclear which is more useful in practice.
@@ -633,12 +670,26 @@ Hash chaining is widely used: in blockchains~\cite{Bano:2019}, Git commit histor
 Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
 Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs, but do not present efficient reconciliation algorithms.
 
+% Recent work by van der Linde et al. http://www.vldb.org/pvldb/vol13/p2590-linde.pdf also considers the problem of causally consistent replication in the face of Byzantine faults, taking a very different approach to ours: detecting cryptographic proof of faulty behaviour, and banning nodes found to be misbehaving. The fault detection relies on a trusted central server, and some of their algorithms rely on clock synchronisation and trusted hardware such as SGX. By contrast, we do not require any trusted components in our system (except perhaps for the PKI). 
+
+% Searching for cryptographic proof of a replica misbehaving, and banning such a node from the system if such behaviour is detected. Relies on a trusted central server that stores a hash of the most recent message sent by each node. Does not ensure convergence if the server colludes with malicious replicas. A malicious server can stop other replicas’ misbehaviour being detected. (Section “eventual sibling detection”)
+
+% I’m not sure that banning malicious nodes is an effective approach. By the time faulty behaviour is detected, it’s already too late, and the damage has been done. Some kind of rollback mechanism will be required to recover from this situation, but the paper doesn’t really discuss it.
+
+% This work places great emphasis on whether replicas are correctly reporting the causal dependencies of each operation; for our purposes this does not matter, since missing dependencies do no harm.
+
+% Look into related work from Albert's paper: secure broadcast [29, 50, 59] and preventing Eclipse attacks [80] (malicious nodes attempting to prevent communication between honest nodes)
+% [29] V. Drabkin, R. Friedman, and M. Segal. Efficient Byzantine broadcast in wireless ad-hoc networks. DSN’05 http://www.cs.technion.ac.il/users/wwwb/cgi-bin/tr-get.cgi/2006/CS/CS-2006-03.pdf
+% [50] H. C. Li, A. Clement, E. L. Wong, J. Napper, I. Roy, L. Alvisi, and M. Dahlin. Bar gossip. OSDI 2006 https://static.usenix.org/event/osdi06/tech/full_papers/li/li.pdf
+% [59] D. Malki and M. Reiter. A high-throughput secure reliable multicast protocol. 9th IEEE Workshop on Computer Security Foundations, CSFW ’96 https://users.ece.cmu.edu/~reiter/papers/1996/CSFW.pdf
+
+
 % TODO compare to Causal+ (convergent causal) consistency
 % https://www.cs.cmu.edu/~dga/papers/cops-sosp2011.pdf
 % https://people.eecs.berkeley.edu/~alig/papers/bolt-on-causal-consistency.pdf
 % http://www.vukolic.com/consistency-survey.pdf
+% S. Almeida, J. Leitão, and L. Rodrigues. Chainreaction: a causal+ consistent datastore based on chain replication. EuroSys 2013 http://groups.ist.utl.pt/~meic-padi.daemon/labs/presentations/X5-eurosys13-chainreaction-chain-replication.pdf
 
-% Albert van der Linde et al. on weak consistency for insecure settings http://www.vldb.org/pvldb/vol13/p2590-linde.pdf
 
 % Tseng et al.~\cite{Tseng:2019jb} prove that Byzantine causal memory can only be done with $3f+1$ processes?!
 
@@ -659,12 +710,15 @@ Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs,
 % Comparison to irmin
 % https://mirage.github.io/irmin/irmin/Irmin/index.html#syncing-with-a-remote
 % https://github.com/mirage/irmin/blob/master/src/irmin/sync_ext.ml#L86-L123
+% Send paper to Irmin authors?
 
 % Comparision to byzantine quorums
 % http://www.cs.cornell.edu/courses/cs5414/2017fa/papers/bquorum-dc.pdf
 
 % Comparision to byz chain replication
 % https://link.springer.com/chapter/10.1007/978-3-642-35476-2_24
+
+
 
 \section{Conclusions}
 
