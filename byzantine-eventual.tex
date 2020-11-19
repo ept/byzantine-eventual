@@ -76,10 +76,10 @@
 %\keywords{replication, Byzantine fault tolerance, eventual consistency, CRDTs, broadcast protocols}
 
 \begin{abstract}
-    Byzantine agreement algorithms guarantee consistency and liveness on the condition that a bounded number of processes (typically $1/3$) are faulty; they provide no guarantees if that bound is exceeded.
+    Byzantine agreement algorithms guarantee consistency and liveness on the condition that a bounded number of replicas (typically $1/3$) are faulty; they provide no guarantees if that bound is exceeded.
     However, if more faults occur, we can still guarantee weaker consistency models. 
     In this paper, we define one such model, which we call \emph{Byzantine Eventual Consistency} (BEC).
-    It builds upon a \emph{Byzantine Causal Broadcast} protocol; we introduce algorithms that implement this protocol, even in a system with arbitrarily many Byzantine-faulty processes, and we prove their correctness.
+    It builds upon a \emph{Byzantine Causal Broadcast} protocol; we introduce algorithms that implement this protocol, even in a system with arbitrarily many Byzantine-faulty replicas, and we prove their correctness.
     We show that the performance of our final algorithm is near-optimal in terms of network bandwidth and round-trips.
 \end{abstract}
 \maketitle
@@ -144,7 +144,7 @@ We provide this characterisation by viewing peer-to-peer networks through the le
 Our analysis is based on using \emph{invariants}~-- predicates over database states~-- to express any properties, such as integrity constraints, that the application requires to be true.
 
 Our key result is a theorem stating that it is possible for a peer-to-peer database to be immune to Sybil attacks if and only if all of the possible transactions are \emph{\I-confluent} (invariant confluent) with respect to all of the application's invariants on the database.
-\I-confluence, defined in Section TODO, was originally introduced for non-Byzantine systems~\cite{Bailis:2014}, and our result shows that it is also applicable in a Byzantine context.
+\I-confluence, defined in Section~\ref{sec:confluence}, was originally introduced for non-Byzantine systems~\cite{Bailis:2014}, and our result shows that it is also applicable in a Byzantine context.
 Our result does not solve the problem of Bitcoin electricity consumption, because (as we show later) a cryptocurrency is not \I-confluent.
 However, there is a wide range of applications that \emph{are} \I-confluent, and which can therefore be implemented in a permissionless peer-to-peer system without resorting to proof-of-work.
 Our work shows how to do this.
@@ -159,24 +159,85 @@ Our contributions in this paper are as follows:
     \item We prove that \I-confluence is a necessary and sufficient condition for the existence of a BEC replication algorithm, and we use this result to determine which applications can be immune to Sybil attacks.
 \end{enumerate}
 
-% BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with any number of Byzantine-faulty processes.
+\section{Definitions}
+
+NOTE: Martin is currently editing this section.
+
+% BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with any number of Byzantine-faulty replicas.
 % Essentially, BEC ensures that faulty replicas cannot permanently corrupt the state of correct replicas.
 
-\section{Background}\label{sec:background}
+% TODO: move this before the "naive broadcast algorithms" section, so that terms like "faulty" are defined?
+\subsection{System model}\label{sec:system-model}
+
+Our system consists of any number of replicas, each of which is either \emph{correct} or \emph{faulty}, but one replica does not know whether another replica is faulty.
+A correct replica follows the specified protocol, whereas a faulty replica may deviate from the protocol in arbitrary ways (i.e.\ it is Byzantine-faulty).
+We model this by assuming a malicious adversary who controls the behaviour of all faulty replicas.
+We allow any number of replicas to be faulty.
+We treat all replicas as equal, making no distinction e.g.\ between clients and servers.
+
+We assume that each replica has a distinct private key that can be used for digital signatures, and that the corresponding public key is known to all replicas.
+We assume that no replica knows the private key of another replica, and thus signatures cannot be forged.
+
+Replicas communicate by sending messages over pairwise (bidirectional, unicast) network links.
+Not all pairs of replicas are necessarily connected with a network link.
+We assume that all messages sent over these links are signed by the sender, and the recipient ignores messages with invalid signatures.
+Thus, even if the adversary can tamper with network traffic, it can only cause message loss but not impersonate a correct replica.
+We assume fair-loss links~\cite{Cachin:2011wt}: that is, if a message is repeatedly retransmitted, it will eventually be received.
+
+We assume an asynchronous system with unbounded message delay and arbitrary differences in the speed of different replicas.
+For the sake of eventual delivery, we must assume that in the graph of replicas and network links, the correct replicas form a single connected component.
+This assumption is necessary because if two correct replicas can only communicate via faulty replicas, then no algorithm can guarantee eventual delivery, as the adversary can block communication between the correct replicas.
+
+% State the assumption of a collision-free hash function as part of the system model?
+
+% As is standard in Byzantine systems, we can only reason about the behaviour of correct replicas, since we make no assumptions about the behaviour or internal state of faulty replicas.
+
+% Full replication (could be extended to partial replication/sharding though)
+
+\subsection{Strong Eventual Consistency and CRDTs}
+
+Eventual consistency is usually defined as: ``If no further updates are made, then eventually all replicas will be in the same state~\cite{Vogels:2009ca}.''
+This is a very weak model: it does not specify when the consistent state will be reached, and the premise ``if no further updates are made'' may never be true in a system in which updates happen continuously.
+To strengthen this model, Shapiro et al.~\cite{Shapiro:2011} introduce \emph{strong eventual consistency} (SEC), which requires that:
+
+\begin{description}
+\item[Eventual update:] If an update is applied by a correct replica, then all correct replicas will eventually apply that update.
+\item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state (even if the updates were applied in a different order).
+\end{description}
+
+Read operations can be performed on any replica at any time, and they return that replica's current state at that point in time.
+
+Strong eventual consistency (SEC) is defined in a non-Byzantine system model.
+Replicated storage systems with SEC can be implemented using \emph{Conflict-free Replicated Data Types} (\emph{CRDTs})~\cite{Shapiro:2011}.
+These are data structures that can be concurrently modified on multiple replicas without any locking or other synchronous coordination, even while offline.
+Whenever a replica updates its copy of the shared data, operation-based CRDTs capture this update as an \emph{operation}, encode it as a message, and broadcast it to the other replicas.
+
+CRDTs can replicate data in generic data models such as key-value stores~\cite{Akkoorath2016Cure,Zawirski2015SwiftCloud} and relational databases, as well as various other datatypes: there are CRDT-based multi-user collaborative text editors~\cite{Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many other applications.
+
+Operation-based CRDTs typically use causal broadcast to disseminate operations to all replicas~\cite{Gomes:2017gy,Shapiro:2011}.
+The CRDT is designed such that concurrent (causally unrelated) operations are commutative, i.e.\ they can be applied in any order without affecting the final state.
+For space reasons we elide a detailed discussion of how CRDTs achieve this commutativity for different types of data structures, and we refer the interested reader to extensive discussions of this topic in the CRDT literature~\cite{Shapiro:2011wy,Weiss:2009ht}.
+It has been formally proved that this approach ensures the SEC convergence property~\cite{Gomes:2017gy}: for a given set of operations, all possible permutations allowed by causal broadcast result in the same state.
+
+\subsection{Invariant confluence}\label{sec:confluence}
+
+TODO
+
+\section{Broadcast algorithms}\label{sec:broadcast}
 
 Algorithms for Byzantine agreement (or consensus) are often used to create an append-only log of values such as a blockchain~\cite{Bano:2019}, or, equivalently, a \emph{total order broadcast} protocol~\cite{Cachin:2011wt,Defago:2004ji}.
-A total order broadcast (a.k.a.\ \emph{atomic broadcast}) protocol allows messages to be sent to a group of processes.
+A total order broadcast (a.k.a.\ \emph{atomic broadcast}) protocol allows messages to be sent to a group of replicas.
 It is defined in terms of two primitives, \emph{broadcast} and \emph{deliver}, and must satisfy the following properties:
 
 \begin{description}
-\item[Validity:] If a correct process delivers a message $m$ with sender $s$, then $m$ was broadcast by $s$.
-\item[Non-duplication:] A correct process does not deliver the same message more than once.
-\item[Self-delivery:] If a correct process $p$ broadcasts a message $m$, then $p$ eventually delivers $m$.
-\item[Eventual delivery:] If a correct process delivers a message $m$, then all correct processes will eventually deliver $m$.
-\item[Total order:] If a correct process delivers message $m_1$ before delivering message $m_2$, then all correct processes must deliver $m_1$ before $m_2$.
+\item[Validity:] If a correct replica delivers a message $m$ with sender $s$, then $m$ was broadcast by $s$.
+\item[Non-duplication:] A correct replica does not deliver the same message more than once.
+\item[Self-delivery:] If a correct replica $p$ broadcasts a message $m$, then $p$ eventually delivers $m$.
+\item[Eventual delivery:] If a correct replica delivers a message $m$, then all correct replicas will eventually deliver $m$.
+\item[Total order:] If a correct replica delivers message $m_1$ before delivering message $m_2$, then all correct replicas must deliver $m_1$ before $m_2$.
 \end{description}
 
-Byzantine agreement algorithms can ensure these properties assuming that no more than $f$ out of $n$ processes are faulty (see \S~\ref{sec:relwork}).
+Byzantine agreement algorithms can ensure these properties assuming that no more than $f$ out of $n$ replicas are faulty (see \S~\ref{sec:relwork}).
 To ensure eventual delivery we must also assume partial synchrony~\cite{Dwork:1988}.
 The \emph{state machine replication} approach~\cite{Schneider:1990} can be used to implement strongly consistent (linearizable) replicated storage on top of total order broadcast.
 %State machine replication treats every replica as a deterministic state machine, where the inputs are commands.
@@ -186,7 +247,7 @@ The \emph{state machine replication} approach~\cite{Schneider:1990} can be used 
 The total order property is replaced with a weaker one:
 
 \begin{description}
-\item[Causal order:] If a correct process broadcasts or delivers $m_1$ before broadcasting message $m_2$, then all correct processes must deliver $m_1$ before delivering $m_2$.
+\item[Causal order:] If a correct replica broadcasts or delivers $m_1$ before broadcasting message $m_2$, then all correct replicas must deliver $m_1$ before delivering $m_2$.
 \end{description}
 
 This imposes a partial order on messages: $m_1$ must be delivered before $m_2$ if $m_2$ has a causal dependency on $m_1$, but concurrently sent messages can be delivered in any order.
@@ -195,7 +256,7 @@ This imposes a partial order on messages: $m_1$ must be delivered before $m_2$ i
     \centering
     \input{figs/trivial1.tikz}
     \captionsetup{width=.95\linewidth}
-    \caption{Byzantine-faulty process $q$ sends conflicting messages to correct processes $p$ and $r$.
+    \caption{Byzantine-faulty replica $q$ sends conflicting messages to correct replicas $p$ and $r$.
     The sets $\mathcal{M}_p$ and ${M}_r$ do not converge.}
     \label{fig:trivial1}
 \end{figure}
@@ -204,34 +265,34 @@ This imposes a partial order on messages: $m_1$ must be delivered before $m_2$ i
     \centering
     \input{figs/trivial2.tikz}
     \captionsetup{width=.95\linewidth}
-    \caption{As correct processes $p$ and $r$ reconcile their sets of messages, they converge to the same set $\mathcal{M}_p' = \mathcal{M}_r' = \{A,B\}$.}
+    \caption{As correct replicas $p$ and $r$ reconcile their sets of messages, they converge to the same set $\mathcal{M}_p' = \mathcal{M}_r' = \{A,B\}$.}
     \label{fig:trivial2}
 \end{figure}
 
 \subsection{Na\"{\i}ve broadcast algorithms}
 
-The simplest broadcast algorithm is as follows: every time a process wants to broadcast a message, it delivers that message to itself, and also sends that message to each other process via a pairwise link, re-transmitting until it is acknowledged.
-However, this algorithm does not provide the \emph{eventual delivery} property in the face of Byzantine-faulty processes, as shown in Figure~\ref{fig:trivial1}: a faulty process $q$ may send two different messages $A$ and $B$ to correct processes $p$ and $r$, respectively; then $p$ never delivers $B$ and $r$ never delivers $A$.
+The simplest broadcast algorithm is as follows: every time a replica wants to broadcast a message, it delivers that message to itself, and also sends that message to each other replica via a pairwise link, re-transmitting until it is acknowledged.
+However, this algorithm does not provide the \emph{eventual delivery} property in the face of Byzantine-faulty replicas, as shown in Figure~\ref{fig:trivial1}: a faulty replica $q$ may send two different messages $A$ and $B$ to correct replicas $p$ and $r$, respectively; then $p$ never delivers $B$ and $r$ never delivers $A$.
 
-To address this issue, processes $p$ and $r$ must communicate with each other (either directly, or indirectly via other correct processes).
-Let $\mathcal{M}_p$ and $\mathcal{M}_r$ be the set of messages delivered by processes $p$ and $r$, respectively.
-Then, as shown in Figure~\ref{fig:trivial2}, $p$ can send its entire set $\mathcal{M}_p$ to $r$, and $r$ can send $\mathcal{M}_r$ to $p$, so that both processes can compute $\mathcal{M}_p \cup \mathcal{M}_r$, and deliver any new messages.
-Pairs of processes can thus periodically \emph{reconcile} their sets of delivered messages.
+To address this issue, replicas $p$ and $r$ must communicate with each other (either directly, or indirectly via other correct replicas).
+Let $\mathcal{M}_p$ and $\mathcal{M}_r$ be the set of messages delivered by replicas $p$ and $r$, respectively.
+Then, as shown in Figure~\ref{fig:trivial2}, $p$ can send its entire set $\mathcal{M}_p$ to $r$, and $r$ can send $\mathcal{M}_r$ to $p$, so that both replicas can compute $\mathcal{M}_p \cup \mathcal{M}_r$, and deliver any new messages.
+Pairs of replicas can thus periodically \emph{reconcile} their sets of delivered messages.
 
 Adding this reconciliation process to the broadcast protocol ensures the first four properties of causal broadcast.
 Additional mechanisms are required to ensure the fifth property, \emph{causal order}.
-However, this algorithm is very inefficient: when processes periodically reconcile their state, we can expect that at the start of each round of reconciliation their sets of messages already have many elements in common.
+However, this algorithm is very inefficient: when replicas periodically reconcile their state, we can expect that at the start of each round of reconciliation their sets of messages already have many elements in common.
 Sending the entire set of messages to each other thus implies transmitting a large amount of data unnecessarily.
 
-An efficient reconciliation algorithm should determine which messages have already been delivered by both processes, and transmit only those messages that are unknown to the other process.
-For example, process $p$ should only send $\mathcal{M}_p \setminus \mathcal{M}_r$ to process $r$, and process $r$ should only send $\mathcal{M}_r \setminus \mathcal{M}_p$ to process $p$.
+An efficient reconciliation algorithm should determine which messages have already been delivered by both replicas, and transmit only those messages that are unknown to the other replica.
+For example, replica $p$ should only send $\mathcal{M}_p \setminus \mathcal{M}_r$ to replica $r$, and replica $r$ should only send $\mathcal{M}_r \setminus \mathcal{M}_p$ to replica $p$.
 The algorithm should also complete in a small number of round-trips and minimise the size of messages sent.
-These goals rule out other na\"{\i}ve approaches too: for example, instead of sending all messages in $\mathcal{M}_p$, process $p$ could send the hash of each message in $\mathcal{M}_p$, which can be used by other processes to determine which messages they are missing; this is still inefficient, as the message size is $O(|\mathcal{M}_{p}|)$.
+These goals rule out other na\"{\i}ve approaches too: for example, instead of sending all messages in $\mathcal{M}_p$, replica $p$ could send the hash of each message in $\mathcal{M}_p$, which can be used by other replicas to determine which messages they are missing; this is still inefficient, as the message size is $O(|\mathcal{M}_{p}|)$.
 
 \begin{figure*}
     \centering
     \input{figs/vectorclocks.tikz}
-    \caption{Processes $p$ and $r$ believe they are in the same state because their vector timestamps are the same, when in fact their sets of messages are inconsistent due to $q$'s faulty behaviour.}
+    \caption{Replicas $p$ and $r$ believe they are in the same state because their vector timestamps are the same, when in fact their sets of messages are inconsistent due to $q$'s faulty behaviour.}
     \label{fig:vectorclocks}
 \end{figure*}
 
@@ -239,51 +300,24 @@ These goals rule out other na\"{\i}ve approaches too: for example, instead of se
 
 Non-Byzantine causal broadcast algorithms often rely on \emph{vector clocks} to determine which messages to send to each other, and how to order them~\cite{Birman:1991el,Schwarz:1994}.
 However, vector clocks are not suitable in a Byzantine setting.
-The problem is illustrated in Figure~\ref{fig:vectorclocks}, where faulty process $q$ generates two different messages, $A$ and $B$, with the same vector timestamp $(0, 1, 0)$.
+The problem is illustrated in Figure~\ref{fig:vectorclocks}, where faulty replica $q$ generates two different messages, $A$ and $B$, with the same vector timestamp $(0, 1, 0)$.
 
-In a system where processes correctly follow the protocol, the three components of the timestamp represent the number of distinct messages broadcast by $p$, $q$, and $r$ respectively.
+In a system where replicas correctly follow the protocol, the three components of the timestamp represent the number of distinct messages broadcast by $p$, $q$, and $r$ respectively.
 Thus, $p$ and $r$ should be able to reconcile their sets of messages by first sending each other their latest vector timestamps, which serve as a concise summary of the set of messages they have seen.
 However, in the example of Figure~\ref{fig:vectorclocks}, this approach fails due to $q$'s earlier faulty behaviour: $p$ and $r$ detect that their vector timestamps are equal, and thus incorrectly believe that they are in the same state, even though their sets of messages are different.
 
-Thus, vector clocks can be corrupted by a faulty process; a Byzantine-fault-tolerant causal broadcast algorithm must not be vulnerable to such corruption.
+Thus, vector clocks can be corrupted by a faulty replica; a Byzantine-fault-tolerant causal broadcast algorithm must not be vulnerable to such corruption.
 
-% TODO: move this before the "naive broadcast algorithms" section, so that terms like "faulty" are defined?
-\subsection{System model}\label{sec:system-model}
-
-Our system consists of any number of processes, each of which is either \emph{correct} or \emph{faulty}, but one process does not know whether another process is faulty.
-A correct process follows the specified protocol, whereas a faulty process may deviate from the protocol in arbitrary ways (i.e.\ it is Byzantine-faulty).
-We model this by assuming a malicious adversary who controls the behaviour of all faulty processes.
-We allow any number of processes to be faulty.
-We treat all processes as equal, making no distinction e.g.\ between clients and servers.
-
-We assume that each process has a distinct private key that can be used for digital signatures, and that the corresponding public key is known to all processes.
-We assume that no process knows the private key of another process, and thus signatures cannot be forged.
-
-Processes communicate by sending messages over pairwise (bidirectional, unicast) network links.
-Not all pairs of processes are necessarily connected with a network link.
-We assume that all messages sent over these links are signed by the sender, and the recipient ignores messages with invalid signatures.
-Thus, even if the adversary can tamper with network traffic, it can only cause message loss but not impersonate a correct process.
-We assume fair-loss links~\cite{Cachin:2011wt}: that is, if a message is repeatedly retransmitted, it will eventually be received.
-
-We assume an asynchronous system with unbounded message delay and arbitrary differences in the speed of different processes.
-For the sake of eventual delivery, we must assume that in the graph of processes and network links, the correct processes form a single connected component.
-This assumption is necessary because if two correct processes can only communicate via faulty processes, then no algorithm can guarantee eventual delivery, as the adversary can block communication between the correct processes.
-
-% State the assumption of a collision-free hash function as part of the system model?
-
-% As is standard in Byzantine systems, we can only reason about the behaviour of correct processes, since we make no assumptions about the behaviour or internal state of faulty processes.
-
-% Full replication (could be extended to partial replication/sharding though)
 
 \section{Byzantine Causal Broadcast}\label{sec:algorithm}
 
-We now present two causal broadcast algorithms that tolerate any number of Byzantine-faulty processes.
-At their core is a reconciliation algorithm that ensures two processes have delivered the same set of broadcast messages, in causal order.
-The reconciliation is efficient in the sense that when two correct processes communicate, they only exchange broadcast messages that the other process has not already delivered.
+We now present two causal broadcast algorithms that tolerate any number of Byzantine-faulty replicas.
+At their core is a reconciliation algorithm that ensures two replicas have delivered the same set of broadcast messages, in causal order.
+The reconciliation is efficient in the sense that when two correct replicas communicate, they only exchange broadcast messages that the other replica has not already delivered.
 
 \subsection{Definitions}
 
-Let $\mathcal{M}$ be the set of broadcast messages delivered by the current process.
+Let $\mathcal{M}$ be the set of broadcast messages delivered by the current replica.
 $\mathcal{M}$ is a set of triples $(v, \mathit{hs}, \mathit{sig})$, where $v$ is any value, $\mathit{sig}$ is a digital signature over $(v, \mathit{hs})$ using the sender's private key, and $\mathit{hs}$ is a set of hashes produced by a cryptographic hash function $H(\cdot)$, such as SHA-256.
 We assume that $H$ is collision-resistant, i.e.\ that it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$.
 
@@ -318,31 +352,31 @@ Let $\mathrm{heads}(\mathcal{M})$ denote the set of hashes of those messages in 
 
 \subsection{Algorithm for Byzantine Causal Broadcast}\label{sec:algorithm1}
 
-Define a \emph{connection} to be a logical grouping of a bidirectional sequence of related request/response messages between two processes (in practice, it can be implemented as a TCP connection).
+Define a \emph{connection} to be a logical grouping of a bidirectional sequence of related request/response messages between two replicas (in practice, it can be implemented as a TCP connection).
 Our reconciliation algorithm runs in the context of a connection.
 Connections have the same fair-loss assumption as individual message delivery: messages may be dropped, resulting in the connection eventually timing out, and the reconciliation process being cancelled.
-However, if two processes repeatedly try, eventually they will succeed in creating a connection of finite duration that is free from message loss.
+However, if two replicas repeatedly try, eventually they will succeed in creating a connection of finite duration that is free from message loss.
 
-When a correct process wishes to broadcast a message with value $v$, it executes lines~\ref{line:broadcast-begin}--\ref{line:broadcast-end} of Algorithm~\ref{fig:algorithm}: it constructs a message $m$ containing the current heads and a signature, sends $m$ via all connections, delivers $m$ to itself, and adds $m$ to the set of locally delivered messages $\mathcal{M}$.
-However, this is not sufficient to ensure eventual delivery, since some processes may be disconnected, and faulty nodes might not correctly follow this protocol.
+When a correct replica wishes to broadcast a message with value $v$, it executes lines~\ref{line:broadcast-begin}--\ref{line:broadcast-end} of Algorithm~\ref{fig:algorithm}: it constructs a message $m$ containing the current heads and a signature, sends $m$ via all connections, delivers $m$ to itself, and adds $m$ to the set of locally delivered messages $\mathcal{M}$.
+However, this is not sufficient to ensure eventual delivery, since some replicas may be disconnected, and faulty nodes might not correctly follow this protocol.
 
-To ensure eventual delivery, we assume that processes periodically attempt to reconnect to each other.
-When such a connection is established, the processes reconcile their sets of messages to discover any missing messages.
-If two processes are not able to connect directly, they can still exchange messages by periodically reconciling with one or more correct intermediary processes (as stated in \S~\ref{sec:system-model}, we assume that such intermediaries exist).
+To ensure eventual delivery, we assume that replicas periodically attempt to reconnect to each other.
+When such a connection is established, the replicas reconcile their sets of messages to discover any missing messages.
+If two replicas are not able to connect directly, they can still exchange messages by periodically reconciling with one or more correct intermediary replicas (as stated in \S~\ref{sec:system-model}, we assume that such intermediaries exist).
 
 \algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
 \begin{algorithm*}
     \begin{algorithmic}[1]
     \On{request to broadcast $v$}\label{line:broadcast-begin}
         \State $\mathit{hs} := \mathrm{heads}(\mathcal{M})$\label{line:broadcast-heads}
-        \State $\mathit{sig} := \text{signature over } (v, \mathit{hs}) \text{ using this process's private key}$
+        \State $\mathit{sig} := \text{signature over } (v, \mathit{hs}) \text{ using this replica's private key}$
         \State $m := (v, \mathit{hs}, \mathit{sig})$
         \State \textbf{send} $\langle\mathsf{msgs}: \{m\}\rangle$ via all active connections\label{line:eager-send}
         \State \textbf{deliver} $m$ to self\label{line:deliver-local}
         \State $\mathcal{M} := \mathcal{M} \cup \{m\}$\label{line:update-m-local}
     \EndOn\label{line:broadcast-end}
     \State
-    \On{connecting to another process} \label{line:connect-begin}
+    \On{connecting to another replica} \label{line:connect-begin}
         \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \label{line:init}\Comment{connection-local variables}
         \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{M}_\mathsf{conn})\rangle$ via current connection \label{line:send-heads}
     \EndOn \label{line:connect-end}
@@ -352,7 +386,7 @@ If two processes are not able to connect directly, they can still exchange messa
     \EndOn\label{line:recv-heads-end}
     \State
     \On{receiving $\langle\mathsf{msgs}: \mathit{new}\rangle$ via a connection} \label{line:recv-msgs}
-        \State $\mathit{recvd} := \mathit{recvd} \,\cup\, \{(v, \mathit{hs}, \mathit{sig}) \in \mathit{new} \mid \mathit{sig}\text{ is a valid process' signature over }(v, \mathit{hs}) \}$ \label{line:msgs-recvd}
+        \State $\mathit{recvd} := \mathit{recvd} \,\cup\, \{(v, \mathit{hs}, \mathit{sig}) \in \mathit{new} \mid \mathit{sig}\text{ is a valid replica's signature over }(v, \mathit{hs}) \}$ \label{line:msgs-recvd}
         \State $\mathit{unresolved} := \{h \mid \exists (v, \mathit{hs}, \mathit{sig}) \in \mathit{recvd}.\; h \in \mathit{hs} \;\wedge\; \nexists m \in (\mathcal{M}_\mathsf{conn} \cup \mathit{recvd}).\; H(m) = h\}$ \label{line:msgs-missing}
         \State \Call{HandleMissing}{$\mathit{unresolved}$} \label{line:msgs-handle-missing}
     \EndOn\label{line:recv-msgs-end}
@@ -410,53 +444,53 @@ If two processes are not able to connect directly, they can still exchange messa
 \end{figure}
 
 We illustrate the operation of the reconciliation algorithm using the example in Figure~\ref{fig:example-dags}; the requests/responses sent in the course of the execution are shown in Figure~\ref{fig:messages}.
-Initially, when a connection is established between two processes, they send each other their heads (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-heads}).
+Initially, when a connection is established between two replicas, they send each other their heads (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-heads}).
 In the example of Figure~\ref{fig:example-dags}, $p$ sends $\langle\mathsf{heads}: \{H(E),H(M)\}\rangle$ to $q$, while $q$ sends $\langle\mathsf{heads}: \{H(G),H(K)\}\rangle$ to $p$.
 
-Each process also initialises variables $\mathit{sent}$ and $\mathit{recvd}$ to contain the set of messages sent to/received from the other process within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a read-only copy of this process' set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
-A process may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{recvd}$, $\mathit{missing}$, and $\mathcal{M}_\mathsf{conn}$, while $\mathcal{M}$ is a global variable that is shared between all connections.
+Each replica also initialises variables $\mathit{sent}$ and $\mathit{recvd}$ to contain the set of messages sent to/received from the other replica within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a read-only copy of this replica's set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
+A replica may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{recvd}$, $\mathit{missing}$, and $\mathcal{M}_\mathsf{conn}$, while $\mathcal{M}$ is a global variable that is shared between all connections.
 $\mathcal{M}$ should be maintained in stable storage, while the other variables may be lost in case of a crash.
 
-On receiving the heads from the other process (line~\ref{line:recv-heads}), the recipient checks whether the recipient's $\mathcal{M}_\mathsf{conn}$ contains a matching message for each hash.
+On receiving the heads from the other replica (line~\ref{line:recv-heads}), the recipient checks whether the recipient's $\mathcal{M}_\mathsf{conn}$ contains a matching message for each hash.
 If any hashes are unknown, it replies with a $\mathsf{needs}$ request for the messages matching those hashes (lines~\ref{line:heads-missing} and \ref{line:send-missing}).
 In our running example, $p$ needs $H(G)$, while $q$ needs $H(E)$ and $H(M)$.
-A process responds to such a $\mathsf{needs}$ request by returning all the matching messages in a $\mathsf{msgs}$ response (lines~\ref{line:recv-needs}--\ref{line:end-needs}).
+A replica responds to such a $\mathsf{needs}$ request by returning all the matching messages in a $\mathsf{msgs}$ response (lines~\ref{line:recv-needs}--\ref{line:end-needs}).
 
-On receiving $\mathsf{msgs}$, we first discard any broadcast messages that are not correctly signed by a legitimate process in the system (line~\ref{line:msgs-recvd}).
+On receiving $\mathsf{msgs}$, we first discard any broadcast messages that are not correctly signed by a legitimate replica in the system (line~\ref{line:msgs-recvd}).
 We then inspect the hashes in each valid message received.
 If any predecessor hashes do not resolve to a known message in $\mathcal{M}_\mathsf{conn}$ or $\mathit{recvd}$, we send another $\mathsf{needs}$ request with those hashes (lines~\ref{line:msgs-missing}--\ref{line:msgs-handle-missing}).
-In successive rounds of this protocol, the processes work their way from the heads along the paths of predecessors, until they reach the common ancestors of both processes' heads.
+In successive rounds of this protocol, the replicas work their way from the heads along the paths of predecessors, until they reach the common ancestors of both replicas' heads.
 
 Eventually, when there are no unresolved hashes, we perform a topological sort of the graph of received messages to put them in causal order, deliver them to the application, update the global set $\mathcal{M}$ to reflect the messages we have delivered, and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
 We assume that the delivery of messages on line~\ref{line:deliver} and the update of $\mathcal{M}$ on line~\ref{line:update-m} occur atomically.
-Once a process completes reconciliation (line~\ref{line:finish}), it can conclude that its current set of delivered messages is a superset of the set of delivered messages on the other process at the start of reconciliation.
+Once a replica completes reconciliation (line~\ref{line:finish}), it can conclude that its current set of delivered messages is a superset of the set of delivered messages on the other replica at the start of reconciliation.
 
 When a message $m$ is broadcast, it is also sent as $\langle\mathsf{msgs}: \{m\}\rangle$ on line~\ref{line:eager-send}, and the recipient treats it the same as $\mathsf{msgs}$ received during reconciliation (lines~\ref{line:recv-msgs}--\ref{line:recv-msgs-end}).
 Sending messages in this way is not strictly necessary, as the periodic reconciliations will eventually deliver such messages, but broadcasting them eagerly can reduce latency.
-Moreover, when a recipient delivers messages, it may also choose to eagerly relay them to other processes it is connected to, without waiting for the next reconciliation (line~\ref{line:eager-relay}); this also reduces latency, but may result in a process redundantly receiving messages that it already has.
-The literature on gossip protocols examines in detail the question of when processes should forward messages they receive~\cite{Leitao:2009fi}, while considering trade-offs of delivery latency and bandwidth use; we leave a detailed discussion out of scope for this paper.
+Moreover, when a recipient delivers messages, it may also choose to eagerly relay them to other replicas it is connected to, without waiting for the next reconciliation (line~\ref{line:eager-relay}); this also reduces latency, but may result in a replica redundantly receiving messages that it already has.
+The literature on gossip protocols examines in detail the question of when replicas should forward messages they receive~\cite{Leitao:2009fi}, while considering trade-offs of delivery latency and bandwidth use; we leave a detailed discussion out of scope for this paper.
 
 We prove in Appendix~\ref{sec:proof} that this algorithm implements all five properties of causal broadcast.
-Even though Byzantine-faulty processes may send arbitrarily malformed messages, a correct node will not deliver messages without a complete predecessor graph.
+Even though Byzantine-faulty replicas may send arbitrarily malformed messages, a correct node will not deliver messages without a complete predecessor graph.
 Any messages delivered by one correct node will eventually reach every other correct node through reconciliations.
-After reconciliation, both processes have delivered the same set of messages.
+After reconciliation, both replicas have delivered the same set of messages.
 
 \subsection{Reducing the number of round trips}\label{sec:algorithm2}
 
 A downside of Algorithm~\ref{fig:algorithm} is that the number of round trips can be up to the length of the longest path in the predecessor graph, making it slow when performing reconciliation over a high-latency network.
 We now show how to reduce the number of round-trips using bloom filters~\cite{Bloom:1970} and a small amount of additional state.
 
-Note that Algorithm~\ref{fig:algorithm} does not store any information about the outcome of the last reconciliation with a particular process; if two processes periodically reconcile their states, they need to discover each other's state from scratch on every protocol run.
-As per \S~\ref{sec:system-model} we assume that communication between processes is authenticated, and thus a process knows the identity of the other process it is communicating with.
-We can therefore record the outcome of a protocol run with a particular process, and use that information in the next reconciliation with the same process.
-We do this by adding the following instruction after line~\ref{line:update-m} of Algorithm~\ref{fig:algorithm}, where $q$ is the identity of the current connection's remote process:
+Note that Algorithm~\ref{fig:algorithm} does not store any information about the outcome of the last reconciliation with a particular replica; if two replicas periodically reconcile their states, they need to discover each other's state from scratch on every protocol run.
+As per \S~\ref{sec:system-model} we assume that communication between replicas is authenticated, and thus a replica knows the identity of the other replica it is communicating with.
+We can therefore record the outcome of a protocol run with a particular replica, and use that information in the next reconciliation with the same replica.
+We do this by adding the following instruction after line~\ref{line:update-m} of Algorithm~\ref{fig:algorithm}, where $q$ is the identity of the current connection's remote replica:
 \[ \textsc{StoreHeads}(q, \mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})) \]
 which updates a key-value store in stable storage, associating the value $\mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})$ with the key $q$ (overwriting any previous value for that key if appropriate).
 We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``on connecting'' and ``on receiving heads'' functions of Algorithm~\ref{fig:algorithm}, while leaving the rest of Algorithm~\ref{fig:algorithm} unchanged.
 
 \begin{algorithm*}
     \begin{algorithmic}[1]
-    \On{connecting to process $q$}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}}
+    \On{connecting to replica $q$}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}}
         \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables}
         \State $\mathit{oldHeads} := \Call{LoadHeads}{q}$\label{line:load-heads}
         \State $\mathit{filter} := \textsc{MakeBloomFilter}(\Call{MessagesSince}{\mathit{oldHeads}})$\label{line:make-bloom}
@@ -481,7 +515,7 @@ We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``
     \caption{Optimising Algorithm~\ref{fig:algorithm} to reduce the number of round-trips.}\label{fig:algorithm2}
 \end{algorithm*}
 
-First, when process $p$ establishes a connection with process $q$, $p$ calls $\textsc{LoadHeads}(q)$ to load the heads from the previous reconciliation with $q$ from the key-value store (Algorithm~\ref{fig:algorithm2}, line~\ref{line:load-heads}).
+First, when replica $p$ establishes a connection with replica $q$, $p$ calls $\textsc{LoadHeads}(q)$ to load the heads from the previous reconciliation with $q$ from the key-value store (Algorithm~\ref{fig:algorithm2}, line~\ref{line:load-heads}).
 This function returns the empty set if this is the first reconciliation with $q$.
 In the example of Figure~\ref{fig:example-dags}, the previous reconciliation heads might be $\{H(B)\}$.
 
@@ -490,17 +524,17 @@ A bloom filter is a space-efficient data structure for testing set membership.
 We assume $\textsc{MakeBloomFilter}(S)$ creates a bloom filter from set $S$ and $\textsc{BloomMember}(F,s)$ tests if the element $s$ is a member of the bloom filter $F$.
 \textsc{BloomMember} may return false positives and the false positive rate is a function of the number of elements, the size of the bloom filter and the number of hashing functions used~\cite{Bloom:1970,Bose:2008,Christensen:2010}.
 In the example of Figure~\ref{fig:example-dags}, $p$'s Bloom filter would contain $\{C, D, E, J, K, L, M\}$, while $q$'s filter contains $\{F, G, J, K\}$.
-We send this Bloom filter to the other process, along with the heads (lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
+We send this Bloom filter to the other replica, along with the heads (lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
 
 On receiving the heads and Bloom filter, we identify any messages that were added since the last reconciliation that are \emph{not} present in the Bloom filter's membership check (line~\ref{line:bloom-member}).
 In the example, $q$ looks up $\{F, G, J, K\}$ in the Bloom filter received from $p$; \textsc{BloomMember} returns true for $J$ and $K$. For $F$ and $G$, \textsc{BloomMember} is likely to return false, but may return true.
 In this example, we assume that the Bloom membership check returns false for $F$ and true for $G$ (a false positive in the case of $G$).
 
-Any Bloom-negative messages are definitely unknown to the other process, so we send those in reply.
-Moreover, we also send any successors of Bloom-negative messages (line~\ref{line:bloom-succ}): since the set $\mathcal{M}$ for a correct process cannot contain messages whose predecessors are missing, we know that these messages must also be missing from the other process.
+Any Bloom-negative messages are definitely unknown to the other replica, so we send those in reply.
+Moreover, we also send any successors of Bloom-negative messages (line~\ref{line:bloom-succ}): since the set $\mathcal{M}$ for a correct replica cannot contain messages whose predecessors are missing, we know that these messages must also be missing from the other replica.
 In the example, $q$ sends $\langle\mathsf{msgs}: \{F, G\}\rangle$ to $p$, because $F$ is Bloom-negative and $G$ is a successor of $F$.
 
-Due to Bloom filter false positives, the set of messages in the reply on line~\ref{line:a2-heads-reply} may be incomplete, but it is likely to contain most of the messages that the other process is lacking.
+Due to Bloom filter false positives, the set of messages in the reply on line~\ref{line:a2-heads-reply} may be incomplete, but it is likely to contain most of the messages that the other replica is lacking.
 To fill in the remaining missing messages we revert back to Algorithm~\ref{fig:algorithm}, and perform round trips of $\mathsf{needs}$ requests and $\mathsf{msgs}$ responses until the received set of messages is complete.
 
 The size of the Bloom filter can be chosen dynamically based on the number of elements it contains.
@@ -508,34 +542,34 @@ Note that the Bloom filter reflects only messages that were added since the last
 Thus, if the reconciliations are frequent, they can employ a small Bloom filter size to minimise the cost of reconciliation.
 
 This optimised algorithm also tolerates Byzantine faults.
-For example, a faulty replica may send a correct replica an arbitrarily corrupted Bloom filter, but this only changes the set of messages in the reply from the correct process, and has no effect on $\mathcal{M}$ at the correct process.
+For example, a faulty replica may send a correct replica an arbitrarily corrupted Bloom filter, but this only changes the set of messages in the reply from the correct replica, and has no effect on $\mathcal{M}$ at the correct replica.
 We formally analyse the correctness of this algorithm in Appendix~\ref{sec:proof}.
 
 \subsection{Discussion}
 
 A potential issue with Algorithms~\ref{fig:algorithm} and~\ref{fig:algorithm2} is the unbounded growth of storage requirements, since the set $\mathcal{M}$ grows monotonically (much like most algorithms for Byzantine agreement, which produce an append-only log without considering how that log might be truncated).
-Since the set of processes in the system is known, we can truncate history as follows: once every process has delivered a message $m$ (i.e.\ $m$ is \emph{stable}~\cite{Birman:1991el}), the algorithm no longer needs to refer to any of the predecessors of $m$, and so all of those predecessors can be safely removed from $\mathcal{M}$ without affecting the algorithm.
-Stability can be determined by keeping track of the latest heads for each process, and propagating this information between processes.
+Since the set of replicas in the system is known, we can truncate history as follows: once every replica has delivered a message $m$ (i.e.\ $m$ is \emph{stable}~\cite{Birman:1991el}), the algorithm no longer needs to refer to any of the predecessors of $m$, and so all of those predecessors can be safely removed from $\mathcal{M}$ without affecting the algorithm.
+Stability can be determined by keeping track of the latest heads for each replica, and propagating this information between replicas.
 
-When one of the communicating processes is Byzantine-faulty, the reconciliation algorithm may never terminate, e.g.\ because the faulty process may send hashes that do not resolve to any message, and so the state $\mathit{missing} = \{\}$ is never reached.
-However, in a non-terminating protocol run no messages are delivered and $\mathcal{M}$ is never updated, and so the actions of the faulty process have no effect on the state of the correct process.
-Reconciliations with other processes are unaffected, since processes may perform multiple reconciliations concurrently.
+When one of the communicating replicas is Byzantine-faulty, the reconciliation algorithm may never terminate, e.g.\ because the faulty replica may send hashes that do not resolve to any message, and so the state $\mathit{missing} = \{\}$ is never reached.
+However, in a non-terminating protocol run no messages are delivered and $\mathcal{M}$ is never updated, and so the actions of the faulty replica have no effect on the state of the correct replica.
+Reconciliations with other replicas are unaffected, since replicas may perform multiple reconciliations concurrently.
 
-In a protocol run that terminates, the only possible protocol violations from a Byzantine-faulty process are to omit heads, or to extend the set $\mathcal{M}$ with well-formed messages (i.e.\ messages containing only hashes that resolve to other messages, signed with the private key of one of the processes in the system).
-Any omitted messages will eventually be received through reconciliations with other correct processes, and any added messages will be forwarded to other processes; either way, the eventual delivery property of causal broadcast is preserved.
+In a protocol run that terminates, the only possible protocol violations from a Byzantine-faulty replica are to omit heads, or to extend the set $\mathcal{M}$ with well-formed messages (i.e.\ messages containing only hashes that resolve to other messages, signed with the private key of one of the replicas in the system).
+Any omitted messages will eventually be received through reconciliations with other correct replicas, and any added messages will be forwarded to other replicas; either way, the eventual delivery property of causal broadcast is preserved.
 
-Arbitrary $\mathsf{needs}$ requests sent by a faulty process have no consequence, since they do not affect the state of the recipient.
-Thus, a faulty process cannot corrupt the state of a correct process in a way that would prevent it from later reconciling with another correct process.
+Arbitrary $\mathsf{needs}$ requests sent by a faulty replica have no consequence, since they do not affect the state of the recipient.
+Thus, a faulty replica cannot corrupt the state of a correct replica in a way that would prevent it from later reconciling with another correct replica.
 
 If message loss occurs during reconciliation, the connection times out and no messages are delivered.
 The next reconciliation attempt then starts afresh.
-Note also that one process in a connection can complete reconciliation while the other times out and aborts, due to one-sided message loss.
-Thus, when we load the heads from the previous reconciliation on line~\ref{line:load-heads} of Algorithm~\ref{fig:algorithm2}, the local and the remote process' $\mathit{oldHeads}$ may differ.
+Note also that one replica in a connection can complete reconciliation while the other times out and aborts, due to one-sided message loss.
+Thus, when we load the heads from the previous reconciliation on line~\ref{line:load-heads} of Algorithm~\ref{fig:algorithm2}, the local and the remote replica's $\mathit{oldHeads}$ may differ.
 This does not affect the correctness of the algorithm.
 
 \begin{figure*}
   \includegraphics[width=\textwidth,keepaspectratio=true]{figs/evaluation.pdf}
-  \caption{left: number of round trips until reconciliation is complete; right: network bandwidth used to reconcile four processes once per second (lower is better).}
+  \caption{left: number of round trips until reconciliation is complete; right: network bandwidth used to reconcile four replicas once per second (lower is better).}
   \label{fig:evaluation}
 \end{figure*}
 
@@ -544,9 +578,9 @@ This does not affect the correctness of the algorithm.
 \subsection{Evaluation}\label{sec:evaluation}
 
 To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2} we implemented both algorithms and measured their behaviour in a simulated network.
-In our experiments we use four processes, where every pair of processes reconciles their states once per second.
-Each process concurrently broadcasts new messages, and we vary the rate at which new messages are broadcast.
-To ensure we exercise the reconciliation algorithm, processes do not eagerly send messages (lines~\ref{line:eager-send} and~\ref{line:eager-relay} of Algorithm~\ref{fig:algorithm} are omitted), and we rely only on periodic reconciliation to exchange messages.
+In our experiments we use four replicas, where every pair of replicas reconciles their states once per second.
+Each replica concurrently broadcasts new messages, and we vary the rate at which new messages are broadcast.
+To ensure we exercise the reconciliation algorithm, replicas do not eagerly send messages (lines~\ref{line:eager-send} and~\ref{line:eager-relay} of Algorithm~\ref{fig:algorithm} are omitted), and we rely only on periodic reconciliation to exchange messages.
 % 6 pairwise reconciliations take place every second
 
 First, we measure the average number of round-trips required to complete one reconciliation (Figure~\ref{fig:evaluation} left).
@@ -574,37 +608,12 @@ We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future wor
 We now outline how Byzantine causal broadcast can be used to implement replicated storage and provide Byzantine Eventual Consistency (BEC).
 We begin by reviewing how Conflict-free Replicated Data Types (CRDTs) are used to implement Strong Eventual Consistency (SEC) in a non-Byzantine system model.
 
-\subsection{Strong Eventual Consistency and CRDTs}
-
-Eventual consistency is usually defined as: ``If no further updates are made, then eventually all replicas will be in the same state~\cite{Vogels:2009ca}.''
-This is a very weak model: it does not specify when the consistent state will be reached, and the premise ``if no further updates are made'' may never be true in a system in which updates happen continuously.
-To strengthen this model, Shapiro et al.~\cite{Shapiro:2011} introduce \emph{strong eventual consistency} (SEC), which requires that:
-
-\begin{description}
-\item[Eventual update:] If an update is applied by a correct replica, then all correct replicas will eventually apply that update.
-\item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state (even if the updates were applied in a different order).
-\end{description}
-
-Read operations can be performed on any replica at any time, and they return that replica's current state at that point in time.
-
-Strong eventual consistency (SEC) is defined in a non-Byzantine system model.
-Replicated storage systems with SEC can be implemented using \emph{Conflict-free Replicated Data Types} (\emph{CRDTs})~\cite{Shapiro:2011}.
-These are data structures that can be concurrently modified on multiple replicas without any locking or other synchronous coordination, even while offline.
-Whenever a replica updates its copy of the shared data, operation-based CRDTs capture this update as an \emph{operation}, encode it as a message, and broadcast it to the other replicas.
-
-CRDTs can replicate data in generic data models such as key-value stores~\cite{Akkoorath2016Cure,Zawirski2015SwiftCloud} and relational databases, as well as various other datatypes: there are CRDT-based multi-user collaborative text editors~\cite{Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many other applications.
-
-Operation-based CRDTs typically use causal broadcast to disseminate operations to all replicas~\cite{Gomes:2017gy,Shapiro:2011}.
-The CRDT is designed such that concurrent (causally unrelated) operations are commutative, i.e.\ they can be applied in any order without affecting the final state.
-For space reasons we elide a detailed discussion of how CRDTs achieve this commutativity for different types of data structures, and we refer the interested reader to extensive discussions of this topic in the CRDT literature~\cite{Shapiro:2011wy,Weiss:2009ht}.
-It has been formally proved that this approach ensures the SEC convergence property~\cite{Gomes:2017gy}: for a given set of operations, all possible permutations allowed by causal broadcast result in the same state.
-
 \subsection{Definition of Byzantine Eventual Consistency}
 
 We say a replicated storage system provides Byzantine Eventual Consistency (BEC) if it satisfies the following properties in the Byzantine system model of \S~\ref{sec:system-model}:
 
 \begin{description}
-\item[Validity:] If a correct replica applies an update that is labelled as originating from process $s$, then that update was generated by process $s$.
+\item[Validity:] If a correct replica applies an update that is labelled as originating from replica $s$, then that update was generated by replica $s$.
 \item[Non-duplication:] A correct replica does not apply the same update more than once.
 \item[Self-update:] If a correct replica generates an update, it applies that update to its own state.
 \item[Eventual update:] For any update applied by a correct replica, all correct replicas will eventually apply that update.
@@ -646,16 +655,16 @@ Since we assume that the hash function is collision-free, the (timestamp, hash) 
 \section{Related Work}\label{sec:relwork}
 
 Byzantine agreement has been the subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
-To tolerate $f$ faults, Byzantine agreement algorithms typically require $3f+1$ processes~\cite{Castro:1999,Kotla:2007,Bessani:2014}, and some even require $5f+1$ processes~\cite{Abd:2005,Martin:2006}.
-Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and uses $2u+r+1$ processes.
+To tolerate $f$ faults, Byzantine agreement algorithms typically require $3f+1$ nodes~\cite{Castro:1999,Kotla:2007,Bessani:2014}, and some even require $5f+1$ nodes~\cite{Abd:2005,Martin:2006}.
+Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and uses $2u+r+1$ nodes.
 Byzantine quorum systems~\cite{Malkhi:1998} generalise from a threshold $f$ of failures to a set of possible failures.
-% Most algorithms also require at least one round of communication with at least $2f+1$ processes, incurring both significant latency and limiting availability.
-Zeno~\cite{Singh:2009} makes progress with just $f+1$ processes, but safety depends on less than $\frac{1}{3}$ of processes being Byzantine-faulty.
-Previous work on Byzantine fault tolerant CRDTs~\cite{Chai:2014,Shoker:2017,Zhao:2016}, Secure Reliable Multicast~\cite{Malki:1996,Malkhi:2000}, Secure Causal Atomic Broadcast~\cite{Cachin:2001cj,Duan:2017} and Byzantine Lattice Agreement~\cite{DiLuna:2020} also assumes $3f+1$ processes.
+% Most algorithms also require at least one round of communication with at least $2f+1$ replicas, incurring both significant latency and limiting availability.
+Zeno~\cite{Singh:2009} makes progress with just $f+1$ nodes, but safety depends on less than $\frac{1}{3}$ of nodes being Byzantine-faulty.
+Previous work on Byzantine fault tolerant CRDTs~\cite{Chai:2014,Shoker:2017,Zhao:2016}, Secure Reliable Multicast~\cite{Malki:1996,Malkhi:2000}, Secure Causal Atomic Broadcast~\cite{Cachin:2001cj,Duan:2017} and Byzantine Lattice Agreement~\cite{DiLuna:2020} also assumes $3f+1$ nodes.
 
-In SPORC~\cite{Feldman:2010wl}, BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty process can partition the system, preventing some processes from ever synchronising again, so these systems do not satisfy the \emph{eventual update} property of BEC.
+In SPORC~\cite{Feldman:2010wl}, BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty replica can partition the system, preventing some replicas from ever synchronising again, so these systems do not satisfy the \emph{eventual update} property of BEC.
 Drabkin et al.~\cite{Drabkin:2005} present an algorithm for Byzantine reliable broadcast in the context of wireless networks, however this is insufficient to provide causal ordering.
-Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadcast while tolerating arbitrary numbers of faulty processes.
+Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadcast while tolerating arbitrary numbers of faulty replicas.
 OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot uses a more complex algorithm that is not precisely specified, involving both version vectors and hash chains.
 Depot's consistency model (fork-join-causal) is considerably more complicated than BEC, and it is unclear which is more useful in practice.
 
@@ -722,8 +731,8 @@ Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs,
 
 \section{Conclusions}
 
-Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty processes and are thus not suitable applications for Byzantine agreement.
-In this paper, we have defined Byzantine Eventual Consistency (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty processes in a system, and without making any synchrony assumptions.
+Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty replicas and are thus not suitable applications for Byzantine agreement.
+In this paper, we have defined Byzantine Eventual Consistency (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty replicas in a system, and without making any synchrony assumptions.
 We have proposed reconciliation algorithms that implement Byzantine causal broadcast, proved their correctness, and evaluated their performance.
 Our optimised algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it immediately applicable in practice.
 
@@ -734,7 +743,7 @@ For systems that currently require all nodes to be trusted, and hence can only d
 We hope that BEC will inspire further research to ensure the correctness of eventually consistent systems in the presence of arbitrary numbers of Byzantine faults.
 
 \begin{acks}
-Thank you to Srinivasan Keshav and Gavin Stark for feedback on a draft of this paper.
+Thank you to Alastair Beresford, Srinivasan Keshav and Gavin Stark for feedback on a draft of this paper.
 Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, the Isaac Newton Trust, and Nokia Bell Labs.
 TODO add Heidi's funding details.
 \end{acks}
@@ -745,39 +754,39 @@ TODO add Heidi's funding details.
 
 \section{Proof of correctness}\label{sec:proof}
 
-In this section, we show that Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} implement causal broadcast, as defined in \S~\ref{sec:background}, in the Byzantine system model of \S~\ref{sec:system-model}.
+In this section, we show that Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} implement causal broadcast, as defined in \S~\ref{sec:broadcast}, in the Byzantine system model of \S~\ref{sec:system-model}.
 Where a lemma does not specify which of the two algorithms it applies to, it holds for both.
 
 \begin{lemma}\label{lemma:easy-properties}
 Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} satisfy the \emph{validity}, \emph{non-duplication}, \emph{self-delivery}, and \emph{causal order} properties of causal broadcast.
 \end{lemma}
 \begin{proof}
-The \emph{validity} property holds because when a broadcast message is delivered, it was either sent by the local process (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver-local}), or it was received from another process (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver}).
-In the latter case, messages are in the set $\mathcal{M}$ only if they were broadcast, and we discard any messages that do not have a valid signature from a process in the system (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}).
-Thus, in either case, a correct process delivers a message only if it was broadcast by a process.
+The \emph{validity} property holds because when a broadcast message is delivered, it was either sent by the local replica (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver-local}), or it was received from another replica (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver}).
+In the latter case, messages are in the set $\mathcal{M}$ only if they were broadcast, and we discard any messages that do not have a valid signature from a replica in the system (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}).
+Thus, in either case, a correct replica delivers a message only if it was broadcast by a replica.
 
 The \emph{non-duplication} property holds because newly broadcast messages are assumed to be unique, and messages delivered during reconciliation are limited to those not already in $\mathcal{M}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver}).
-Since $\mathcal{M}$ is immediately updated to include all delivered messages, this ensures that no correct process delivers the same message more than once.
+Since $\mathcal{M}$ is immediately updated to include all delivered messages, this ensures that no correct replica delivers the same message more than once.
 
-The \emph{self-delivery} property holds trivially, because each time a correct process broadcasts a message, it immediately delivers that message to itself (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver-local}).
+The \emph{self-delivery} property holds trivially, because each time a correct replica broadcasts a message, it immediately delivers that message to itself (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver-local}).
 
-The \emph{causal order} property holds because when a correct process broadcasts a message, the predecessor hashes are computed such that every message previously broadcast or delivered by this process becomes a (direct or indirect) predecessor of the new message (Algorithm~\ref{fig:algorithm}, line \ref{line:broadcast-heads}).
-Any correct process delivers messages in topologically sorted order, i.e.\ any predecessors of $m$ are delivered before $m$ (Algorithm~\ref{fig:algorithm}, line \ref{line:deliver}).
+The \emph{causal order} property holds because when a correct replica broadcasts a message, the predecessor hashes are computed such that every message previously broadcast or delivered by this replica becomes a (direct or indirect) predecessor of the new message (Algorithm~\ref{fig:algorithm}, line \ref{line:broadcast-heads}).
+Any correct replica delivers messages in topologically sorted order, i.e.\ any predecessors of $m$ are delivered before $m$ (Algorithm~\ref{fig:algorithm}, line \ref{line:deliver}).
 The reconciliation algorithm delivers messages only once all hashes have been resolved (once all direct and indirect predecessor messages have been received), so we know that there are no missing predecessors.
-Thus, whenever a correct process broadcasts or delivers $m_1$ before broadcasting $m_2$, all correct processes deliver $m_1$ before delivering $m_2$.
+Thus, whenever a correct replica broadcasts or delivers $m_1$ before broadcasting $m_2$, all correct replicas deliver $m_1$ before delivering $m_2$.
 \end{proof}
 
 This leaves the \emph{eventual delivery} property, which is the focus of the remainder of this appendix.
-We consider two correct processes $p$ and $q$, with initial sets of messages $\mathcal{M}_p$ and $\mathcal{M}_q$ respectively at the start of the execution.
+We consider two correct replicas $p$ and $q$, with initial sets of messages $\mathcal{M}_p$ and $\mathcal{M}_q$ respectively at the start of the execution.
 Assume that in this run of the algorithm, $p$ and $q$ both complete the reconciliation by reaching line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}.
-Let $\mathit{recvd}_p$ be the contents of the variable $\mathit{recvd}$ at process $p$ when the reconciliation is complete, and likewise $\mathit{recvd}_q$ at process $q$.
-Further, let $\mathcal{M}'_p = \mathcal{M}_p \cup \mathit{recvd}_p$ and $\mathcal{M}'_q = \mathcal{M}_q \cup \mathit{recvd}_q$ be the final set of messages at both processes.
+Let $\mathit{recvd}_p$ be the contents of the variable $\mathit{recvd}$ at replica $p$ when the reconciliation is complete, and likewise $\mathit{recvd}_q$ at replica $q$.
+Further, let $\mathcal{M}'_p = \mathcal{M}_p \cup \mathit{recvd}_p$ and $\mathcal{M}'_q = \mathcal{M}_q \cup \mathit{recvd}_q$ be the final set of messages at both replicas.
 
 \begin{lemma}\label{lemma:no-p-missing}
-The set of messages $\mathcal{M}$ of a correct process $p$ grows monotonically.
+The set of messages $\mathcal{M}$ of a correct replica $p$ grows monotonically.
 \end{lemma}
 \begin{proof}
-The process $p$ only modifies $\mathcal{M}$ by generating new operations, which are added to $\mathcal{M}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:update-m-local}), or by unioning it with the set $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:update-m}).
+The replica $p$ only modifies $\mathcal{M}$ by generating new operations, which are added to $\mathcal{M}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:update-m-local}), or by unioning it with the set $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:update-m}).
 Thus, elements are only added to the set $\mathcal{M}$, and therefore $\mathcal{M}$ grows monotonically.
 \end{proof}
 
@@ -786,12 +795,12 @@ Let $m = (v, \mathit{hs}, \mathit{sig})$ and $m \in \mathcal{M}_p$.
 Then $\forall h \in \mathit{hs}.\; \exists m' \in \mathcal{M}_p.\; H(m') = h$.
 \end{lemma}
 \begin{proof}
-There are two ways $m$ can become a member of $\mathcal{M}_p$ for a correct process $p$:
+There are two ways $m$ can become a member of $\mathcal{M}_p$ for a correct replica $p$:
 \begin{description}
-    \item[Case] $m$ is broadcast by process $p$:\\
+    \item[Case] $m$ is broadcast by replica $p$:\\
     In this case, since $p$ is assumed to be correct, the hashes $\mathit{hs}$ are computed as $\mathit{hs} = \{H(m') \mid m' \in \mathcal{M} \wedge \mathrm{succ}^1(\mathcal{M}, m') = \{\}\,\}$ for some earlier state $\mathcal{M}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:broadcast-heads}).
     As $\mathcal{M}$ grows monotonically (Lemma~\ref{lemma:no-p-missing}), $\mathcal{M} \subseteq \mathcal{M}_p$, and thus we can deduce that $\forall h \in \mathit{hs}.\; \exists m' \in \mathcal{M}_p.\; H(m') = h$.
-    \item[Case] $m$ is received from another process (which might be faulty):\\
+    \item[Case] $m$ is received from another replica (which might be faulty):\\
     In this case, during the run of the protocol at which $p$ received $m$, we have $m \in \mathit{recvd}$ and $\mathit{missing} = \{\}$ at line~\ref{line:update-m} of Algorithm~\ref{fig:algorithm}.
     Let $\mathcal{M}$ be the set of messages at $p$ immediately before that execution of line~\ref{line:update-m}.
     From $\mathit{missing} = \{\}$ and line~\ref{line:msgs-missing} of Algorithm~\ref{fig:algorithm} we can deduce that $\forall h \in \mathit{hs}.\; \exists m' \in (\mathcal{M} \cup \mathit{recvd}).\; H(m') = h$.
@@ -817,14 +826,14 @@ $\mathcal{M}_q \subseteq \mathcal{M}'_p$ when executing Algorithm~\ref{fig:algor
 \begin{proof}
 We use proof by contradiction.\\
 Assume that $\exists m \in \mathcal{M}_q.\; m \notin  \mathcal{M}'_p$.\\
-Since $\mathit{recvd} \subseteq \mathcal{M}'_p$ and elements are only added to $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}) then $m \notin  \mathcal{M}'_p$ implies that $m \notin \mathit{recvd}$ on process $p$.\\
+Since $\mathit{recvd} \subseteq \mathcal{M}'_p$ and elements are only added to $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}) then $m \notin  \mathcal{M}'_p$ implies that $m \notin \mathit{recvd}$ on replica $p$.\\
 Since $m \in \mathcal{M}_q$ we have either $\mathrm{succ}^1(\mathcal{M}_q, m) = \{\}$ or $\mathrm{succ}^1(\mathcal{M}_q, m) \ne \{\}$, and we now consider each case in turn.
 \begin{description}
     \item[Case] $\mathrm{succ}^1(\mathcal{M}_q, m) = \{\}$:\\
     In this case, $H(m) \in \mathrm{heads}(\mathcal{M}_q)$, and so the first $\mathsf{heads}$ request from $q$ to $p$ will contain $H(m)$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-heads}).\\
-    Since $m \notin \mathcal{M}_p$, process $p$ will send a $\mathsf{needs}$ request to $q$ containing $H(m)$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:heads-missing}).\\
-    Upon receiving the $\mathsf{needs}$ message containing $H(m)$, process $q$ will reply with an $\mathsf{msgs}$ response containing $m$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-msgs}).\\
-    Process $p$ will receive the $\mathsf{msgs}$ response with $m$ from process $q$ and will add $m$ to $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}).\\
+    Since $m \notin \mathcal{M}_p$, replica $p$ will send a $\mathsf{needs}$ request to $q$ containing $H(m)$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:heads-missing}).\\
+    Upon receiving the $\mathsf{needs}$ message containing $H(m)$, replica $q$ will reply with an $\mathsf{msgs}$ response containing $m$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-msgs}).\\
+    Replica $p$ will receive the $\mathsf{msgs}$ response with $m$ from replica $q$ and will add $m$ to $\mathit{recvd}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-recvd}).\\
     This contradicts our previous finding that $m \notin \mathit{recvd}$.
     
     \item[Case] $\mathrm{succ}^1(\mathcal{M}_q, m) \ne \{\}$:\\
@@ -834,7 +843,7 @@ Since $m \in \mathcal{M}_q$ we have either $\mathrm{succ}^1(\mathcal{M}_q, m) = 
     Note that none of the messages in $\mathrm{succ}^*(\mathcal{M}_q, m)$ are in $\mathcal{M}_p$ as $m \notin \mathcal{M}'_p$ implies that  $m \notin \mathcal{M}_p$ (Lemma~\ref{lemma:no-p-missing}).\\
     If $m' \in \mathrm{succ}^1(\mathcal{M}_q, m)$ then it must the case that $m \in \mathit{recvd}$ by the time that $\mathit{missing} = \emptyset$, otherwise $m \in \mathit{missing}$ (Algorithm~\ref{fig:algorithm}, line~\ref{line:msgs-missing}).\\
     By induction over the path of successors from $m'$ to $m$, we observe that $m \in \mathit{recvd}$.\\
-    At each step of the induction, the processes move to the predecessors of the previous step; due to Lemma~\ref{lemma:no-collision}, $p$ and $q$ agree about the identity of these predecessors.\\
+    At each step of the induction, the replicas move to the predecessors of the previous step; due to Lemma~\ref{lemma:no-collision}, $p$ and $q$ agree about the identity of these predecessors.\\
     This contradicts our previous finding that $m \notin \mathit{recvd}$.
 \end{description}
 \end{proof}
@@ -860,14 +869,14 @@ $\mathcal{M}'_p \subseteq \mathcal{M}_p \cup \mathcal{M}_q$.
 \begin{proof}
 We use proof by contradiction.\\
 Assume that $\exists m \in \mathcal{M}'_p.\; m \notin \mathcal{M}_p  \land  m \notin \mathcal{M}_q$.\\
-Since $\exists m \in \mathcal{M}'_p$, the process $p$ must have received a message containing $m$ from process $q$ before it completed reconciliation (Algorithm~\ref{fig:algorithm}, lines \ref{line:recv-msgs}--\ref{line:msgs-handle-missing} and \ref{line:update-m}).\\
-Process $q$ will only send a message containing $m$ if $m \in \mathcal{M}_q$ or $m \in \mathcal{M}'_q$, depending on whether process $q$ has completed the reconciliation algorithm.
-Since $m \notin \mathcal{M}_q$ then process $q$ must have received a message containing $m$ from process $p$.
-Since $m \notin \mathcal{M}_p$ then process $p$ will not send this message and therefore the message $m$ does not exist.
+Since $\exists m \in \mathcal{M}'_p$, the replica $p$ must have received a message containing $m$ from replica $q$ before it completed reconciliation (Algorithm~\ref{fig:algorithm}, lines \ref{line:recv-msgs}--\ref{line:msgs-handle-missing} and \ref{line:update-m}).\\
+Replica $q$ will only send a message containing $m$ if $m \in \mathcal{M}_q$ or $m \in \mathcal{M}'_q$, depending on whether replica $q$ has completed the reconciliation algorithm.
+Since $m \notin \mathcal{M}_q$ then replica $q$ must have received a message containing $m$ from replica $p$.
+Since $m \notin \mathcal{M}_p$ then replica $p$ will not send this message and therefore the message $m$ does not exist.
 \end{proof}
 
 \begin{lemma}\label{lemma:reconcile-equal}
-When two correct processes $p$ and $q$, with initial sets of messages $\mathcal{M}_p$ and $\mathcal{M}_q$, have completed reconciliation (i.e.\ both have reached line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}), then their final sets of messages $\mathcal{M}'_p$ and $\mathcal{M}'_q$  are both equal to $\mathcal{M}_p \cup \mathcal{M}_q$.
+When two correct replicas $p$ and $q$, with initial sets of messages $\mathcal{M}_p$ and $\mathcal{M}_q$, have completed reconciliation (i.e.\ both have reached line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}), then their final sets of messages $\mathcal{M}'_p$ and $\mathcal{M}'_q$  are both equal to $\mathcal{M}_p \cup \mathcal{M}_q$.
 \end{lemma}
 \begin{proof}
 We have shown that $\mathcal{M}_p \subseteq \mathcal{M}'_p$ by Lemma \ref{lemma:no-p-missing}, $\mathcal{M}_q \subseteq \mathcal{M}'_p$ by Lemmas \ref{lemma:no-q-missing} and \ref{lemma:no-q-missing2}, and $\mathcal{M}'_p \subseteq \mathcal{M}_p \cup \mathcal{M}_q$ from Lemma \ref{lemma:no-extras}.
@@ -876,42 +885,42 @@ Similarly, by swapping $p$ and $q$ we can show that $\mathcal{M}'_q = \mathcal{M
 \end{proof}
 
 \begin{lemma}\label{lemma:termination}
-If two correct processes attempt reconciliation an infinite number of times, then there is an infinite number of protocol runs in which the algorithm terminates (i.e.\ both processes reach line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}), assuming the system model of \S~\ref{sec:system-model}.
+If two correct replicas attempt reconciliation an infinite number of times, then there is an infinite number of protocol runs in which the algorithm terminates (i.e.\ both replicas reach line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}), assuming the system model of \S~\ref{sec:system-model}.
 \end{lemma}
 \begin{proof}
 Our system model assumes fair-loss links.
 This implies that if a message is sent an infinite number of times, it will be delivered an infinite number of times.
 Moreover, the same holds for a connection in which a finite number of messages are exchanged: if an infinite number of connections are attempted, there will be an infinite number of connections in which no messages are lost.
 
-The graph of messages $\mathcal{M}_p$ at any correct process $p$ is finite and contains no cycles.
+The graph of messages $\mathcal{M}_p$ at any correct replica $p$ is finite and contains no cycles.
 Therefore, every vertex $m' \in \mathcal{M}_p$ can be reached in a finite number of steps by starting a graph traversal at $\mathrm{heads}(\mathcal{M}_p)$ and, in each step, moving from each vertex to its predecessors.
-Moreover, by Lemma~\ref{lemma:no-dangling}, $\mathcal{M}_p$ at any correct process $p$ contains only hashes that are the hash of another message in $\mathcal{M}_p$.
-Hence, in a connection in which no messages are lost and both processes are correct, the algorithm will always reach the state $\mathit{missing} = \{\}$ and terminate (i.e.\ reach line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}) in a finite number of round-trips of $\mathsf{needs}$ requests and $\mathsf{msgs}$ responses.
+Moreover, by Lemma~\ref{lemma:no-dangling}, $\mathcal{M}_p$ at any correct replica $p$ contains only hashes that are the hash of another message in $\mathcal{M}_p$.
+Hence, in a connection in which no messages are lost and both replicas are correct, the algorithm will always reach the state $\mathit{missing} = \{\}$ and terminate (i.e.\ reach line~\ref{line:finish} of Algorithm~\ref{fig:algorithm}) in a finite number of round-trips of $\mathsf{needs}$ requests and $\mathsf{msgs}$ responses.
 
 Since there are an infinite number of connection attempts that are free from message loss, and the algorithm always terminates for these connections, we can conclude that there are an infinite number of protocol runs in which the algorithm terminates.
 \end{proof}
 
 \begin{theorem}
-Algorithms~\ref{fig:algorithm} and~\ref{fig:algorithm2} implement causal broadcast, as defined in \S~\ref{sec:background}, in the Byzantine system model of \S~\ref{sec:system-model}.
+Algorithms~\ref{fig:algorithm} and~\ref{fig:algorithm2} implement causal broadcast, as defined in \S~\ref{sec:broadcast}, in the Byzantine system model of \S~\ref{sec:system-model}.
 \end{theorem}
 \begin{proof}
 Lemma~\ref{lemma:easy-properties} proves the properties apart from \emph{eventual delivery}.
-To prove eventual delivery, for any two correct processes $p$ and $q$, we must show that a message delivered by $p$ will also be delivered by $q$.
-We assume in \S~\ref{sec:system-model} that the correct processes form a connected component in the graph of processes and network links.
+To prove eventual delivery, for any two correct replicas $p$ and $q$, we must show that a message delivered by $p$ will also be delivered by $q$.
+We assume in \S~\ref{sec:system-model} that the correct replicas form a connected component in the graph of replicas and network links.
 Thus, either there is a direct network link between $p$ and $q$, or there is a path of network links on which all of the intermediate links are also correct.
 
-Assume that any two adjacent processes on this path periodically attempt a reconciliation without a bound on the number of reconciliations.
-Thus, in an execution of infinite duration, there will be an infinite number of reconciliations between any two adjacent processes.
+Assume that any two adjacent replicas on this path periodically attempt a reconciliation without a bound on the number of reconciliations.
+Thus, in an execution of infinite duration, there will be an infinite number of reconciliations between any two adjacent replicas.
 By Lemma~\ref{lemma:termination}, an infinite number of these reconciliations will complete.
-By Lemma~\ref{lemma:reconcile-equal}, at the instant in which one of these reconciliations completes, the set of messages delivered by one process equals the set of messages delivered by the other process, with the exception of any messages delivered by concurrent reconciliations.
+By Lemma~\ref{lemma:reconcile-equal}, at the instant in which one of these reconciliations completes, the set of messages delivered by one replica equals the set of messages delivered by the other replica, with the exception of any messages delivered by concurrent reconciliations.
 
-Any messages delivered by one process while the reconciliation with the other process was in progress will be sent in the next reconciliation, which always exists, since we are assuming an infinite number of reconciliations.
-After a reconciliation where one process completes while the other does not (e.g.\ due to one-sided message loss), the sets of messages delivered by the two processes may be different, but again the missing messages will be sent in the next reconciliation.
+Any messages delivered by one replica while the reconciliation with the other replica was in progress will be sent in the next reconciliation, which always exists, since we are assuming an infinite number of reconciliations.
+After a reconciliation where one replica completes while the other does not (e.g.\ due to one-sided message loss), the sets of messages delivered by the two replicas may be different, but again the missing messages will be sent in the next reconciliation.
 
 Let $m$ be a message that has been delivered by $p$ at some point in time.
 We have $m \in \mathcal{M}_p$ from that time onward, since $\mathcal{M}_p$ is exactly the set of delivered messages, and it grows monotonically (Lemma~\ref{lemma:no-p-missing}).
-Thus, $m$ will eventually be delivered by any correct process to which $p$ has a direct network link.
-These processes will eventually relay $m$ to their direct neighbours, and so on, until $m$ is delivered to $q$ through successive reconciliations along the path from $p$ to $q$.
+Thus, $m$ will eventually be delivered by any correct replica to which $p$ has a direct network link.
+These replicas will eventually relay $m$ to their direct neighbours, and so on, until $m$ is delivered to $q$ through successive reconciliations along the path from $p$ to $q$.
 Therefore, $m$ is eventually delivered by $q$.
 \end{proof}
 
