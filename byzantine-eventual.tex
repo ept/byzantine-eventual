@@ -179,7 +179,7 @@ Read operations can be performed on any replica at any time, and they return tha
 
 One way of achieving SEC is by using a reliable broadcast protocol (e.g.\ a gossip protocol~\cite{Leitao:2009fi}) to disseminate every update to all replicas; furthermore, when an update is delivered to a replica, it applies the update to its state using a commutative function.
 Say $S' = \mathrm{apply}(S, u)$ is the function that applies update $u$ to the replica state $S$, resulting in an updated replica state $S'$.
-Then two updates $u_1$ and $u_2$ are commutative if
+Then two updates $u_1$ and $u_2$ commute if
 \[ \forall S.\; \mathrm{apply}(\mathrm{apply}(S, u_1), u_2) = \mathrm{apply}(\mathrm{apply}(S, u_2), u_1). \]
 Two replicas can apply the same commutative updates in a different order, and still converge to the same state.
 
@@ -192,21 +192,24 @@ Several papers present techniques for achieving commutativity in different datat
 \subsection{Invariant confluence}\label{sec:confluence}
 
 An \emph{invariant} is a predicate over replica states, i.e.\ a function $I(S)$ that takes a replica state $S$ and returns either $\mathsf{true}$ or $\mathsf{false}$.
-Invariants can represent many types of consistency properties and constraints commonly found in databases, such as referential integrity, uniqueness, or limitations on the value of a data item (e.g.\ requiring it to be non-negative).
+Invariants can represent many types of consistency properties and constraints commonly found in databases, such as referential integrity, uniqueness, or restrictions on the value of a data item (e.g.\ requiring it to be non-negative).
 
-Let $u_1$ be the updates resulting from the execution of transaction $T_1$, and $u_2$ the updates from $T_2$.
-Assume that $u_1$ and $u_2$ commute, and that these transactions preserve some invariant $I$, that is:
-\[ \forall S.\; I(S) \Longrightarrow I(\mathrm{apply}(S, u_1)) \wedge I(\mathrm{apply}(S, u_2)). \]
-Then transactions $T_1$ and $T_2$ are \I-confluent with regard to $I$ if
-\[ \forall S.\; I(S) \Longrightarrow I(\mathrm{apply}(\mathrm{apply}(S, u_1), u_2)). \]
-As $u_1$ and $u_2$ commute, this also implies $I(\mathrm{apply}(\mathrm{apply}(S, u_2), u_1))$.
-In words, $T_1$ and $T_2$ are \I-confluent with regard to $I$ if two different replicas can independently execute $T_1$ and $T_2$, each ensuring that $I$ is preserved, and we can be sure that the result of merging the updates from $T_1$ and $T_2$ will still satisfy $I$.
+Informally, a set of transactions is \I-confluent with regard to an invariant $I$ if different replicas can independently execute subsets of the transactions, each ensuring that $I$ is preserved, and we can be sure that the result of merging the updates from those transactions will still satisfy $I$.
 
-As example, consider a uniqueness constraint, i.e.\ $I(S)=\mathsf{true}$ if there is no more than one data item in $S$ in which a particular attribute has a given value.
-If $T_1$ and $T_2$ are both transactions that create data items with the same value in that attribute, then $T_1$ and $T_2$ are not \I-confluent with regard to $I$: each of $T_1$ and $T_2$ individually preserves the constraint, but the combination of the two does not.
+More formally, let $T = \{T_1, \dots, T_n\}$ be the set of transactions executed by a system, and let $u_i$ be the updates resulting from the execution of $T_i$.
+Assume that for all $i,j \in [1,n]$, if $T_i$ and $T_j$ were executed concurrently by different replicas (written $T_i \parallel T_j$), then updates $u_i$ and $u_j$ commute.
+Then we say that $T$ is \I-confluent with regard to invariant $I$ if:
+\begin{align*}
+    \forall i,j \in [1,n].\; \forall S.\; & (T_i \parallel T_j) \wedge I(S) \wedge I(\mathrm{apply}(S, u_i)) \wedge I(\mathrm{apply}(S, u_j)) \\
+    & \Longrightarrow I(\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)).
+\end{align*}
+As $u_i$ and $u_j$ commute, this also implies $I(\mathrm{apply}(\mathrm{apply}(S, u_j), u_i))$.
+
+As example, consider a uniqueness constraint, i.e.\ $I(S)=\mathsf{true}$ if there is no more than one data item in $S$ for which a particular attribute has a given value.
+If $T_1$ and $T_2$ are both transactions that create data items with the same value in that attribute, then $\{T_1,T_2\}$ is not \I-confluent with regard to $I$: each of $T_1$ and $T_2$ individually preserves the constraint, but the combination of the two does not.
 
 As a second example, say that $I(S)=\mathsf{true}$ if every user in $S$ has a non-negative account balance.
-If $T_1$ and $T_2$ are both transactions that increase the same user's account balance, then $T_1$ and $T_2$ are \I-confluent with regard to $I$, because the sum of the two positive balance updates cannot cause the balance to become negative (assuming no overflow).
+If $T_1$ and $T_2$ are both transactions that increase the same user's account balance, then $\{T_1,T_2\}$ is \I-confluent with regard to $I$, because the sum of the two positive balance updates cannot cause the balance to become negative (assuming no overflow).
 However, if $T_1$ and $T_2$ decrease the same user's account balance, then they are not \I-confluent with regard to $I$: any one of the transactions may be fine, but the sum of the two could cause the balance to become negative.
 
 \I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} along with a proof that a set of transactions can be executed in a coordination-free manner if and only if those transactions are \I-confluent with regard to all of the application's invariants.
@@ -215,6 +218,7 @@ However, if $T_1$ and $T_2$ decrease the same user's account balance, then they 
 \subsection{System model}\label{sec:system-model}
 
 Our system consists of a finite set of replicas, which may vary over time.
+Any replica may execute transactions.
 Each replica is either \emph{correct} or \emph{faulty}, but a correct replica does not know whether another replica is faulty.
 A correct replica follows the specified protocol, whereas a faulty replica may deviate from the protocol in arbitrary ways (i.e.\ it is Byzantine-faulty~\cite{Lamport:1982}).
 Faulty replicas may collude and attempt to deceive correct replicas; we model such worst-case behaviour by assuming a malicious adversary who controls the behaviour of all faulty replicas.
@@ -265,8 +269,70 @@ We say a replicated storage system provides \emph{Byzantine Eventual Consistency
 
 Read operations reflect the state of the replica on which they are performed, and reads can be performed at any time.
 BEC is a strengthening of SEC (\S~\ref{sec:crdts}); the main differences are that SEC assumes a non-Byzantine system, and SEC does not require atomicity or causal consistency.
-%Unlike Byzantine agreement (\S~\ref{sec:relwork}), BEC is not strong enough to implement a cryptocurrency, since it cannot prevent double-spending.
-%However, it is sufficient for many applications that currently use CRDTs.
+
+\subsection{Existence of a BEC algorithm}\label{sec:theorem}
+
+For the following theorem we define a replication algorithm to be \emph{fault-tolerant} if it is still able to commit transactions while one replica is crashed or unreachable.
+In other words, in a system with $r$ replicas, a replica is able to commit a transaction after receiving responses from up to $r-2$ replicas (all but itself and one unavailable replica).
+We adopt this very weak definition of fault tolerance since it makes the following theorem stronger; the theorem also holds for algorithms that tolerate more than one fault.
+
+We are now ready to prove our main theorem:
+\begin{theorem}\label{theorem}
+Assume an asynchronous\footnote{This theorem also holds for partially synchronous~\cite{Dwork:1988} systems, in which network latency is only temporarily unbounded, but eventually becomes bounded. However, for simplicity, we assume an asynchronous system in this proof.} system with a finite set of replicas, of which any subset may be Byzantine-faulty.
+Assume there is a known set of invariants that the data on each replica should satisfy.
+Then there exists a fault-tolerant algorithm that ensures BEC and preserves all invariants if and only if the set of all transactions executed by correct replicas is \I-confluent with respect to each of the invariants.
+\end{theorem}
+
+\begin{proof}
+For the backward direction, we assume that the set of transactions executed by correct replicas is \I-confluent with respect to all of the invariants.
+Then the algorithm defined in Section TODO ensures BEC and preserves all invariants, as proved in Appendix~\ref{sec:proof}, demonstrating the existence of an algorithm.
+
+For the forward direction, we assume that the set of transactions $T$ executed by correct replicas is not \I-confluent with respect to at least one invariant $I$. We must then show that under this assumption, there is no fault-tolerant algorithm that ensures BEC and preserves all invariants in the presence of an arbitrary number of Byzantine-faulty replicas.
+We do this by assuming that such an algorithm exists and deriving a contradiction.
+
+If $T$ is not \I-confluent with respect to $I$, then there must exist concurrently executed transactions $T_i, T_j \in T$ that violate \I-confluence.
+That is, $u_i$ and $u_j$ are the updates generated by $T_i$ and $T_j$ respectively, and there exists a replica state $S$ such that
+\[ I(S) \wedge I(\mathrm{apply}(S, u_i)) \wedge I(\mathrm{apply}(S, u_j)) \wedge \neg I(\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)). \]
+
+Let $R$ be the set of replicas.
+Let $A$ be the correct replica that executes $T_1$, let $B$ be the correct replica that executes $T_2$, and assume that all of the remaining replicas $R \setminus \{A,B\}$ are Byzantine-faulty.
+Assume that $A$ and $B$ are both in the state $S$ before executing $T_i$ and $T_j$, respectively.
+
+Now we let $A$ and $B$ execute $T_i$ and $T_j$ concurrently.
+The transaction execution and replication algorithm may perform arbitrary communication among replicas.
+However, since the system is asynchronous, messages may be subject to unbounded network latency.
+Assume that in this execution, messages between $A$ and $B$ are severely delayed, while messages between any other pairs of replicas are received quickly.
+
+Since we assume that the replication algorithm is fault-tolerant, replica A must eventually commit $T_i$ after communicating with replicas $R \setminus \{A,B\}$ but without receiving any message from $B$, and similarly $B$ must eventually commit $T_j$ after communicating with replicas $R \setminus \{A,B\}$ but without receiving any message from $A$.
+However, since replicas $R \setminus \{A,B\}$ are Byzantine-faulty, they can arbitrarily deviate from the protocol.
+In particular, they may fail to inform $A$ about $B$'s conflicting transaction $T_j$, and they may fail to inform $B$ about $A$'s conflicting transaction $T_i$.
+Thus, $T_1$ and $T_2$ are both eventually committed.
+
+After both $T_1$ and $T_2$ have been committed, communication between $A$ and $B$ becomes fast again.
+Due to the \emph{eventual update} property of BEC, the updates $u_i$ from $T_i$ must eventually be applied at replica $B$, and the updates $u_j$ from $T_j$ must eventually be applied at replica $A$, resulting in the state $\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)$ on both replicas, in which the invariant $I$ is violated.
+This contradicts our earlier assumption that the algorithm ensures that invariants are always preserved.
+
+Since we did not make any assumptions about the internal structure of the algorithm, this argument shows that no fault-tolerant algorithm exists that ensures BEC and preserves all invariants.
+\end{proof}
+
+\subsection{Discussion}
+
+Theorem~\ref{theorem} shows us that an application can be implemented in a system with arbitrarily many Byzantine-faulty replicas if and only if its transactions are \I-confluent with respect to its invariants.
+It is both a negative (impossibility) and a positive (existence) result.
+
+As an example of impossibility, consider a cryptocurrency, which must allow a user's account balance to be reduced when a user makes a payment, and which must ensure that a user does not spend more money than they have.
+As we saw in \S~\ref{sec:confluence}, payment transactions from the same payer are not \I-confluent with regard to the account balance invariant, and thus a cryptocurrency cannot be immune to Sybil attacks.
+For this reason, it needs Sybil countermeasures such as proof-of-work or centrally managed permissions.
+
+On the other hand, many of the CRDT applications listed in \S~\ref{sec:crdts} only require \I-confluent transactions and invariants.
+Even in the TPC-C benchmark, most of the transactions and invariants are \I-confluent~\cite{Bailis:2014}.
+Theorem~\ref{theorem} shows that it is possible to implement such applications without any Sybil countermeasures, because it is possible to ensure BEC and preserve all invariants regardless of how many Byzantine-faulty replicas are in the system.
+
+Even in applications that are not fully \I-confluent, our result shows that the \I-confluent portions of the application can be implemented without incurring the costs of Sybil countermeasures, and a Byzantine consensus algorithm need only be used for those transactions that are not \I-confluent with respect to the application's invariants.
+For example, an auction could aggregate bids in an \I-confluent manner, and only requires consensus to decide the winning bid.
+% TODO: citation for the auction example? I saw it in a talk somewhere, can't remember which...
+
+% Transactions are not serializable!
 
 \subsection{Implementation}
 
@@ -764,6 +830,8 @@ Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs,
 
 
 \section{Conclusions}
+
+% Conjecture: the set of problems that can be solved without coordination in a non-Byzantine system is the same as the set of problems that is immune to Sybil attacks in a Byzantine system.
 
 Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty replicas and are thus not suitable applications for Byzantine agreement.
 In this paper, we have defined Byzantine Eventual Consistency (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty replicas in a system, and without making any synchrony assumptions.
