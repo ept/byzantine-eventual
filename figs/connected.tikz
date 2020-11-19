@@ -1,0 +1,112 @@
+\begin{tikzpicture}
+\tikzstyle{correct}=[draw,circle,inner sep=3pt]
+\tikzstyle{faulty}=[draw,circle,inner sep=3pt,fill=red!30]
+\node [faulty] (a) at (0.04,0.70) {};
+\node [correct] (b) at (0.22,1.80) {};
+\node [faulty] (c) at (0.87,0.47) {};
+\node [correct] (d) at (1.72,0.86) {};
+\node [faulty] (e) at (1.65,0.09) {};
+\node [correct] (f) at (2.78,1.62) {};
+\node [faulty] (g) at (2.93,0.73) {};
+\node [correct] (h) at (3.42,1.64) {};
+\node [faulty] (i) at (3.76,0.36) {};
+\node [correct] (j) at (3.98,1.00) {};
+\node [faulty] (k) at (4.69,1.04) {};
+\node [correct] (l) at (5.14,1.63) {};
+\node [faulty] (m) at (5.15,0.40) {};
+\node [faulty] (n) at (5.41,1.00) {};
+\node [correct] (o) at (6.36,0.93) {};
+\node [correct] (p) at (6.89,0.33) {};
+\node [faulty] (q) at (7.10,1.61) {};
+\node [faulty] (r) at (7.62,0.68) {};
+\node [faulty] (s) at (7.90,1.37) {};
+\draw (a) -- (b);
+\draw (a) -- (c);
+\draw (a) -- (d);
+\draw (b) -- (d);
+\draw (b) -- (f);
+\draw (c) -- (d);
+\draw (c) -- (e);
+\draw (d) -- (f);
+\draw (d) -- (g);
+\draw (e) -- (g);
+\draw (f) -- (h);
+\draw (g) -- (i);
+\draw (g) -- (j);
+\draw (h) -- (j);
+\draw (h) -- (l);
+\draw (i) -- (j);
+\draw (i) -- (m);
+\draw (j) -- (k);
+\draw (k) -- (l);
+\draw (k) -- (m);
+\draw (k) -- (n);
+\draw (l) -- (o);
+\draw (l) -- (q);
+\draw (m) -- (p);
+\draw (n) -- (o);
+\draw (o) -- (p);
+\draw (o) -- (q);
+\draw (p) -- (r);
+\draw (q) -- (s);
+\draw (q) -- (r);
+\draw (r) -- (s);
+\end{tikzpicture}
+
+\vspace{0.5cm}
+\begin{tikzpicture}
+\tikzstyle{correct}=[draw,circle,inner sep=3pt]
+\tikzstyle{faulty}=[draw,circle,inner sep=3pt,fill=red!30]
+\node [correct] (a) at (0.04,0.70) {};
+\node [correct] (b) at (0.22,1.80) {};
+\node [correct] (c) at (0.87,0.47) {};
+\node [correct] (d) at (1.72,0.86) {};
+\node [faulty] (e) at (1.65,0.09) {};
+\node [correct] (f) at (2.78,1.62) {};
+\node [faulty] (g) at (2.93,0.73) {};
+\node [faulty] (h) at (3.42,1.64) {};
+\node [faulty] (i) at (3.76,0.36) {};
+\node [correct] (j) at (3.98,1.00) {};
+\node [faulty] (k) at (4.69,1.04) {};
+\node [correct] (l) at (5.14,1.63) {};
+\node [faulty] (m) at (5.15,0.40) {};
+\node [faulty] (n) at (5.41,1.00) {};
+\node [correct] (o) at (6.36,0.93) {};
+\node [correct] (p) at (6.89,0.33) {};
+\node [faulty] (q) at (7.10,1.61) {};
+\node [faulty] (r) at (7.62,0.68) {};
+\node [faulty] (s) at (7.90,1.37) {};
+\draw (a) -- (b);
+\draw (a) -- (c);
+\draw (a) -- (d);
+\draw (b) -- (d);
+\draw (b) -- (f);
+\draw (c) -- (d);
+\draw (c) -- (e);
+\draw (d) -- (f);
+\draw (d) -- (g);
+\draw (e) -- (g);
+\draw (f) -- (h);
+\draw (g) -- (i);
+\draw (g) -- (j);
+\draw (h) -- (j);
+\draw (h) -- (l);
+\draw (i) -- (j);
+\draw (i) -- (m);
+\draw (j) -- (k);
+\draw (k) -- (l);
+\draw (k) -- (m);
+\draw (k) -- (n);
+\draw (l) -- (o);
+\draw (l) -- (q);
+\draw (m) -- (p);
+\draw (n) -- (o);
+\draw (o) -- (p);
+\draw (o) -- (q);
+\draw (p) -- (r);
+\draw (q) -- (s);
+\draw (q) -- (r);
+\draw (r) -- (s);
+\path (f.north) node [above] {$A$};
+\path (l.north) node [above] {$B$};
+\end{tikzpicture}
