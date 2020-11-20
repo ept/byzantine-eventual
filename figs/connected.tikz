@@ -107,6 +107,6 @@
 \draw (q) -- (s);
 \draw (q) -- (r);
 \draw (r) -- (s);
-\path (f.north) node [above] {$A$};
-\path (l.north) node [above] {$B$};
+\path (f.north) node [above] {$p$};
+\path (l.north) node [above] {$q$};
 \end{tikzpicture}

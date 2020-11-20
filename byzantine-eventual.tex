@@ -76,12 +76,11 @@
 %\keywords{replication, Byzantine fault tolerance, eventual consistency, CRDTs, broadcast protocols}
 
 \begin{abstract}
-    TODO abstract needs updating.
-    Byzantine agreement algorithms guarantee consistency and liveness on the condition that a bounded number of replicas (typically $1/3$) are faulty; they provide no guarantees if that bound is exceeded.
-    However, if more faults occur, we can still guarantee weaker consistency models. 
-    In this paper, we define one such model, which we call \emph{Byzantine Eventual Consistency} (BEC).
-    It builds upon a \emph{Byzantine Causal Broadcast} protocol; we introduce algorithms that implement this protocol, even in a system with arbitrarily many Byzantine-faulty replicas, and we prove their correctness.
-    We show that the performance of our final algorithm is near-optimal in terms of network bandwidth and round-trips.
+Sybil attacks, in which a large number of adversary-controlled nodes join a network, are a concern for many peer-to-peer database systems, necessitating expensive countermeasures such as proof-of-work.
+However, there is a category of database applications that are, by design, immune to Sybil attacks because they can tolerate arbitrary numbers of Byzantine-faulty nodes.
+In this paper, we characterise this category of applications using a consistency model we call \emph{Byzantine Eventual Consistency} (BEC).
+We introduce an algorithm that guarantees BEC, prove its correctness, and demonstrate good performance in a prototype implementation, making our algorithm viable for practical use.
+Our algorithm is based on a Byzantine fault tolerant causal broadcast protocol.
 \end{abstract}
 \maketitle
 
@@ -128,7 +127,7 @@ Several countermeasures against Sybil attacks are used.
 Bitcoin introduced the concept of \emph{proof-of-work}~\cite{Nakamoto:2008}, in which a peer's voting power depends on the computational effort it expends.
 Unfortunately, proof-of-work is extraordinarily expensive: it has been estimated that as of 2020, Bitcoin alone represents almost half of worldwide datacenter electricity use~\cite{deVries:2020}.
 \emph{Permissioned} blockchains avoid this huge carbon footprint, but they have the downside of requiring central control over the peers that may join the system, undermining the principle of decentralisation.
-Other mechanisms, such as \emph{proof-of-stake}~\cite{Bano:2019}, are not yet widely deployed.
+Other mechanisms, such as \emph{proof-of-stake}~\cite{Bano:2019}, are at present unproven.
 
 The reason why permissioned blockchains must control membership is that they rely on Byzantine agreement, which assumes that at most $f$ out of $n$ nodes are Byzantine-faulty.
 It is well established that without synchrony, Byzantine agreement is impossible if $n<3f+1$~\cite{Dwork:1988,Lamport:1982}; if synchrony is assumed, the bound is lowered to $2f+1$~\cite{Abraham:2017}.
@@ -212,7 +211,7 @@ As a second example, say that $I(S)=\mathsf{true}$ if every user in $S$ has a no
 If $T_1$ and $T_2$ are both transactions that increase the same user's account balance, then $\{T_1,T_2\}$ is \I-confluent with regard to $I$, because the sum of the two positive balance updates cannot cause the balance to become negative (assuming no overflow).
 However, if $T_1$ and $T_2$ decrease the same user's account balance, then they are not \I-confluent with regard to $I$: any one of the transactions may be fine, but the sum of the two could cause the balance to become negative.
 
-\I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} along with a proof that a set of transactions can be executed in a coordination-free manner if and only if those transactions are \I-confluent with regard to all of the application's invariants.
+\I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} in the context of non-Byzantine systems, along with a proof that a set of transactions can be executed in a coordination-free manner if and only if those transactions are \I-confluent with regard to all of the application's invariants.
 ``Coordination-free'' means, loosely speaking, that one replica does not have to wait for a response from any other replica before it can commit a transaction.
 
 \subsection{System model}\label{sec:system-model}
@@ -237,11 +236,12 @@ For simplicity, our algorithms assume that network links are reliable, i.e.\ tha
 This can easily be achieved by detecting and retransmitting any lost messages.
 
 We make no timing assumptions: messages may experience unbounded delay in the network (for example, due to retransmissions during temporary network partitions), replicas may execute at different speeds, and we do not assume any clock synchronisation (i.e.\ we assume an \emph{asynchronous} system model).
+We do assume that a replica has a timer that allows it to perform some task approximately periodically, without requiring exact time measurement.
 
 \begin{figure}
     \centering
     \input{figs/connected.tikz}
-    \caption{Above: correct replicas (white) form a connected component. Below: faulty replicas (red) are able to prevent communication between correct replicas $A$ and $B$.}
+    \caption{Above: correct replicas (white) form a connected component. Below: faulty replicas (red) are able to prevent communication between correct replicas $p$ and $q$.}
     \label{fig:connected}
 \end{figure}
 
@@ -253,10 +253,10 @@ This assumption is necessary because if two correct replicas can only communicat
 
 We now define Byzantine Eventual Consistency (BEC), and prove our theorem about the possibility of implementing it.
 
-\subsection{Definition of BEC}
+\subsection{Definition of BEC}\label{sec:bec-definition}
 
 We say that a replica \emph{generates} a set of updates if those updates are the result of that replica executing a committed transaction.
-We say a replicated storage system provides \emph{Byzantine Eventual Consistency} if it satisfies the following properties in the Byzantine system model of \S~\ref{sec:system-model}:
+We say a replicated database provides \emph{Byzantine Eventual Consistency} if it satisfies the following properties in the system model of \S~\ref{sec:system-model}:
 
 \begin{description}
 \item[Self-update:] If a correct replica generates an update, it applies that update to its own state.
@@ -269,7 +269,7 @@ We say a replicated storage system provides \emph{Byzantine Eventual Consistency
 \end{description}
 
 Read operations can be performed at any time, and their result reflects the replica state that results from applying only updates made by committed transactions.
-In other words, we require \emph{read committed} transaction isolation, but we do not assume serializable isolation.
+In other words, we require \emph{read committed} transaction isolation~\cite{Adya:2000}, but we do not assume serializable isolation.
 BEC is a strengthening of SEC (\S~\ref{sec:crdts}); the main differences are that SEC assumes a non-Byzantine system, and SEC does not require atomicity or causal consistency.
 
 BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with any number of Byzantine-faulty replicas.
@@ -278,7 +278,7 @@ As is standard in Byzantine systems, the properties above only constrain the beh
 
 \subsection{Existence of a BEC algorithm}\label{sec:theorem}
 
-For the following theorem we define a replication algorithm to be \emph{fault-tolerant} if it is still able to commit transactions while one replica is crashed or unreachable.
+For the following theorem we define a replication algorithm to be \emph{fault-tolerant} if it is able to commit transactions while at most one replica is crashed or unreachable.
 In other words, in a system with $r$ replicas, a replica is able to commit a transaction after receiving responses from up to $r-2$ replicas (all but itself and one unavailable replica).
 We adopt this very weak definition of fault tolerance since it makes the following theorem stronger; the theorem also holds for algorithms that tolerate more than one fault.
 
@@ -301,22 +301,22 @@ That is, $u_i$ and $u_j$ are the updates generated by $T_i$ and $T_j$ respective
 \[ I(S) \wedge I(\mathrm{apply}(S, u_i)) \wedge I(\mathrm{apply}(S, u_j)) \wedge \neg I(\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)). \]
 
 Let $R$ be the set of replicas.
-Let $A$ be the correct replica that executes $T_1$, let $B$ be the correct replica that executes $T_2$, and assume that all of the remaining replicas $R \setminus \{A,B\}$ are Byzantine-faulty.
-Assume that $A$ and $B$ are both in the state $S$ before executing $T_i$ and $T_j$, respectively.
+Let $p$ be the correct replica that executes $T_1$, let $q$ be the correct replica that executes $T_2$, and assume that all of the remaining replicas $R \setminus \{p,q\}$ are Byzantine-faulty.
+Assume that $p$ and $q$ are both in the state $S$ before executing $T_i$ and $T_j$, respectively.
 
-Now we let $A$ and $B$ execute $T_i$ and $T_j$ concurrently.
-The transaction execution and replication algorithm may perform arbitrary communication among replicas.
+Now we let $p$ and $q$ execute $T_i$ and $T_j$ concurrently.
+The transaction execution and replication algorithm may perform arbitrary computation and communication among replicas.
 However, since the system is asynchronous, messages may be subject to unbounded network latency.
-Assume that in this execution, messages between $A$ and $B$ are severely delayed, while messages between any other pairs of replicas are received quickly.
+Assume that in this execution, messages between $p$ and $q$ are severely delayed, while messages between any other pairs of replicas are received quickly.
 
-Since we assume that the replication algorithm is fault-tolerant, replica A must eventually commit $T_i$ after communicating with replicas $R \setminus \{A,B\}$ but without receiving any message from $B$, and similarly $B$ must eventually commit $T_j$ after communicating with replicas $R \setminus \{A,B\}$ but without receiving any message from $A$.
-However, since replicas $R \setminus \{A,B\}$ are Byzantine-faulty, they can arbitrarily deviate from the protocol.
-In particular, they may fail to inform $A$ about $B$'s conflicting transaction $T_j$, and they may fail to inform $B$ about $A$'s conflicting transaction $T_i$.
-Thus, $T_1$ and $T_2$ are both eventually committed.
+Since we assume that the replication algorithm is fault-tolerant, replica $p$ must eventually commit $T_i$ after communicating with replicas $R \setminus \{p,q\}$ but without receiving any message from $q$, and similarly $q$ must eventually commit $T_j$ after communicating with replicas $R \setminus \{p,q\}$ but without receiving any message from $p$.
+However, since replicas $R \setminus \{p,q\}$ are Byzantine-faulty, they can arbitrarily deviate from the protocol.
+In particular, they may fail to inform $p$ about $q$'s conflicting transaction $T_j$, and they may fail to inform $q$ about $p$'s conflicting transaction $T_i$.
+Thus, $T_i$ and $T_j$ are both eventually committed.
 
-After both $T_1$ and $T_2$ have been committed, communication between $A$ and $B$ becomes fast again.
-Due to the \emph{eventual update} property of BEC, the updates $u_i$ from $T_i$ must eventually be applied at replica $B$, and the updates $u_j$ from $T_j$ must eventually be applied at replica $A$, resulting in the state $\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)$ on both replicas, in which the invariant $I$ is violated.
-This contradicts our earlier assumption that the algorithm ensures that invariants are always preserved.
+After both $T_i$ and $T_j$ have been committed, communication between $p$ and $q$ becomes fast again.
+Due to the \emph{eventual update} property of BEC, $u_i$ must eventually be applied at $q$, and $u_j$ must eventually be applied at $p$, resulting in the state $\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)$ on both replicas, in which $I$ is violated.
+This contradicts our earlier assumption that the algorithm always preserves invariants.
 
 Since we did not make any assumptions about the internal structure of the algorithm, this argument shows that no fault-tolerant algorithm exists that ensures BEC and preserves all invariants.
 \end{proof}
@@ -326,7 +326,7 @@ Since we did not make any assumptions about the internal structure of the algori
 Theorem~\ref{theorem} shows us that an application can be implemented in a system with arbitrarily many Byzantine-faulty replicas if and only if its transactions are \I-confluent with respect to its invariants.
 It is both a negative (impossibility) and a positive (existence) result.
 
-As an example of impossibility, consider a cryptocurrency, which must allow a user's account balance to be reduced when a user makes a payment, and which must ensure that a user does not spend more money than they have.
+As an example of impossibility, consider a cryptocurrency, which must reduce a user's account balance when a user makes a payment, and which must ensure that a user does not spend more money than they have.
 As we saw in \S~\ref{sec:confluence}, payment transactions from the same payer are not \I-confluent with regard to the account balance invariant, and thus a cryptocurrency cannot be immune to Sybil attacks.
 For this reason, it needs Sybil countermeasures such as proof-of-work or centrally managed permissions.
 
@@ -342,7 +342,7 @@ As another example, most of the transactions and invariants in the TPC-C benchma
 
 Before we introduce our algorithms for ensuring BEC in \S~\ref{sec:algorithm}, we first give some additional background and highlight some of the difficulties of working in a Byzantine system model.
 
-\subsection{Reliable, causal, and total order broadcast}
+\subsection{Reliable, causal, and total order broadcast}\label{sec:broadcast-properties}
 
 We implement BEC replication by first defining a \emph{broadcast} protocol, and then layering replication on top of it.
 Several different forms of broadcast have been defined in the literature~\cite{Cachin:2011wt}, and we now introduce them briefly.
@@ -363,14 +363,14 @@ In many applications the delivery order is important, so we can strengthen the m
 For example, \emph{total order broadcast} must satisfy the four properties of reliable broadcast, and additionally the following property:
 
 \begin{description}
-\item[Total order:] If a correct replica delivers message $m_1$ before delivering message $m_2$, then all correct replicas must deliver $m_1$ before $m_2$.
+\item[Total order:] If a correct replica delivers message $m_1$ before delivering message $m_2$, then all correct replicas must deliver $m_1$ before delivering $m_2$.
 \end{description}
 
-Total broadcast ensures that all replicas deliver the same messages in the same order~\cite{Defago:2004ji}.
-It is a very powerful model, since it can for example implement serializable transactions (by encoding each transaction as a message, and executing them in the order they are delivered at each replica) and \emph{state machine replication}~\cite{Schneider:1990} (providing linearizable replicated storage).
+Total order broadcast ensures that all replicas deliver the same messages in the same order~\cite{Defago:2004ji}.
+It is a very powerful model, since it can for example implement serializable transactions (by encoding each transaction as a stored procedure in a message, and executing them in the order they are delivered at each replica) and \emph{state machine replication}~\cite{Schneider:1990} (providing linearizable replicated storage).
 
 In a Byzantine system, total order broadcast is implemented by Byzantine agreement (consensus) algorithms.
-An example is a blockchain, in which the totally ordered sequence of blocks corresponds to the sequence of delivered messages~\cite{Bano:2019}.
+An example is a blockchain, in which the totally ordered chain of blocks corresponds to the sequence of delivered messages~\cite{Bano:2019}.
 However, Byzantine agreement algorithms require assumptions about the maximum number of faulty replicas (see \S~\ref{sec:relwork}), and hence require Sybil countermeasures.
 To ensure eventual delivery they must also assume partial synchrony~\cite{Dwork:1988}.
 
@@ -384,7 +384,8 @@ To ensure eventual delivery they must also assume partial synchrony~\cite{Dwork:
 \end{description}
 
 Causal order is based on the observation that when a replica broadcasts a message, that message may depend on prior messages seen by that replica (these are \emph{causal dependencies}).
-It then imposes a partial order on messages: $m_1$ must be delivered before $m_2$ if $m_2$ has a causal dependency on $m_1$, but concurrently sent messages, which do not depend on each other, can be delivered in any order.
+It then imposes a partial order on messages: $m_1$ must be delivered before $m_2$ if $m_2$ has a causal dependency on $m_1$.
+Concurrently sent messages, which do not depend on each other, can be delivered in any order.
 
 \begin{figure}
     \centering
@@ -405,7 +406,7 @@ It then imposes a partial order on messages: $m_1$ must be delivered before $m_2
 
 \subsection{Na\"{\i}ve broadcast algorithms}
 
-The simplest broadcast algorithm is as follows: every time a replica wants to broadcast a message, it delivers that message to itself, and also sends that message to each other replica via a pairwise link, re-transmitting until it is acknowledged.
+The simplest broadcast algorithm is as follows: every time a replica wants to broadcast a message, it delivers that message to itself, and also sends that message to each other replica via a pairwise network link, re-transmitting until it is acknowledged.
 However, this algorithm does not provide the \emph{eventual delivery} property in the face of Byzantine-faulty replicas, as shown in Figure~\ref{fig:trivial1}: a faulty replica $q$ may send two different messages $A$ and $B$ to correct replicas $p$ and $r$, respectively; then $p$ never delivers $B$ and $r$ never delivers $A$.
 
 To address this issue, replicas $p$ and $r$ must communicate with each other (either directly, or indirectly via other correct replicas).
@@ -491,27 +492,31 @@ Let $\mathrm{heads}(\mathcal{M})$ denote the set of hashes of those messages in 
 Define a \emph{connection} to be a logical grouping of a bidirectional sequence of related request/response messages between two replicas (in practice, it can be implemented as a TCP connection).
 Our reconciliation algorithm runs in the context of a connection.
 
-When a correct replica wishes to broadcast a message with value $v$, it executes lines~\ref{line:broadcast-begin}--\ref{line:broadcast-end} of Algorithm~\ref{fig:algorithm}: it constructs a message $m$ containing the current heads and a signature, sends $m$ via all connections, delivers $m$ to itself, and adds $m$ to the set of locally delivered messages $\mathcal{M}$.
+When a correct replica wishes to broadcast a message with value $v$, it executes lines~\ref{line:broadcast-begin}--\ref{line:broadcast-end} of Algorithm~\ref{fig:algorithm}: it constructs a message $m$ containing the current heads and a signature, delivers $m$ to itself, adds $m$ to the set of locally delivered messages $\mathcal{M}$, and sends $m$ via all connections.
 However, this is not sufficient to ensure eventual delivery, since some replicas may be disconnected, and faulty replicas might not correctly follow this protocol.
 
-To ensure eventual delivery, we assume that replicas periodically attempt to reconnect to each other.
-When such a connection is established, the replicas reconcile their sets of messages to discover any missing messages.
+To ensure eventual delivery, we assume that replicas periodically attempt to reconnect to each other and reconcile their sets of messages to discover any missing messages.
 If two replicas are not able to connect directly, they can still exchange messages by periodically reconciling with one or more correct intermediary replicas (as stated in \S~\ref{sec:system-model}, we assume that such intermediaries exist).
 
 \algblockdefx{On}{EndOn}[1]{\textbf{on} #1 \textbf{do}}{\textbf{end on}}
-\begin{algorithm*}
+\algblockdefx{Atomic}{EndAtomic}{\textbf{atomically do}}{\textbf{end atomic}}
+
+\begin{algorithm}
     \begin{algorithmic}[1]
     \On{request to broadcast $v$}\label{line:broadcast-begin}
         \State $\mathit{hs} := \mathrm{heads}(\mathcal{M})$\label{line:broadcast-heads}
         \State $\mathit{sig} := \text{signature over } (v, \mathit{hs}) \text{ using this replica's private key}$
         \State $m := (v, \mathit{hs}, \mathit{sig})$
+        \Atomic
+            \State \textbf{deliver} $m$ to self\label{line:deliver-local}
+            \State $\mathcal{M} := \mathcal{M} \cup \{m\}$\label{line:update-m-local}
+        \EndAtomic
         \State \textbf{send} $\langle\mathsf{msgs}: \{m\}\rangle$ via all active connections\label{line:eager-send}
-        \State \textbf{deliver} $m$ to self\label{line:deliver-local}
-        \State $\mathcal{M} := \mathcal{M} \cup \{m\}$\label{line:update-m-local}
     \EndOn\label{line:broadcast-end}
     \State
-    \On{connecting to another replica} \label{line:connect-begin}
-        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \label{line:init}\Comment{connection-local variables}
+    \On{connecting to another replica, and periodically} \label{line:connect-begin}
+        \State // connection-local variables
+        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \label{line:init}
         \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{M}_\mathsf{conn})\rangle$ via current connection \label{line:send-heads}
     \EndOn \label{line:connect-end}
     \State
@@ -520,8 +525,9 @@ If two replicas are not able to connect directly, they can still exchange messag
     \EndOn\label{line:recv-heads-end}
     \State
     \On{receiving $\langle\mathsf{msgs}: \mathit{new}\rangle$ via a connection} \label{line:recv-msgs}
-        \State $\mathit{recvd} := \mathit{recvd} \,\cup\, \{(v, \mathit{hs}, \mathit{sig}) \in \mathit{new} \mid \mathit{sig}\text{ is a valid replica's signature over }(v, \mathit{hs}) \}$ \label{line:msgs-recvd}
-        \State $\mathit{unresolved} := \{h \mid \exists (v, \mathit{hs}, \mathit{sig}) \in \mathit{recvd}.\; h \in \mathit{hs} \;\wedge\; \nexists m \in (\mathcal{M}_\mathsf{conn} \cup \mathit{recvd}).\; H(m) = h\}$ \label{line:msgs-missing}
+        \State $\mathit{recvd} := \mathit{recvd} \,\cup\, \{(v, \mathit{hs}, \mathit{sig}) \in \mathit{new} \mid \mathrm{check}((v, \mathit{hs}), \mathit{sig}) \}$ \label{line:msgs-recvd}
+        \State $\mathit{unresolved} := \{h \mid \exists (v, \mathit{hs}, \mathit{sig}) \in \mathit{recvd}.\; h \in \mathit{hs} \;\wedge$ \label{line:msgs-missing}
+        \State \hspace*{7.5em}$\nexists m \in (\mathcal{M}_\mathsf{conn} \cup \mathit{recvd}).\; H(m) = h\}$
         \State \Call{HandleMissing}{$\mathit{unresolved}$} \label{line:msgs-handle-missing}
     \EndOn\label{line:recv-msgs-end}
     \State
@@ -534,9 +540,13 @@ If two replicas are not able to connect directly, they can still exchange messag
     \Function{HandleMissing}{$\mathit{hashes}$}
         \State $\mathit{missing} := (\mathit{missing} \cup \mathit{hashes}) \setminus \{H(m) \mid m \in \mathit{recvd}\}$
         \If{$\mathit{missing} = \{\}$} \label{line:missing-empty}
-            \State \textbf{deliver} all of the messages in $\mathit{recvd} \setminus \mathcal{M}$ in topologically sorted order\label{line:deliver}
+            \Atomic
+            \State $\mathit{msgs} := \mathit{recvd} \setminus \mathcal{M}$
             \State $\mathcal{M} := \mathcal{M} \cup \mathit{recvd}$ \label{line:update-m}
-            \State optionally \textbf{send} $\langle\mathsf{msgs}: \mathit{recvd} \setminus \mathcal{M}\rangle$ via all other connections\label{line:eager-relay}
+            \State \textbf{deliver} all of the messages in $\mathit{msgs}$ \label{line:deliver}
+            \State \hspace{3.5em}in topologically sorted order
+            \State \textbf{send} $\langle\mathsf{msgs}: \mathit{msgs}\rangle$ via all other connections\label{line:eager-relay}
+            \EndAtomic
             \State \textbf{reconciliation complete} \label{line:finish}
         \Else
             \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$ via current connection \label{line:send-missing}
@@ -544,32 +554,28 @@ If two replicas are not able to connect directly, they can still exchange messag
     \EndFunction
     \end{algorithmic}
     \caption{A Byzantine causal broadcast algorithm.}\label{fig:algorithm}
-\end{algorithm*}
+\end{algorithm}
 
 % hspace is an ugly hack to get the figure to line up as dag-after has some extra whitespace
-\begin{figure*}
-    \centering
-    \begin{subfigure}[b]{0.35\textwidth}
+\begin{figure}
+    \begin{subfigure}{\columnwidth}
     \centering
     \input{figs/dag-before-p.tikz}\hspace{0.5cm}
-    \captionsetup{width=.9\linewidth}
     \caption{Messages at $p$ before reconciliation.}
-    \end{subfigure}%
-    \begin{subfigure}[b]{0.26\textwidth}
+    \end{subfigure}\\[1em]
+    \begin{subfigure}{\columnwidth}
     \centering
     \input{figs/dag-before-q.tikz}\hspace{0.5cm}
-    \captionsetup{width=.9\linewidth}
     \caption{Messages at $q$ before reconciliation.}
-    \end{subfigure}%
-    \begin{subfigure}[b]{0.35\textwidth}
+    \end{subfigure}\\[1em]
+    \begin{subfigure}{\columnwidth}
     \centering
     \input{figs/dag-after.tikz}
-    \captionsetup{width=.9\linewidth}
     \caption{Messages at $p$ and $q$ after reconciliation.}
     \end{subfigure}
     \caption{Example DAGs of delivered messages. Arrows represent a message referencing the hash of its predecessor, and heads (messages with no successors) are marked with circles.}
     \label{fig:example-dags}
-\end{figure*}
+\end{figure}
 
 \begin{figure}
     \input{figs/message-exchange.tikz}
@@ -581,23 +587,25 @@ We illustrate the operation of the reconciliation algorithm using the example in
 Initially, when a connection is established between two replicas, they send each other their heads (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-heads}).
 In the example of Figure~\ref{fig:example-dags}, $p$ sends $\langle\mathsf{heads}: \{H(E),H(M)\}\rangle$ to $q$, while $q$ sends $\langle\mathsf{heads}: \{H(G),H(K)\}\rangle$ to $p$.
 
-Each replica also initialises variables $\mathit{sent}$ and $\mathit{recvd}$ to contain the set of messages sent to/received from the other replica within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a read-only copy of this replica's set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
+Each replica also initialises variables $\mathit{sent}$ and $\mathit{recvd}$ to contain the set of messages sent to/received from the other replica within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a read-only snapshot of this replica's set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
+In practice, this snapshot can be implemented using snapshot isolation~\cite{Berenson:1995}.
+
 A replica may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{recvd}$, $\mathit{missing}$, and $\mathcal{M}_\mathsf{conn}$, while $\mathcal{M}$ is a global variable that is shared between all connections.
-$\mathcal{M}$ should be maintained in stable storage, while the other variables may be lost in case of a crash.
+Each connection thread executes independently, except for the blocks marked \emph{atomically}, which are executed only by one thread at a time.
+$\mathcal{M}$ should be maintained in durable storage, while the other variables may be lost in case of a crash.
 
 On receiving the heads from the other replica (line~\ref{line:recv-heads}), the recipient checks whether the recipient's $\mathcal{M}_\mathsf{conn}$ contains a matching message for each hash.
 If any hashes are unknown, it replies with a $\mathsf{needs}$ request for the messages matching those hashes (lines~\ref{line:heads-missing} and \ref{line:send-missing}).
 In our running example, $p$ needs $H(G)$, while $q$ needs $H(E)$ and $H(M)$.
 A replica responds to such a $\mathsf{needs}$ request by returning all the matching messages in a $\mathsf{msgs}$ response (lines~\ref{line:recv-needs}--\ref{line:end-needs}).
 
-On receiving $\mathsf{msgs}$, we first discard any broadcast messages that are not correctly signed by a legitimate replica in the system (line~\ref{line:msgs-recvd}).
+On receiving $\mathsf{msgs}$, we first discard any broadcast messages that are not correctly signed (line~\ref{line:msgs-recvd}): the function $\mathrm{check}(m, s)$ returns $\mathsf{true}$ if $s$ is a valid signature over message $m$ by a legitimate replica in the system, and $\mathsf{false}$ otherwise.
 We then inspect the hashes in each valid message received.
 If any predecessor hashes do not resolve to a known message in $\mathcal{M}_\mathsf{conn}$ or $\mathit{recvd}$, we send another $\mathsf{needs}$ request with those hashes (lines~\ref{line:msgs-missing}--\ref{line:msgs-handle-missing}).
 In successive rounds of this protocol, the replicas work their way from the heads along the paths of predecessors, until they reach the common ancestors of both replicas' heads.
 
-Eventually, when there are no unresolved hashes, we perform a topological sort of the graph of received messages to put them in causal order, deliver them to the application, update the global set $\mathcal{M}$ to reflect the messages we have delivered, and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
-We assume that the delivery of messages on line~\ref{line:deliver} and the update of $\mathcal{M}$ on line~\ref{line:update-m} occur atomically.
-Once a replica completes reconciliation (line~\ref{line:finish}), it can conclude that its current set of delivered messages is a superset of the set of delivered messages on the other replica at the start of reconciliation.
+Eventually, when there are no unresolved hashes, we update the global set $\mathcal{M}$ to reflect the messages we have delivered, perform a topological sort of the graph of received messages to put them in causal order, deliver them to the application in that order, and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
+Once a replica completes reconciliation (by reaching line~\ref{line:finish}), it can conclude that its current set of delivered messages is a superset of the set of delivered messages on the other replica at the start of reconciliation.
 
 When a message $m$ is broadcast, it is also sent as $\langle\mathsf{msgs}: \{m\}\rangle$ on line~\ref{line:eager-send}, and the recipient treats it the same as $\mathsf{msgs}$ received during reconciliation (lines~\ref{line:recv-msgs}--\ref{line:recv-msgs-end}).
 Sending messages in this way is not strictly necessary, as the periodic reconciliations will eventually deliver such messages, but broadcasting them eagerly can reduce latency.
@@ -612,26 +620,26 @@ After reconciliation, both replicas have delivered the same set of messages.
 \subsection{Reducing the number of round trips}\label{sec:algorithm2}
 
 A downside of Algorithm~\ref{fig:algorithm} is that the number of round trips can be up to the length of the longest path in the predecessor graph, making it slow when performing reconciliation over a high-latency network.
-We now show how to reduce the number of round-trips using bloom filters~\cite{Bloom:1970} and a small amount of additional state.
+We now show how to reduce the number of round-trips using Bloom filters~\cite{Bloom:1970} and a small amount of additional state.
 
 Note that Algorithm~\ref{fig:algorithm} does not store any information about the outcome of the last reconciliation with a particular replica; if two replicas periodically reconcile their states, they need to discover each other's state from scratch on every protocol run.
 As per \S~\ref{sec:system-model} we assume that communication between replicas is authenticated, and thus a replica knows the identity of the other replica it is communicating with.
 We can therefore record the outcome of a protocol run with a particular replica, and use that information in the next reconciliation with the same replica.
 We do this by adding the following instruction after line~\ref{line:update-m} of Algorithm~\ref{fig:algorithm}, where $q$ is the identity of the current connection's remote replica:
 \[ \textsc{StoreHeads}(q, \mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})) \]
-which updates a key-value store in stable storage, associating the value $\mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})$ with the key $q$ (overwriting any previous value for that key if appropriate).
+which updates a key-value store in durable storage, associating the value $\mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})$ with the key $q$ (overwriting any previous value for that key if appropriate).
 We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``on connecting'' and ``on receiving heads'' functions of Algorithm~\ref{fig:algorithm}, while leaving the rest of Algorithm~\ref{fig:algorithm} unchanged.
 
 \begin{algorithm*}
     \begin{algorithmic}[1]
-    \On{connecting to replica $q$}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}}
-        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables}
+    \On{connecting to replica $q$, and periodically}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}\hspace*{5cm}~}
+        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables\hspace*{5cm}~}
         \State $\mathit{oldHeads} := \Call{LoadHeads}{q}$\label{line:load-heads}
         \State $\mathit{filter} := \textsc{MakeBloomFilter}(\Call{MessagesSince}{\mathit{oldHeads}})$\label{line:make-bloom}
         \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{M}_\mathsf{conn}),\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$ \label{line:a2-send-heads}
     \EndOn
     \State
-    \On{receiving $\langle\mathsf{heads}: \mathit{hs},\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$}\Comment{Replaces lines \ref{line:recv-heads}--\ref{line:recv-heads-end}}\label{line:a2-recv-heads}
+    \On{receiving $\langle\mathsf{heads}: \mathit{hs},\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$}\Comment{Replaces lines \ref{line:recv-heads}--\ref{line:recv-heads-end}\hspace*{5cm}~}\label{line:a2-recv-heads}
         \State $\mathit{bloomNegative} := \{m \in \Call{MessagesSince}{\mathit{oldHeads}} \mid \neg\Call{BloomMember}{\mathit{filter}, m}\}$\label{line:bloom-member}
         \State $\mathit{reply} := \left(\mathit{bloomNegative} \,\cup\, \bigcup_{m \in \mathit{bloomNegative}} \mathrm{succ}^*(\mathcal{M}_\mathsf{conn}, m)\right) \setminus \mathit{sent}$\label{line:bloom-succ}
         \If{$\mathit{reply} \neq \{\}$}
@@ -653,16 +661,20 @@ First, when replica $p$ establishes a connection with replica $q$, $p$ calls $\t
 This function returns the empty set if this is the first reconciliation with $q$.
 In the example of Figure~\ref{fig:example-dags}, the previous reconciliation heads might be $\{H(B)\}$.
 
-In lines~\ref{line:msg-since-begin}--\ref{line:msg-since-end} we find all of the delivered messages that were added to $\mathcal{M}$ since this last reconciliation (i.e.\ all messages that are not among the last reconciliation's heads or their predecessors), and construct a Bloom filter~\cite{Bloom:1970} containing those messages.
-A bloom filter is a space-efficient data structure for testing set membership.
-We assume $\textsc{MakeBloomFilter}(S)$ creates a bloom filter from set $S$ and $\textsc{BloomMember}(F,s)$ tests if the element $s$ is a member of the bloom filter $F$.
-\textsc{BloomMember} may return false positives and the false positive rate is a function of the number of elements, the size of the bloom filter and the number of hashing functions used~\cite{Bloom:1970,Bose:2008,Christensen:2010}.
+In lines~\ref{line:msg-since-begin}--\ref{line:msg-since-end} of Algorithm~\ref{fig:algorithm2} we find all of the delivered messages that were added to $\mathcal{M}$ since this last reconciliation (i.e.\ all messages that are not among the last reconciliation's heads or their predecessors), and on line~\ref{line:make-bloom} we construct a Bloom filter~\cite{Bloom:1970} containing those messages.
+A Bloom filter is a space-efficient data structure for testing set membership.
+It is an array of $m$ bits that is initially all zero; in order to indicate that a certain element is in the set, we choose $k$ bits to set to 1 based on the hash of the element.
+To test whether an element is in the set, we check whether all $k$ bits for the hash of that element are set to 1; if so, we say that the element is in the set.
+This procedure may produce false positives because it is possible that all $k$ bits were set to 1 due to different elements, not due to the element being checked.
+The false positive probability is a function of the number of elements in the set, the number of bits $m$, and the number of bits $k$ that we set per element~\cite{Bloom:1970,Bose:2008,Christensen:2010}.
+
+We assume $\textsc{MakeBloomFilter}(S)$ creates a Bloom filter from set $S$ and $\textsc{BloomMember}(F,s)$ tests if the element $s$ is a member of the Bloom filter $F$.
 In the example of Figure~\ref{fig:example-dags}, $p$'s Bloom filter would contain $\{C, D, E, J, K, L, M\}$, while $q$'s filter contains $\{F, G, J, K\}$.
-We send this Bloom filter to the other replica, along with the heads (lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
+We send this Bloom filter to the other replica, along with the heads (Algorithm~\ref{fig:algorithm2}, lines~\ref{line:make-bloom}--\ref{line:a2-send-heads}).
 
 On receiving the heads and Bloom filter, we identify any messages that were added since the last reconciliation that are \emph{not} present in the Bloom filter's membership check (line~\ref{line:bloom-member}).
-In the example, $q$ looks up $\{F, G, J, K\}$ in the Bloom filter received from $p$; \textsc{BloomMember} returns true for $J$ and $K$. For $F$ and $G$, \textsc{BloomMember} is likely to return false, but may return true.
-In this example, we assume that the Bloom membership check returns false for $F$ and true for $G$ (a false positive in the case of $G$).
+In the example, $q$ looks up $\{F, G, J, K\}$ in the Bloom filter received from $p$; \textsc{BloomMember} returns true for $J$ and $K$. \textsc{BloomMember} is likely to return false for $F$ and $G$, but may return true due to a false positive.
+In this example, we assume that \textsc{BloomMember} returns false for $F$ and true for $G$ (a false positive in the case of $G$).
 
 Any Bloom-negative messages are definitely unknown to the other replica, so we send those in reply.
 Moreover, we also send any successors of Bloom-negative messages (line~\ref{line:bloom-succ}): since the set $\mathcal{M}$ for a correct replica cannot contain messages whose predecessors are missing, we know that these messages must also be missing from the other replica.
@@ -682,7 +694,7 @@ We formally analyse the correctness of this algorithm in Appendix~\ref{sec:proof
 \subsection{Discussion}
 
 A potential issue with Algorithms~\ref{fig:algorithm} and~\ref{fig:algorithm2} is the unbounded growth of storage requirements, since the set $\mathcal{M}$ grows monotonically (much like most algorithms for Byzantine agreement, which produce an append-only log without considering how that log might be truncated).
-Since the set of replicas in the system is known, we can truncate history as follows: once every replica has delivered a message $m$ (i.e.\ $m$ is \emph{stable}~\cite{Birman:1991el}), the algorithm no longer needs to refer to any of the predecessors of $m$, and so all of those predecessors can be safely removed from $\mathcal{M}$ without affecting the algorithm.
+If the set of replicas in the system is known, we can truncate history as follows: once every replica has delivered a message $m$ (i.e.\ $m$ is \emph{stable}~\cite{Birman:1991el}), the algorithm no longer needs to refer to any of the predecessors of $m$, and so all of those predecessors can be safely removed from $\mathcal{M}$ without affecting the algorithm.
 Stability can be determined by keeping track of the latest heads for each replica, and propagating this information between replicas.
 
 When one of the communicating replicas is Byzantine-faulty, the reconciliation algorithm may never terminate, e.g.\ because the faulty replica may send hashes that do not resolve to any message, and so the state $\mathit{missing} = \{\}$ is never reached.
@@ -695,11 +707,29 @@ Any omitted messages will eventually be received through reconciliations with ot
 Arbitrary $\mathsf{needs}$ requests sent by a faulty replica have no consequence, since they do not affect the state of the recipient.
 Thus, a faulty replica cannot corrupt the state of a correct replica in a way that would prevent it from later reconciling with another correct replica.
 
-If message loss occurs during reconciliation, the connection times out and no messages are delivered.
+If one of the replicas crashes, both replicas abort the reconciliation and no messages are delivered.
 The next reconciliation attempt then starts afresh.
-Note also that one replica in a connection can complete reconciliation while the other times out and aborts, due to one-sided message loss.
+(If desired, it would not be difficult to modify the algorithm so that an in-progress reconciliation can be restarted.)
+Note that it is possible for one replica to complete reconciliation and to deliver its new messages while the other replica crashes just before reaching this point.
 Thus, when we load the heads from the previous reconciliation on line~\ref{line:load-heads} of Algorithm~\ref{fig:algorithm2}, the local and the remote replica's $\mathit{oldHeads}$ may differ.
 This does not affect the correctness of the algorithm.
+
+\begin{algorithm}
+    \begin{algorithmic}[1]
+    \On{commit of local transaction $T$}
+        \State $(\mathit{ins}, \mathit{del}) := \Call{GeneratedUpdates}{T}$
+        \State \textbf{broadcast} $(\mathit{ins}, \mathit{del})$ by causal broadcast
+    \EndOn
+    \State
+    \On{delivering $m$ by causal broadcast}
+        \State $((\mathit{ins}, \mathit{del}), \mathit{hs}, \mathit{sig}) := m$
+        \If{updates $(\mathit{ins}, \mathit{del})$ are safe w.r.t. all invariants and\label{line:safety-check}\\\hspace{3em}$\forall (h,r,t) \in \mathit{del}.\; h \in \{H(m') \mid m' \in \mathrm{pred}^*(\mathcal{M}, m)\}$}\label{line:pred-check}
+            \State $S := S \setminus \mathit{del} \,\cup\, \{(H(m), \mathit{rel}, \mathit{tuple}) \mid (\mathit{rel}, \mathit{tuple}) \in \mathit{ins}\}$ \label{line:state-update}
+        \EndIf
+    \EndOn
+    \end{algorithmic}
+    \caption{BEC database replication using causal broadcast.}\label{fig:algorithm3}
+\end{algorithm}
 
 \begin{figure*}
   \includegraphics[width=\textwidth,keepaspectratio=true]{figs/evaluation.pdf}
@@ -707,37 +737,95 @@ This does not affect the correctness of the algorithm.
   \label{fig:evaluation}
 \end{figure*}
 
-\subsection{Implementation}
+\subsection{BEC replication using causal broadcast}
 
-% Full replication (could be extended to partial replication/sharding though)
+Given the Byzantine causal broadcast protocol we have defined, we now introduce a replication algorithm that ensures Byzantine Eventual Consistency and preserves invariants, assuming \I-confluence.
+The details depend on the data model of the database being replicated, and the types of updates allowed.
+Algorithm~\ref{fig:algorithm3} shows an example for a relational database that supports insertion and deletion of tuples in relations (updates can be represented by deleting the old tuple and inserting the new one).
 
-We can implement BEC replicated state using Byzantine causal broadcast (\S~\ref{sec:algorithm}) and operation-based CRDTs.
-Whenever a replica wishes to update the state of a CRDT, it generates an \emph{operation} describing that update, encodes that operation as a message, and sends it to the other replicas via Byzantine causal broadcast.
-On delivering that message, each replica (including the sender) applies the operation to its local CRDT state.
-Each operation has a unique logical timestamp as specified below.
-The first five properties of BEC then follow immediately from the five properties of causal broadcast~\cite{Gomes:2017gy}.
+Let each replica have state $S$, which is stored durably, and which is initially the empty set.
+$S$ is a set of triples: $(h, \mathit{rel}, \mathit{tuple}) \in S$ means the relation named $\mathit{rel}$ contains the tuple $\mathit{tuple}$, and that tuple was inserted by a message with hash $h$.
+We assume the schema of $\mathit{tuple}$ is known to the application, and we ignore DDL in this example.
+Our algorithm gives each replica a full copy of the database $S$; sharding could be added if required.
 
-The CRDT algorithm ensures that concurrent operations commute: thus, any operations whose order is left ambiguous by the \emph{causal order} property of causal broadcast can be applied in any order without affecting the final state.
-On the other hand, any operations that are predecessors or successors of one another need not be commutative, since causal broadcast will deliver them in the same order at each replica.
-Hence we obtain the \emph{convergence} property.
+When a transaction $T$ executes, we allow it to read the current state of $S$ at the local replica.
+When $T$ commits, we assume the function $\textsc{GeneratedUpdates}(T)$ returns the inserts and deletions performed in $T$.
+Insertions are represented as pairs of $(\mathit{rel}, \mathit{tuple})$ indicating the insertion of $\mathit{tuple}$ into the relation named $\mathit{rel}$.
+Deletions are represented by the $(h, \mathit{rel}, \mathit{tuple})$ triple to be deleted.
+We encode these updates as a message and disseminate it to the other replicas via Byzantine causal broadcast.
 
-In addition to causal broadcast, many CRDT algorithms require that each operation has a globally unique logical timestamp.
-For example, in a last-writer-wins register, if several replicas concurrently write to the register, then the merged final value of the register is the value written by the operation with the greatest logical timestamp~\cite{Shapiro:2011wy}.
+When a message is delivered by causal broadcast (including self-delivery to the replica that sent the message), we first check on line~\ref{line:safety-check} of Algorithm~\ref{fig:algorithm3} whether the updates are \emph{safe} with regard to all of the invariants in the application.
+An update is unsafe if applying that update could cause the set of transactions to no longer be \I-confluent with regard to a particular invariant.
+For example, a deletion of a tuple in a particular relation is unsafe if there is a referential integrity invariant enforcing a foreign key constraint whose target is that relation, because a different transaction could concurrently insert a tuple that has a foreign key reference to the deleted tuple, leading to a constraint violation.
+We assert that it is possible to determine safety unambiguously for all common types of constraint, but we leave a detailed analysis of this matter for future work.
+The check for safety at the time of delivering a message is necessary because even if we assume that correct replicas only generate safe updates, faulty replicas may generate unsafe updates, which must be ignored by correct replicas.
 
-When using our causal broadcast algorithms from \S~\ref{sec:algorithm} we can assign such timestamps as follows.
-For every message $m$ let the logical timestamp $T(m)$ of that message be:
-\begin{align*}
-    T(m) &= 0 &&\text{if } \mathrm{pred}^1(m) = \{\}, \\
-    T(m) &= 1 + \max_{m' \in \mathrm{pred}^1(m)} T(m') &&\text{otherwise.}
-\end{align*}
-We define a total order lexicographically by breaking ties using the message hash:
-\[ m_1 < m_2 \iff (T(m_1) < T(m_2) \;\vee\; (T(m_1) = T(m_2) \,\wedge\, H(m_1) < H(m_2)). \]
-This construction is similar to Lamport timestamps~\cite{Lamport:1978}: a successor always has a greater timestamp than its predecessors, making the timestamp order a linear extension of the causal order.
-Since we assume that the hash function is collision-free, the (timestamp, hash) pair for a message/operation is globally unique, as required by CRDTs.
+In addition to checking safety, we check on line~\ref{line:pred-check} that any deletions in the message $m$ are for tuples that were inserted by a message that causally precedes $m$.
+This ensures that the insertion is applied before the deletion on all replicas, which is necessary to ensure convergence.
+If these conditions are met, we apply the updates to the replica state $S$ on line~\ref{line:state-update}.
+We remove any deleted tuples, and we augment any insertions with the hash of the message.
+This ensures that subsequent deletions can unambiguously reference the element of $S$ to be deleted, even if multiple replicas concurrently insert the the same tuple into the same relation.
+
+This algorithm could be extended with other operations besides insertion and deletion: for example, it might be useful to support an operation that adds a (possibly negative) value to a numeric attribute; such an operation would commute trivially with other operations of the same type.
+Further data models can be implemented using CRDT techniques (\S~\ref{sec:crdts}).
+
+\begin{lemma}\label{lemma:safety-check}
+For a given message $m$, the conditions on lines~\ref{line:safety-check} and~\ref{line:pred-check} of Algorithm~\ref{fig:algorithm3} evaluate to the same result ($\mathsf{true}$ or $\mathsf{false}$) on all correct replicas.
+\end{lemma}
+
+\begin{proof}
+The safety check on line~\ref{line:safety-check} depends only on the updates in the message and the invariants, and not on the replica state.
+We assume that all correct replicas use the same invariants, so they will agree on whether the updates are safe.
+
+The predecessor check on line~\ref{line:pred-check} depends only on $m$ and the set of its predecessors; this set is the same on all correct replicas, since it is unambiguously determined by $m$'s causal dependency hashes, and a replica ensures that if a message is in $\mathcal{M}$, its predecessors are also in $\mathcal{M}$.
+\end{proof}
+
+\begin{lemma}\label{lemma:commutative}
+In Algorithm~\ref{fig:algorithm3}, for all replica states $S$, and for all messages $m_1$, $m_2$ such that neither message is a predecessor of the other, delivering $m_1$ first and then $m_2$ has the same effect as delivering $m_2$ first and then $m_1$.
+\end{lemma}
+
+\begin{proof}
+Consider first the conditions on lines~\ref{line:safety-check} and~\ref{line:pred-check} of Algorithm~\ref{fig:algorithm3}; by Lemma~\ref{lemma:safety-check}, these conditions always evaluate to the same value for a given message, regardless of the order in which the messages are delivered.
+If they evaluate to $\mathsf{false}$ for both $m_1$ and $m_2$, the state $S$ is not modified, so these updates commute.
+If the conditions are $\mathsf{false}$ for one message and $\mathsf{true}$ for the other, only one of the message deliveries updates the replica state, so these updates commute.
+
+If the conditions are $\mathsf{true}$ for both messages, TODO\dots
+\end{proof}
+
+\begin{theorem}
+Algorithm~\ref{fig:algorithm3} ensures Byzantine Eventual Consistency, as defined in \S~\ref{sec:bec-definition}.
+\end{theorem}
+
+\begin{proof}
+The \emph{self-update}, \emph{authenticity}, and \emph{causal consistency} properties follow directly from the \emph{self-delivery}, \emph{authenticity}, and \emph{causal order} properties of causal broadcast (\S~\ref{sec:broadcast-properties}), respectively.
+The \emph{atomicity} property of BEC follows from the fact that all updates generated by a transaction are encoded into a single message, and the delivery of that message occurs within an \emph{atomic} block on every correct replica (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver}).
+
+To prove the \emph{eventual update} update property of BEC, we rely upon the \emph{eventual delivery} property of causal broadcast, which ensures that any message delivered by one correct replica will eventually be delivered by all correct replicas.
+Moreover, we must show that one correct replica applies the updates in a message if and only if another correct replica applies it.
+
+To prove the \emph{convergence} property of BEC, assume two correct replicas $p$ and $q$ have delivered the same set of messages.
+We must then show that both replicas are in the same state.
+Due to the \emph{non-duplication} property of causal broadcast, no message is delivered more than once.
+Therefore, the sequence of message deliveries at $p$ is a permutation of the sequence of deliveries at $q$.
+Moreover, due to the \emph{causal order} property, if both replicas have delivered $m_1$ and $m_2$, and if $m_1$ is a predecessor of $m_2$, then $m_1$ appears before $m_2$ in both replicas' delivery sequences.
+
+It is therefore possible to permute $p$'s delivery sequence into $q$'s delivery sequence by repeatedly swapping adjacent messages in that sequence, and neither message is a predecessor of the other.
+If we can show that each such swap of adjacent messages leaves the final state of the replica unchanged, then we have demonstrated that $p$ and $q$ must be in the same state.
+This follows from Lemma~\ref{lemma:commutative}.
+\end{proof}
+
+\begin{theorem}
+Assume that the safety check in Algorithm~\ref{fig:algorithm3} only allows updates from transactions that are \I-confluent with regard to all of the application's invariants.
+Then Algorithm~\ref{fig:algorithm3} ensures that the state of each correct replica always satisfies all of the application's invariants.
+\end{theorem}
+
+\begin{proof}
+TODO
+\end{proof}
 
 % TODO: rather than msgs/sec on x axis, have new msgs/reconciliation?
 
-\subsection{Evaluation}\label{sec:evaluation}
+\section{Evaluation}\label{sec:evaluation}
 
 To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2} we implemented both algorithms and measured their behaviour in a simulated network.
 In our experiments we use four replicas, where every pair of replicas reconciles their states once per second.
@@ -849,6 +937,8 @@ Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs,
 \section{Conclusions}
 
 % Conjecture: the set of problems that can be solved without coordination in a non-Byzantine system is the same as the set of problems that is immune to Sybil attacks in a Byzantine system.
+
+% Potential follow-on work: algorithms to determine whether an update is safe with regard to commonly used invariants.
 
 Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty replicas and are thus not suitable applications for Byzantine agreement.
 In this paper, we have defined Byzantine Eventual Consistency (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty replicas in a system, and without making any synchrony assumptions.
