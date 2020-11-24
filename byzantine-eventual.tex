@@ -689,7 +689,7 @@ Thus, if the reconciliations are frequent, they can employ a small Bloom filter 
 
 This optimized algorithm also tolerates Byzantine faults.
 For example, a faulty replica may send a correct replica an arbitrarily corrupted Bloom filter, but this only changes the set of messages in the reply from the correct replica, and has no effect on $\mathcal{M}$ at the correct replica.
-We formally analyse the correctness of this algorithm in Appendix~\ref{sec:proof}.
+We formally analyze the correctness of this algorithm in Appendix~\ref{sec:proof}.
 
 \begin{table*}
 \caption{Determining safety of updates with respect to different types of invariant}\label{tab:safety}
@@ -707,6 +707,11 @@ Value is materialized view of a query & All updates are safe, provided materiali
 \end{table*}
 
 \subsection{Discussion}
+
+One further optimization could be added to our algorithms: on receiving the other replica's heads, a replica can check whether it has any successors of those heads.
+If so, those successors can immediately be sent to the other replica (Git calls this a ``fast-forward'').
+If neither replica's heads are known to the other (i.e.\ their histories have diverged), they fall back to the aforementioned algorithm.
+We have omitted this optimization from our algorithms because we found that it did not noticeably improve the performance of Algorithm~\ref{fig:algorithm2}, and so it was not worth the additional complexity.
 
 A potential issue with Algorithms~\ref{fig:algorithm} and~\ref{fig:algorithm2} is the unbounded growth of storage requirements, since the set $\mathcal{M}$ grows monotonically (much like most algorithms for Byzantine agreement, which produce an append-only log without considering how that log might be truncated).
 If the set of replicas in the system is known, we can truncate history as follows: once every replica has delivered a message $m$ (i.e.\ $m$ is \emph{stable}~\cite{Birman:1991el}), the algorithm no longer needs to refer to any of the predecessors of $m$, and so all of those predecessors can be safely removed from $\mathcal{M}$ without affecting the algorithm.
@@ -810,7 +815,7 @@ Moreover, we assume that each request or response incurs an additional constant 
 We compute the number of kilobytes sent per second (in both directions) using each reconciliation algorithm.
 
 Figure~\ref{fig:evaluation} (right) shows the results from this experiment.
-The grey line represents a hypothetical optimal algorithm that transmits only new messages, but no additional metadata such as hashes or Bloom filters.
+The gray line represents a hypothetical optimal algorithm that transmits only new messages, but no additional metadata such as hashes or Bloom filters.
 Compared to this optimum, Algorithm~\ref{fig:algorithm2} incurs a near-constant overhead of approximately 800 bytes per reconciliation for the heads and predecessor hashes, Bloom filter, and occasional additional round trips.
 In contrast, Algorithm~\ref{fig:algorithm} incurs an approximately 40\% overhead, primarily because it sends many $\mathsf{needs}$ messages containing hashes, and it sends messages in many small responses rather than batched into one response.
 
@@ -914,7 +919,7 @@ For systems that currently require all nodes to be trusted, and hence can only d
 We hope that BEC will inspire further research to ensure the correctness of eventually consistent systems in the presence of arbitrary numbers of Byzantine faults.
 
 \begin{acks}
-Thank you to Alastair Beresford, Srinivasan Keshav and Gavin Stark for feedback on a draft of this paper.
+Thank you to Alastair Beresford, Jon Crowcroft, Srinivasan Keshav, Smita Vijaya Kumar and Gavin Stark for feedback on a draft of this paper.
 Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, the Isaac Newton Trust, and Nokia Bell Labs.
 TODO add Heidi's funding details.
 \end{acks}
