@@ -31,7 +31,7 @@ describe('Replica', () => {
       {id: 'b:1', pred: ['a:1'],        succ: ['a:3']},
       {id: 'a:3', pred: ['a:2', 'b:1'], succ: []}
     ])
-    assert.deepStrictEqual(a.allSuccessors('a:1', true), [
+    assert.deepStrictEqual(a.allSuccessors(['a:1']), [
       {id: 'a:1', pred: [],             succ: ['a:2', 'b:1']},
       {id: 'a:2', pred: ['a:1'],        succ: ['a:3']},
       {id: 'b:1', pred: ['a:1'],        succ: ['a:3']},
