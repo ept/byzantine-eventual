@@ -14,7 +14,7 @@
 \newcommand\vldbavailabilityurl{}
 \newcommand\vldbpagestyle{plain} % use 'plain' for review versions, 'empty' for camera ready
 
-\hyphenation{time-stamp time-stamps re-con-cilia-tion data-center data-centre}
+\hyphenation{time-stamp time-stamps re-con-cilia-tion data-center}
 \renewcommand{\floatpagefraction}{.8}%
 
 % Custom macros
@@ -78,7 +78,7 @@
 \begin{abstract}
 Sybil attacks, in which a large number of adversary-controlled nodes join a network, are a concern for many peer-to-peer database systems, necessitating expensive countermeasures such as proof-of-work.
 However, there is a category of database applications that are, by design, immune to Sybil attacks because they can tolerate arbitrary numbers of Byzantine-faulty nodes.
-In this paper, we characterise this category of applications using a consistency model we call \emph{Byzantine Eventual Consistency} (BEC).
+In this paper, we characterize this category of applications using a consistency model we call \emph{Byzantine Eventual Consistency} (BEC).
 We introduce an algorithm that guarantees BEC, prove its correctness, and demonstrate good performance in a prototype implementation, making our algorithm viable for practical use.
 Our algorithm is based on a Byzantine fault tolerant causal broadcast protocol.
 \end{abstract}
@@ -112,12 +112,12 @@ The source code, data, and/or other artifacts have been made available at \url{\
 
 \section{Introduction}
 
-Peer-to-peer systems are of interest to many communities for a number of reasons: their lack of central control by a single party can make them more resilient, and less susceptible to censorship and denial-of-service attacks than centralised services.
-Examples of widely deployed peer-to-peer applications include file sharing~\cite{Pouwelse:2005}, scientific dataset sharing~\cite{Robinson:2018}, decentralised social networking~\cite{Tarr:2019}, cryptocurrencies~\cite{Nakamoto:2008}, and blockchains~\cite{Bano:2019}.
+Peer-to-peer systems are of interest to many communities for a number of reasons: their lack of central control by a single party can make them more resilient, and less susceptible to censorship and denial-of-service attacks than centralized services.
+Examples of widely deployed peer-to-peer applications include file sharing~\cite{Pouwelse:2005}, scientific dataset sharing~\cite{Robinson:2018}, decentralized social networking~\cite{Tarr:2019}, cryptocurrencies~\cite{Nakamoto:2008}, and blockchains~\cite{Bano:2019}.
 
 Many peer-to-peer systems are essentially replicated database systems, albeit often with an application-specific data model.
 For example, in a cryptocurrency, the replicated state comprises the balance of each user's account; in BitTorrent, it is the files being shared.
-Some blockchains support more general data storage and smart contracts (essentially, deterministic stored procedures) that are executed as serialisable transactions by a consensus algorithm.
+Some blockchains support more general data storage and smart contracts (essentially, deterministic stored procedures) that are executed as serializable transactions by a consensus algorithm.
 
 The central challenge faced by peer-to-peer systems is that peers cannot be trusted because anybody in the world can add peers to the network.
 Thus, we must assume that some subset of peers are malicious; such peers are also called \emph{Byzantine-faulty}, which means that they may deviate from the specified protocol in arbitrary ways.
@@ -126,7 +126,7 @@ Moreover, a malicious party may perform a \emph{Sybil attack}~\cite{Douceur:2002
 Several countermeasures against Sybil attacks are used.
 Bitcoin introduced the concept of \emph{proof-of-work}~\cite{Nakamoto:2008}, in which a peer's voting power depends on the computational effort it expends.
 Unfortunately, proof-of-work is extraordinarily expensive: it has been estimated that as of 2020, Bitcoin alone represents almost half of worldwide datacenter electricity use~\cite{deVries:2020}.
-\emph{Permissioned} blockchains avoid this huge carbon footprint, but they have the downside of requiring central control over the peers that may join the system, undermining the principle of decentralisation.
+\emph{Permissioned} blockchains avoid this huge carbon footprint, but they have the downside of requiring central control over the peers that may join the system, undermining the principle of decentralization.
 Other mechanisms, such as \emph{proof-of-stake}~\cite{Bano:2019}, are at present unproven.
 
 The reason why permissioned blockchains must control membership is that they rely on Byzantine agreement, which assumes that at most $f$ out of $n$ nodes are Byzantine-faulty.
@@ -139,8 +139,8 @@ This state of affairs raises the question: if Byzantine agreement cannot be achi
 A system that tolerates arbitrary numbers of Byzantine-faulty nodes is immune to Sybil attacks: even if the malicious peers outnumber the honest ones, it is still able to function correctly.
 This makes such systems of large practical importance: being immune to Sybil attacks means neither proof-of-work nor the central control of permissioned blockchains is required.
 
-In this paper we provide a precise characterisation of the types of problems that can and cannot be solved in the face of arbitrary numbers of Byzantine-faulty nodes.
-We provide this characterisation by viewing peer-to-peer networks through the lens of distributed database systems and their consistency models.
+In this paper we provide a precise characterization of the types of problems that can and cannot be solved in the face of arbitrary numbers of Byzantine-faulty nodes.
+We provide this characterization by viewing peer-to-peer networks through the lens of distributed database systems and their consistency models.
 Our analysis is based on using \emph{invariants}~-- predicates over database states~-- to express any properties, such as integrity constraints, that the application requires to be true.
 
 Our key result is a theorem stating that it is possible for a peer-to-peer database to be immune to Sybil attacks if and only if all of the possible transactions are \emph{\I-confluent} (invariant confluent) with respect to all of the application's invariants on the database.
@@ -155,7 +155,7 @@ Our contributions in this paper are as follows:
     \item We introduce replication algorithms that ensure BEC, and prove their correctness without bounding the number of Byzantine faults.
     Our approach first defines \emph{Byzantine causal broadcast}, a mechanism for reliably multicasting messages to a group of nodes, and then uses it for BEC replication.
     \item We evaluate the performance of a prototype implementation of our algorithms.
-    We demonstrate that our optimised algorithm incurs only a small network communication overhead, making it viable for use in practical systems.
+    We demonstrate that our optimized algorithm incurs only a small network communication overhead, making it viable for use in practical systems.
     \item We prove that \I-confluence is a necessary and sufficient condition for the existence of a BEC replication algorithm, and we use this result to determine which applications can be immune to Sybil attacks.
 \end{enumerate}
 
@@ -220,7 +220,7 @@ Our system consists of a finite set of replicas, which may vary over time.
 Any replica may execute transactions.
 Each replica is either \emph{correct} or \emph{faulty}, but a correct replica does not know whether another replica is faulty.
 A correct replica follows the specified protocol, whereas a faulty replica may deviate from the protocol in arbitrary ways (i.e.\ it is Byzantine-faulty~\cite{Lamport:1982}).
-Faulty replicas may collude and attempt to deceive correct replicas; we model such worst-case behaviour by assuming a malicious adversary who controls the behaviour of all faulty replicas.
+Faulty replicas may collude and attempt to deceive correct replicas; we model such worst-case behavior by assuming a malicious adversary who controls the behavior of all faulty replicas.
 We allow any subset of replicas to be faulty.
 We consider all replicas to be equal peers, making no distinction e.g.\ between clients and servers.
 Replicas may crash and recover; as long as a crashed replica eventually recovers, and otherwise follows the protocol, we still call it ``correct''.
@@ -235,7 +235,7 @@ Thus, even if the adversary can tamper with network traffic, it can only cause m
 For simplicity, our algorithms assume that network links are reliable, i.e.\ that a sent message is eventually delivered, provided that neither sender nor recipient crashes.
 This can easily be achieved by detecting and retransmitting any lost messages.
 
-We make no timing assumptions: messages may experience unbounded delay in the network (for example, due to retransmissions during temporary network partitions), replicas may execute at different speeds, and we do not assume any clock synchronisation (i.e.\ we assume an \emph{asynchronous} system model).
+We make no timing assumptions: messages may experience unbounded delay in the network (for example, due to retransmissions during temporary network partitions), replicas may execute at different speeds, and we do not assume any clock synchronization (i.e.\ we assume an \emph{asynchronous} system model).
 We do assume that a replica has a timer that allows it to perform some task approximately periodically, without requiring exact time measurement.
 
 \begin{figure}
@@ -263,7 +263,7 @@ We say a replicated database provides \emph{Byzantine Eventual Consistency} if i
 \item[Eventual update:] For any update applied by a correct replica, all correct replicas will eventually apply that update.
 \item[Convergence:] Any two correct replicas that have applied the same set of updates are in the same state.
 \item[Atomicity:] When a correct replica applies an update, it atomically applies all of the updates resulting from the same transaction.
-\item[Authenticity:] If a correct replica applies an update that is labelled as originating from replica $s$, then that update was generated by replica $s$.
+\item[Authenticity:] If a correct replica applies an update that is labeled as originating from replica $s$, then that update was generated by replica $s$.
 %\item[Non-duplication:] A correct replica does not apply the same update more than once.
 \item[Causal consistency:] If a correct replica generates or applies update $u_1$ before generating update $u_2$, then all replicas apply $u_1$ before $u_2$.
 \item[Invariant preservation:] The state of a correct replica always satisfies all of the application's declared invariants.
@@ -275,7 +275,7 @@ BEC is a strengthening of SEC (\S~\ref{sec:crdts}); the main differences are tha
 
 BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with any number of Byzantine-faulty replicas.
 Essentially, BEC ensures that faulty replicas cannot permanently corrupt the state of correct replicas.
-As is standard in Byzantine systems, the properties above only constrain the behaviour of correct replicas, since we can make no assumptions or guarantees about the behaviour or state of faulty replicas.
+As is standard in Byzantine systems, the properties above only constrain the behavior of correct replicas, since we can make no assumptions or guarantees about the behavior or state of faulty replicas.
 
 \subsection{Existence of a BEC algorithm}\label{sec:theorem}
 
@@ -421,13 +421,13 @@ Sending the entire set of messages to each other transmits a large amount of dat
 
 An efficient reconciliation algorithm should determine which messages have already been delivered by both replicas, and transmit only those messages that are unknown to the other replica.
 For example, replica $p$ should only send $\mathcal{M}_p \setminus \mathcal{M}_r$ to replica $r$, and replica $r$ should only send $\mathcal{M}_r \setminus \mathcal{M}_p$ to replica $p$.
-The algorithm should also complete in a small number of round-trips and minimise the size of messages sent.
+The algorithm should also complete in a small number of round-trips and minimize the size of messages sent.
 These goals rule out other na\"{\i}ve approaches too: for example, instead of sending all messages in $\mathcal{M}_p$, replica $p$ could send the hash of each message in $\mathcal{M}_p$, which can be used by other replicas to determine which messages they are missing; this is still inefficient, as the message size is $O(|\mathcal{M}_{p}|)$.
 
 \begin{figure*}
     \centering
     \input{figs/vectorclocks.tikz}
-    \caption{Replicas $p$ and $r$ believe they are in the same state because their vector timestamps are the same, when in fact their sets of messages are inconsistent due to $q$'s faulty behaviour.}
+    \caption{Replicas $p$ and $r$ believe they are in the same state because their vector timestamps are the same, when in fact their sets of messages are inconsistent due to $q$'s faulty behavior.}
     \label{fig:vectorclocks}
 \end{figure*}
 
@@ -439,7 +439,7 @@ The problem is illustrated in Figure~\ref{fig:vectorclocks}, where faulty replic
 
 In a system where replicas correctly follow the protocol, the three components of the timestamp represent the number of distinct messages broadcast by $p$, $q$, and $r$ respectively.
 Thus, $p$ and $r$ should be able to reconcile their sets of messages by first sending each other their latest vector timestamps, which serve as a concise summary of the set of messages they have seen.
-However, in the example of Figure~\ref{fig:vectorclocks}, this approach fails due to $q$'s earlier faulty behaviour: $p$ and $r$ detect that their vector timestamps are equal, and thus incorrectly believe that they are in the same state, even though their sets of messages are different.
+However, in the example of Figure~\ref{fig:vectorclocks}, this approach fails due to $q$'s earlier faulty behavior: $p$ and $r$ detect that their vector timestamps are equal, and thus incorrectly believe that they are in the same state, even though their sets of messages are different.
 
 Thus, vector clocks can be corrupted by a faulty replica.
 A causal broadcast algorithm in a Byzantine system must not be vulnerable to such corruption.
@@ -557,16 +557,15 @@ If two replicas are not able to connect directly, they can still exchange messag
     \caption{A Byzantine causal broadcast algorithm.}\label{fig:algorithm}
 \end{algorithm}
 
-% hspace is an ugly hack to get the figure to line up as dag-after has some extra whitespace
 \begin{figure}
     \begin{subfigure}{\columnwidth}
     \centering
-    \input{figs/dag-before-p.tikz}\hspace{0.5cm}
+    \input{figs/dag-before-p.tikz}
     \caption{Messages at $p$ before reconciliation.}
     \end{subfigure}\\[1em]
     \begin{subfigure}{\columnwidth}
     \centering
-    \input{figs/dag-before-q.tikz}\hspace{0.5cm}
+    \input{figs/dag-before-q.tikz}
     \caption{Messages at $q$ before reconciliation.}
     \end{subfigure}\\[1em]
     \begin{subfigure}{\columnwidth}
@@ -588,7 +587,7 @@ We illustrate the operation of the reconciliation algorithm using the example in
 Initially, when a connection is established between two replicas, they send each other their heads (Algorithm~\ref{fig:algorithm}, line~\ref{line:send-heads}).
 In the example of Figure~\ref{fig:example-dags}, $p$ sends $\langle\mathsf{heads}: \{H(E),H(M)\}\rangle$ to $q$, while $q$ sends $\langle\mathsf{heads}: \{H(G),H(K)\}\rangle$ to $p$.
 
-Each replica also initialises variables $\mathit{sent}$ and $\mathit{recvd}$ to contain the set of messages sent to/received from the other replica within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a read-only snapshot of this replica's set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
+Each replica also initializes variables $\mathit{sent}$ and $\mathit{recvd}$ to contain the set of messages sent to/received from the other replica within the scope of this particular connection, $\mathit{missing}$ to contain the set of hashes for which we currently lack a message, and $\mathcal{M}_\mathsf{conn}$ to contain a read-only snapshot of this replica's set of messages $\mathcal{M}$ at the time the connection is established (line~\ref{line:init}).
 In practice, this snapshot can be implemented using snapshot isolation~\cite{Berenson:1995}.
 
 A replica may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{recvd}$, $\mathit{missing}$, and $\mathcal{M}_\mathsf{conn}$, while $\mathcal{M}$ is a global variable that is shared between all connections.
@@ -655,7 +654,7 @@ We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``
         \State \textbf{return} $\mathcal{M}_\mathsf{conn} \setminus \left(\mathit{known} \,\cup\, \bigcup_{m \in \mathit{known}} \mathrm{pred}^*(\mathcal{M}_\mathsf{conn}, m)\right)$
     \EndFunction\label{line:msg-since-end}
     \end{algorithmic}
-    \caption{Optimising Algorithm~\ref{fig:algorithm} to reduce the number of round-trips.}\label{fig:algorithm2}
+    \caption{Optimizing Algorithm~\ref{fig:algorithm} to reduce the number of round-trips.}\label{fig:algorithm2}
 \end{algorithm*}
 
 First, when replica $p$ establishes a connection with replica $q$, $p$ calls $\textsc{LoadHeads}(q)$ to load the heads from the previous reconciliation with $q$ from the key-value store (Algorithm~\ref{fig:algorithm2}, line~\ref{line:load-heads}).
@@ -686,9 +685,9 @@ To fill in the remaining missing messages we revert back to Algorithm~\ref{fig:a
 
 The size of the Bloom filter can be chosen dynamically based on the number of elements it contains.
 Note that the Bloom filter reflects only messages that were added since the last reconciliation with $q$, not all messages $\mathcal{M}$.
-Thus, if the reconciliations are frequent, they can employ a small Bloom filter size to minimise the cost of reconciliation.
+Thus, if the reconciliations are frequent, they can employ a small Bloom filter size to minimize the cost of reconciliation.
 
-This optimised algorithm also tolerates Byzantine faults.
+This optimized algorithm also tolerates Byzantine faults.
 For example, a faulty replica may send a correct replica an arbitrarily corrupted Bloom filter, but this only changes the set of messages in the reply from the correct replica, and has no effect on $\mathcal{M}$ at the correct replica.
 We formally analyse the correctness of this algorithm in Appendix~\ref{sec:proof}.
 
@@ -702,7 +701,7 @@ Row-level check constraint & Inserts/updates tuple with a value that violates th
 Attribute has non-negative value & Subtracts a positive amount from the value of that attribute \\
 Foreign key constraint & Deletes a tuple from the constraint's target relation \\
 Uniqueness of an attribute & Inserts tuple with user-chosen value of that attribute (may be safe if the value is \\ & determined by the hash of the message containing the update) \\
-Value is materialised view of a query & All updates are safe, provided materialised view is updated after applying updates \\
+Value is materialized view of a query & All updates are safe, provided materialized view is updated after applying updates \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -792,7 +791,7 @@ Further data models and operations can be implemented using CRDT techniques (\S~
 
 \section{Evaluation}\label{sec:evaluation}
 
-To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2} we implemented both algorithms and measured their behaviour in a simulated network.
+To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2} we implemented both algorithms and measured their behavior in a simulated network.
 In our experiments we use four replicas, where every pair of replicas reconciles their states once per second.
 Each replica concurrently broadcasts new messages, and we vary the rate at which new messages are broadcast.
 To ensure we exercise the reconciliation algorithm, replicas do not eagerly send messages (lines~\ref{line:eager-send} and~\ref{line:eager-relay} of Algorithm~\ref{fig:algorithm} are omitted), and we rely only on periodic reconciliation to exchange messages.
@@ -825,12 +824,12 @@ Byzantine agreement has been the subject of extensive research and has seen a re
 To tolerate $f$ faults, Byzantine agreement algorithms typically require $3f+1$ nodes~\cite{Castro:1999,Kotla:2007,Bessani:2014}, and some even require $5f+1$ nodes~\cite{Abd:2005,Martin:2006}.
 % Most algorithms also require at least one round of communication with at least $2f+1$ replicas, incurring both significant latency and limiting availability.
 Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and uses $2u+r+1$ nodes.
-Byzantine quorum systems~\cite{Malkhi:1998} generalise from a threshold $f$ of failures to a set of possible failures.
+Byzantine quorum systems~\cite{Malkhi:1998} generalize from a threshold $f$ of failures to a set of possible failures.
 Zeno~\cite{Singh:2009} makes progress with just $f+1$ nodes, but safety depends on less than $\frac{1}{3}$ of nodes being Byzantine-faulty.
 Previous work on Byzantine fault tolerant CRDTs~\cite{Chai:2014,Shoker:2017,Zhao:2016}, Secure Reliable Multicast~\cite{Malki:1996,Malkhi:2000}, Secure Causal Atomic Broadcast~\cite{Cachin:2001cj,Duan:2017} and Byzantine Lattice Agreement~\cite{DiLuna:2020} also assumes $3f+1$ nodes.
 % maybe mention this issues with re-configuring byzantine agreement algorithms.
 
-In SPORC~\cite{Feldman:2010wl}, BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty replica can partition the system, preventing some replicas from ever synchronising again, so these systems do not satisfy the \emph{eventual update} property of BEC.
+In SPORC~\cite{Feldman:2010wl}, BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty replica can partition the system, preventing some replicas from ever synchronizing again, so these systems do not satisfy the \emph{eventual update} property of BEC.
 Drabkin et al.~\cite{Drabkin:2005} present an algorithm for Byzantine reliable broadcast in the context of wireless networks, however this is insufficient to provide causal ordering.
 Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadcast while tolerating arbitrary numbers of faulty replicas.
 OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot uses a more complex algorithm involving logical clocks, which allow byzantine replicas to fork the system state (as described in \S\ref{sec:vectorclocks}), and a combination of version vectors and hash chains to detect and recover from forks.
@@ -849,11 +848,11 @@ Hash chaining is widely used: in blockchains~\cite{Bano:2019}, Git commit histor
 Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
 Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs, but do not present efficient reconciliation algorithms.
 
-% Recent work by van der Linde et al. http://www.vldb.org/pvldb/vol13/p2590-linde.pdf also considers the problem of causally consistent replication in the face of Byzantine faults, taking a very different approach to ours: detecting cryptographic proof of faulty behaviour, and banning nodes found to be misbehaving. The fault detection relies on a trusted central server, and some of their algorithms rely on clock synchronisation and trusted hardware such as SGX. By contrast, we do not require any trusted components in our system (except perhaps for the PKI). 
+% Recent work by van der Linde et al. http://www.vldb.org/pvldb/vol13/p2590-linde.pdf also considers the problem of causally consistent replication in the face of Byzantine faults, taking a very different approach to ours: detecting cryptographic proof of faulty behavior, and banning nodes found to be misbehaving. The fault detection relies on a trusted central server, and some of their algorithms rely on clock synchronization and trusted hardware such as SGX. By contrast, we do not require any trusted components in our system (except perhaps for the PKI). 
 
-% Searching for cryptographic proof of a replica misbehaving, and banning such a node from the system if such behaviour is detected. Relies on a trusted central server that stores a hash of the most recent message sent by each node. Does not ensure convergence if the server colludes with malicious replicas. A malicious server can stop other replicas’ misbehaviour being detected. (Section “eventual sibling detection”)
+% Searching for cryptographic proof of a replica misbehaving, and banning such a node from the system if such behavior is detected. Relies on a trusted central server that stores a hash of the most recent message sent by each node. Does not ensure convergence if the server colludes with malicious replicas. A malicious server can stop other replicas’ misbehavior being detected. (Section “eventual sibling detection”)
 
-% I’m not sure that banning malicious nodes is an effective approach. By the time faulty behaviour is detected, it’s already too late, and the damage has been done. Some kind of rollback mechanism will be required to recover from this situation, but the paper doesn’t really discuss it.
+% I’m not sure that banning malicious nodes is an effective approach. By the time faulty behavior is detected, it’s already too late, and the damage has been done. Some kind of rollback mechanism will be required to recover from this situation, but the paper doesn’t really discuss it.
 
 % This work places great emphasis on whether replicas are correctly reporting the causal dependencies of each operation; for our purposes this does not matter, since missing dependencies do no harm.
 
@@ -906,11 +905,11 @@ Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs,
 Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty replicas and are thus not suitable applications for Byzantine agreement.
 In this paper, we have defined Byzantine Eventual Consistency (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty replicas in a system, and without making any synchrony assumptions.
 We have proposed reconciliation algorithms that implement Byzantine causal broadcast, proved their correctness, and evaluated their performance.
-Our optimised algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it immediately applicable in practice.
+Our optimized algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it immediately applicable in practice.
 
 As shown in \S~\ref{sec:byzantine-crdts}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
 Adopting our approach will allow those systems to gain robustness against Byzantine faults without significant changes to their existing CRDT algorithms.
-For systems that currently require all nodes to be trusted, and hence can only deployed in trusted datacentre networks, adding Byzantine fault tolerance opens up new opportunities for deployment in untrusted settings, e.g.\ on the public Internet.
+For systems that currently require all nodes to be trusted, and hence can only deployed in trusted datacenter networks, adding Byzantine fault tolerance opens up new opportunities for deployment in untrusted settings, e.g.\ on the public Internet.
 
 We hope that BEC will inspire further research to ensure the correctness of eventually consistent systems in the presence of arbitrary numbers of Byzantine faults.
 
@@ -1094,7 +1093,7 @@ After a reconciliation where one replica completes while the other does not (e.g
 Let $m$ be a message that has been delivered by $p$ at some point in time.
 We have $m \in \mathcal{M}_p$ from that time onward, since $\mathcal{M}_p$ is exactly the set of delivered messages, and it grows monotonically (Lemma~\ref{lemma:no-p-missing}).
 Thus, $m$ will eventually be delivered by any correct replica to which $p$ has a direct network link.
-These replicas will eventually relay $m$ to their direct neighbours, and so on, until $m$ is delivered to $q$ through successive reconciliations along the path from $p$ to $q$.
+These replicas will eventually relay $m$ to their direct neighbors, and so on, until $m$ is delivered to $q$ through successive reconciliations along the path from $p$ to $q$.
 Therefore, $m$ is eventually delivered by $q$.
 \end{proof}
 
