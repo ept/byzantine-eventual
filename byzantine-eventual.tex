@@ -22,7 +22,6 @@
 
 \begin{document}
 \title{Byzantine Eventual Consistency and the Fundamental Limits of Peer-to-Peer Databases}
-% Alternative title idea: Keep Calm and Carry on! Guaranteeing consistency in the face of unbounded Byzantine faults
 
 \author{Martin Kleppmann}
 \orcid{0000-0001-7252-6958}
@@ -79,8 +78,8 @@
 Sybil attacks, in which a large number of adversary-controlled nodes join a network, are a concern for many peer-to-peer database systems, necessitating expensive countermeasures such as proof-of-work.
 However, there is a category of database applications that are, by design, immune to Sybil attacks because they can tolerate arbitrary numbers of Byzantine-faulty nodes.
 In this paper, we characterize this category of applications using a consistency model we call \emph{Byzantine Eventual Consistency} (BEC).
-We introduce an algorithm that guarantees BEC, prove its correctness, and demonstrate good performance in a prototype implementation, making our algorithm viable for practical use.
-Our algorithm is based on a Byzantine fault tolerant causal broadcast protocol.
+We introduce an algorithm that guarantees BEC based on Byzantine causal broadcast, prove its correctness, and demonstrate near-optimal performance in a prototype implementation.
+%We also show that \I-confluence (invariant confluence) is a necessary and sufficient condition for the existence of such an algorithm.
 \end{abstract}
 \maketitle
 
@@ -177,7 +176,7 @@ To strengthen this model, Shapiro et al.~\cite{Shapiro:2011} introduce \emph{str
 Read operations can be performed on any replica at any time, and they return that replica's current state at that point in time.
 
 One way of achieving SEC is by using a reliable broadcast protocol (e.g.\ a gossip protocol~\cite{Leitao:2009fi}) to disseminate every update to all replicas; furthermore, when an update is delivered to a replica, it applies the update to its state using a commutative function.
-Say $S' = \mathrm{apply}(S, u)$ is the function that applies update $u$ to the replica state $S$, resulting in an updated replica state $S'$.
+Let $S' = \mathrm{apply}(S, u)$ be the function that applies update $u$ to the replica state $S$, resulting in an updated replica state $S'$.
 Then two updates $u_1$ and $u_2$ commute if
 \[ \forall S.\; \mathrm{apply}(\mathrm{apply}(S, u_1), u_2) = \mathrm{apply}(\mathrm{apply}(S, u_2), u_1). \]
 Two replicas can apply the same commutative updates in a different order, and still converge to the same state.
@@ -186,7 +185,6 @@ One technique for implementing such commutativity is to use \emph{Conflict-free 
 These abstract datatypes are designed such that concurrent updates to their state commute, with built-in resolution policies for conflicting updates.
 CRDTs have been used to implement a range of applications, such as key-value stores~\cite{Akkoorath2016Cure,Zawirski2015SwiftCloud}, multi-user collaborative text editors~\cite{Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many others.
 Several papers present techniques for achieving commutativity in different datatypes~\cite{Preguica:2018gi,Shapiro:2011wy,Weiss:2009ht}.
-% It has been formally proved that this approach ensures the SEC convergence property~\cite{Gomes:2017gy}: for a given set of operations, all possible permutations allowed by causal broadcast result in the same state.
 
 \subsection{Invariant confluence}\label{sec:confluence}
 
@@ -591,7 +589,7 @@ Each replica also initializes variables $\mathit{sent}$ and $\mathit{recvd}$ to 
 In practice, this snapshot can be implemented using snapshot isolation~\cite{Berenson:1995}.
 
 A replica may concurrently execute several instances of this algorithm using several connections; each connection then has a separate copy of the variables $\mathit{sent}$, $\mathit{recvd}$, $\mathit{missing}$, and $\mathcal{M}_\mathsf{conn}$, while $\mathcal{M}$ is a global variable that is shared between all connections.
-Each connection thread executes independently, except for the blocks marked \emph{atomically}, which are executed only by one thread at a time.
+Each connection thread executes independently, except for the blocks marked \emph{atomically}, which are executed only by one thread at a time on a given replica.
 $\mathcal{M}$ should be maintained in durable storage, while the other variables may be lost in case of a crash.
 
 On receiving the heads from the other replica (line~\ref{line:recv-heads}), the recipient checks whether the recipient's $\mathcal{M}_\mathsf{conn}$ contains a matching message for each hash.
@@ -600,8 +598,8 @@ In our running example, $p$ needs $H(G)$, while $q$ needs $H(E)$ and $H(M)$.
 A replica responds to such a $\mathsf{needs}$ request by returning all the matching messages in a $\mathsf{msgs}$ response (lines~\ref{line:recv-needs}--\ref{line:end-needs}).
 
 On receiving $\mathsf{msgs}$, we first discard any broadcast messages that are not correctly signed (line~\ref{line:msgs-recvd}): the function $\mathrm{check}(m, s)$ returns $\mathsf{true}$ if $s$ is a valid signature over message $m$ by a legitimate replica in the system, and $\mathsf{false}$ otherwise.
-We then inspect the hashes in each valid message received.
-If any predecessor hashes do not resolve to a known message in $\mathcal{M}_\mathsf{conn}$ or $\mathit{recvd}$, we send another $\mathsf{needs}$ request with those hashes (lines~\ref{line:msgs-missing}--\ref{line:msgs-handle-missing}).
+For each correctly signed message we then inspect the hashes.
+If any predecessor hashes do not resolve to a known message in $\mathcal{M}_\mathsf{conn}$ or $\mathit{recvd}$, the replica sends another $\mathsf{needs}$ request with those hashes (lines~\ref{line:msgs-missing}--\ref{line:msgs-handle-missing}).
 In successive rounds of this protocol, the replicas work their way from the heads along the paths of predecessors, until they reach the common ancestors of both replicas' heads.
 
 Eventually, when there are no unresolved hashes, we update the global set $\mathcal{M}$ to reflect the messages we have delivered, perform a topological sort of the graph of received messages to put them in causal order, deliver them to the application in that order, and conclude the protocol run (lines~\ref{line:missing-empty}--\ref{line:finish}).
@@ -792,8 +790,6 @@ This algorithm could be extended with other operations besides insertion and del
 Further data models and operations can be implemented using CRDT techniques (\S~\ref{sec:crdts}).
 
 
-% TODO: rather than msgs/sec on x axis, have new msgs/reconciliation?
-
 \section{Evaluation}\label{sec:evaluation}
 
 To evaluate the algorithms introduced in \S~\ref{sec:algorithm} we implemented a prototype and measured its behavior.
@@ -862,13 +858,13 @@ This problem has been studied in various domains, including peer-to-peer systems
 Approaches include using Bloom filters~\cite{Skjegstad:2011}, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2003}.
 However, these approaches are not designed to tolerate Byzantine faults.
 
-Snapdoc~\cite{Kollmann:2019hf} provides cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
-Truong et al.~\cite{Truong:2012et} present another scheme for authenticating CRDT history, but do not include a reconciliation protocol.
-
 \I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} in the context of non-Byzantine systems.
 It is closely related to the concept of logical monotonicity~\cite{Conway:2012} and the CALM theorem~\cite{Ameloot:2013,Hellerstein:2010}, which states that coordination can be avoided for programs that are monotonic.
 COPS~\cite{Lloyd:2011} is an example of a non-Byzantine system that achieves causal consistency while avoiding coordination, and BEC is a Byzantine variant of COPS's Causal+ consistency model.
 Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:1991el}.
+
+% Snapdoc~\cite{Kollmann:2019hf} provides cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
+% Truong et al.~\cite{Truong:2012et} present another scheme for authenticating CRDT history, but do not include a reconciliation protocol.
 
 % BAR Gossip uses a model of "rational" replicas that are assumed to maximise a given loss function
 % Harry C. Li, Allen Clement, et al. BAR Gossip. OSDI 2006 https://static.usenix.org/event/osdi06/tech/full_papers/li/li.pdf
@@ -888,23 +884,27 @@ Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:19
 
 \section{Conclusions}
 
-% Conjecture: the set of problems that can be solved without coordination in a non-Byzantine system is the same as the set of problems that is immune to Sybil attacks in a Byzantine system.
+Many peer-to-peer systems tolerate only a bounded number of Byzantine-faulty nodes, and therefore need to employ expensive countermeasures against Sybil attacks, such as proof-of-work, or centrally controlled permissions for joining the system.
+In this work we asked the question: what are the limits of what we can achieve without introducing Sybil countermeasures?
+In other words, which applications can tolerate arbitrary numbers of Byzantine faults?
 
-% Potential follow-on work: algorithms to determine whether an update is safe with regard to commonly used invariants.
+We have answered this question with both a positive and a negative result.
+Our positive result is an algorithm that achieves Byzantine Eventual Consistency in such a system, provided that the application's transactions are \I-confluent with regard to its invariants.
+Our negative result is an impossibility proof showing that such an algorithm does not exist if the application is not \I-confluent.
+We proved our algorithms correct, and demonstrated that our optimized algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it immediately applicable in practice.
 
-% How to ensure that correct nodes form a connected component, as assumed in \S~\ref{sec:system-model}?
-% Connecting all-to-all is possible, but expensive if the number of replicas is large.
-
-Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty replicas and are thus not suitable applications for Byzantine agreement.
-In this paper, we have defined Byzantine Eventual Consistency (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty replicas in a system, and without making any synchrony assumptions.
-We have proposed reconciliation algorithms that implement Byzantine causal broadcast, proved their correctness, and evaluated their performance.
-Our optimized algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it immediately applicable in practice.
-
-As shown in \S~\ref{sec:byzantine-crdts}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
+As shown in \S~\ref{sec:crdts}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
 Adopting our approach will allow those systems to gain robustness against Byzantine faults without significant changes to their existing CRDT algorithms.
-For systems that currently require all nodes to be trusted, and hence can only deployed in trusted datacenter networks, adding Byzantine fault tolerance opens up new opportunities for deployment in untrusted settings, e.g.\ on the public Internet.
+For systems that currently require all nodes to be trusted, and hence can only deployed in trusted datacenter networks, adding Byzantine fault tolerance opens up new opportunities for deployment in untrusted peer-to-peer settings.
 
-We hope that BEC will inspire further research to ensure the correctness of eventually consistent systems in the presence of arbitrary numbers of Byzantine faults.
+We hope that BEC will inspire further research to ensure the correctness of data systems in the presence of arbitrary numbers of Byzantine faults.
+Some open questions include:
+\begin{itemize}
+    \item How can we best ensure that correct replicas form a connected component, as assumed in \S~\ref{sec:system-model}?
+    Connecting each replica to every other is the simplest solution, but it can be expensive if the number of replicas is large.
+    \item How can we formalize Table~\ref{tab:safety}, i.e.\ the process of checking whether an update is safe with regard to an invariant?
+    \item Is it generally true that a problem can be solved without coordination in a non-Byzantine system if and only if it is immune to Sybil attacks in a Byzantine context?
+\end{itemize}
 
 \begin{acks}
 Thank you to Alastair Beresford, Jon Crowcroft, Srinivasan Keshav, Smita Vijaya Kumar and Gavin Stark for feedback on a draft of this paper.
@@ -1160,7 +1160,7 @@ Due to the \emph{non-duplication} property of causal broadcast, no message is de
 Therefore, the sequence of message deliveries at $p$ is a permutation of the sequence of deliveries at $q$.
 Moreover, due to the \emph{causal order} property, if both replicas have delivered $m_1$ and $m_2$, and if $m_1$ is a predecessor of $m_2$, then $m_1$ appears before $m_2$ in both replicas' delivery sequences.
 
-It is therefore possible to permute $p$'s delivery sequence into $q$'s delivery sequence by repeatedly swapping adjacent messages in that sequence, such that neither message is a predecessor of the other.
+It is therefore possible to permute $p$'s delivery sequence into $q$'s delivery sequence by repeatedly swapping adjacent messages in that sequence, such that neither message is a predecessor of the other~\cite{Gomes:2017gy}.
 By Lemma~\ref{lemma:commutative}, swapping two such adjacent message deliveries does not change the replica state after delivering those messages.
 Thus, each such swap of adjacent messages leaves the final state of the replica unchanged, and therefore $p$ and $q$ must be in the same state.
 
