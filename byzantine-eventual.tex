@@ -546,8 +546,8 @@ If two replicas are not able to connect directly, they can still exchange messag
             \State $\mathcal{M} := \mathcal{M} \cup \mathit{recvd}$ \label{line:update-m}
             \State \textbf{deliver} all of the messages in $\mathit{msgs}$ \label{line:deliver}
             \State \hspace{3.5em}in topologically sorted order
-            \State \textbf{send} $\langle\mathsf{msgs}: \mathit{msgs}\rangle$ via all other connections\label{line:eager-relay}
             \EndAtomic
+            \State \textbf{send} $\langle\mathsf{msgs}: \mathit{msgs}\rangle$ via all other connections\label{line:eager-relay}
             \State \textbf{reconciliation complete} \label{line:finish}
         \Else
             \State \textbf{send} $\langle\mathsf{needs}: \mathit{missing}\rangle$ via current connection \label{line:send-missing}
@@ -752,8 +752,8 @@ This does not affect the correctness of the algorithm.
 \end{algorithm}
 
 \begin{figure*}
-  \includegraphics[width=\textwidth,keepaspectratio=true]{figs/evaluation.pdf}
-  \caption{left: number of round trips until reconciliation is complete; right: network bandwidth used to reconcile four replicas once per second (lower is better).}
+  \includegraphics[width=\textwidth,keepaspectratio=true]{evaluation/plots.pdf}
+  \caption{Results from the evaluation of our prototype. Left: number of round trips to complete a reconciliation; right: network bandwidth used per reconciliation (lower is better).}
   \label{fig:evaluation}
 \end{figure*}
 
@@ -796,30 +796,33 @@ Further data models and operations can be implemented using CRDT techniques (\S~
 
 \section{Evaluation}\label{sec:evaluation}
 
-To evaluate the algorithms introduced in \S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2} we implemented both algorithms and measured their behavior in a simulated network.
-In our experiments we use four replicas, where every pair of replicas reconciles their states once per second.
-Each replica concurrently broadcasts new messages, and we vary the rate at which new messages are broadcast.
+To evaluate the algorithms introduced in \S~\ref{sec:algorithm} we implemented a prototype and measured its behavior.
+Our prototype runs all replicas in-memory in a single process, simulating a message-passing network and recording statistics such as the number of messages, hashes, and Bloom filter bits transmitted, in order to measure the algorithm's network communication costs.
+In our experiments we use four replicas, each replica generating updates at a constant rate, and every pair of replicas periodically reconciles their states.
+We then vary the intervals at which reconciliations are performed (with longer intervals, more updates accumulate between reconciliations) and measure the network communication cost of performing the reconciliation.
 To ensure we exercise the reconciliation algorithm, replicas do not eagerly send messages (lines~\ref{line:eager-send} and~\ref{line:eager-relay} of Algorithm~\ref{fig:algorithm} are omitted), and we rely only on periodic reconciliation to exchange messages.
-% 6 pairwise reconciliations take place every second
+For each of the following data points we compute the average over 600 reconciliations (100 reconciliations between each distinct pair of replicas) performed at regular intervals.
 
 First, we measure the average number of round-trips required to complete one reconciliation (Figure~\ref{fig:evaluation} left).
-The higher the rate of broadcasts, the longer the paths in the predecessor graph.
-Therefore, when Algorithm~\ref{fig:algorithm} is used, the number of round trips increases linearly with the rate at which messages are broadcast.
+The greater the number of updates generated between reconciliations, the longer the paths in the predecessor graph.
+Therefore, when Algorithm~\ref{fig:algorithm} is used, the number of round trips increases linearly with the number of updates added.
 However, Algorithm~\ref{fig:algorithm2} reduces each reconciliation to 1.03 round trips on average, and this number remains constant as the rate of broadcasts grows.
-97\% of reconciliations complete in one round trip, while only 2.9\% require two round trips, and 0.02\% of reconciliations require three or more round trips.
+96.7\% of reconciliations with Algorithm~\ref{fig:algorithm2} complete in one round trip, 3.2\% require two round trips, and 0.04\% require three or more round trips.
 These figures are based on using Bloom filters with 10 bits per entry and 7 hash functions.
 
 Next, we estimate the network traffic resulting from the use of our algorithms.
-For this, we assume that each broadcast message is 400 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element.
-Moreover, we assume that each request or response incurs an additional constant overhead of 50 bytes (e.g.\ for TCP/IP packet headers and signatures).
-We compute the number of kilobytes sent per second (in both directions) using each reconciliation algorithm.
+For this, we assume that each update is 200 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element.
+Moreover, we assume that each request or response incurs an additional constant overhead of 100 bytes (e.g.\ for TCP/IP packet headers and signatures).
+We compute the number of kilobytes sent per reconciliation (in both directions) using algorithm.
 
 Figure~\ref{fig:evaluation} (right) shows the results from this experiment.
 The gray line represents a hypothetical optimal algorithm that transmits only new messages, but no additional metadata such as hashes or Bloom filters.
-Compared to this optimum, Algorithm~\ref{fig:algorithm2} incurs a near-constant overhead of approximately 800 bytes per reconciliation for the heads and predecessor hashes, Bloom filter, and occasional additional round trips.
-In contrast, Algorithm~\ref{fig:algorithm} incurs an approximately 40\% overhead, primarily because it sends many $\mathsf{needs}$ messages containing hashes, and it sends messages in many small responses rather than batched into one response.
+Compared to this optimum, Algorithm~\ref{fig:algorithm2} incurs a near-constant overhead of approximately 1~kB per reconciliation for the heads and predecessor hashes, Bloom filter, and occasional additional round trips.
+In contrast, the cost of Algorithm~\ref{fig:algorithm} is more than double the optimal, primarily because it sends many $\mathsf{needs}$ messages containing hashes, and it sends messages in many small responses rather than batched into one response.
+Thus, we can see that in terms of network performance, Algorithm~\ref{fig:algorithm2} is close to the optimum in terms of both round trips and bytes transmitted.
 
-Thus, we can see that in terms of network performance, Algorithm~\ref{fig:algorithm2} is close to the optimum of one round trip, and incurs only a small overhead in terms of bytes transmitted.
+In our prototype, all replicas correctly follow the protocol.
+Adding faulty replicas may alter the shape of the predecessor graph (e.g.\ resulting in more concurrent updates than there are replicas), but we believe that this would not fundamentally alter our results.
 We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future work.
 
 
@@ -921,7 +924,7 @@ We hope that BEC will inspire further research to ensure the correctness of even
 \begin{acks}
 Thank you to Alastair Beresford, Jon Crowcroft, Srinivasan Keshav, Smita Vijaya Kumar and Gavin Stark for feedback on a draft of this paper.
 Martin Kleppmann is supported by a Leverhulme Trust Early Career Fellowship, the Isaac Newton Trust, and Nokia Bell Labs.
-TODO add Heidi's funding details.
+This work was funded in part by EP/T022493/1.
 \end{acks}
 
 \bibliographystyle{ACM-Reference-Format}
