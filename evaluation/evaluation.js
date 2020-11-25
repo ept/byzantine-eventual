@@ -28,7 +28,7 @@ const DETERMINISTIC = true
 // Every pair of replicas reconciles once per round.
 const NUM_ROUNDS = 100
 
-const BITS_PER_HASH = 256, BYTES_PER_UPDATE = 400, BYTES_PER_MESSAGE = 50
+const BITS_PER_HASH = 256, BYTES_PER_UPDATE = 200, BYTES_PER_MESSAGE = 100
 
 function doUpdates(replicas, rate, offset) {
   for (let replica of replicas) {
