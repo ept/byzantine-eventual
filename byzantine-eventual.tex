@@ -247,7 +247,7 @@ We do assume that a replica has a timer that allows it to perform some task appr
 
 Not all pairs of replicas are necessarily connected with a network link.
 However, we must assume that in the graph of replicas and network links, the correct replicas form a single connected component, as illustrated in Figure~\ref{fig:connected}.
-This assumption is necessary because if two correct replicas can only communicate via faulty replicas, then no algorithm can guarantee data exchange between those replicas, as the adversary can always block communication.
+This assumption is necessary because if two correct replicas can only communicate via faulty replicas, then no algorithm can guarantee data exchange between those replicas, as the adversary can always block communication (this is known as an \emph{eclipse attack}~\cite{Singh:2004}).
 
 \section{Byzantine Eventual Consistency}\label{sec:byzantine-crdts}
 
@@ -806,20 +806,20 @@ For each of the following data points we compute the average over 600 reconcilia
 First, we measure the average number of round-trips required to complete one reconciliation (Figure~\ref{fig:evaluation} left).
 The greater the number of updates generated between reconciliations, the longer the paths in the predecessor graph.
 Therefore, when Algorithm~\ref{fig:algorithm} is used, the number of round trips increases linearly with the number of updates added.
-However, Algorithm~\ref{fig:algorithm2} reduces each reconciliation to 1.03 round trips on average, and this number remains constant as the rate of broadcasts grows.
+However, Algorithm~\ref{fig:algorithm2} reduces each reconciliation to 1.03 round trips on average, and this number remains constant as the number of updates grows.
 96.7\% of reconciliations with Algorithm~\ref{fig:algorithm2} complete in one round trip, 3.2\% require two round trips, and 0.04\% require three or more round trips.
 These figures are based on using Bloom filters with 10 bits per entry and 7 hash functions.
 
 Next, we estimate the network traffic resulting from the use of our algorithms.
-For this, we assume that each update is 200 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (as in SHA-256), and Bloom filters use 10 bits per element.
-Moreover, we assume that each request or response incurs an additional constant overhead of 100 bytes (e.g.\ for TCP/IP packet headers and signatures).
-We compute the number of kilobytes sent per reconciliation (in both directions) using algorithm.
+For this, we assume that each update is 200 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (SHA-256), and Bloom filters use 10 bits per element.
+Moreover, we assume that each request or response message incurs an additional constant overhead of 100 bytes (e.g.\ for TCP/IP packet headers and signatures).
+We compute the number of kilobytes sent per reconciliation (in both directions) using each algorithm.
 
 Figure~\ref{fig:evaluation} (right) shows the results from this experiment.
 The gray line represents a hypothetical optimal algorithm that transmits only new messages, but no additional metadata such as hashes or Bloom filters.
 Compared to this optimum, Algorithm~\ref{fig:algorithm2} incurs a near-constant overhead of approximately 1~kB per reconciliation for the heads and predecessor hashes, Bloom filter, and occasional additional round trips.
 In contrast, the cost of Algorithm~\ref{fig:algorithm} is more than double the optimal, primarily because it sends many $\mathsf{needs}$ messages containing hashes, and it sends messages in many small responses rather than batched into one response.
-Thus, we can see that in terms of network performance, Algorithm~\ref{fig:algorithm2} is close to the optimum in terms of both round trips and bytes transmitted.
+Thus, we can see that in terms of network performance, Algorithm~\ref{fig:algorithm2} is close to the optimum in terms of both round trips and bytes transmitted, making it viable for use in practice.
 
 In our prototype, all replicas correctly follow the protocol.
 Adding faulty replicas may alter the shape of the predecessor graph (e.g.\ resulting in more concurrent updates than there are replicas), but we believe that this would not fundamentally alter our results.
@@ -828,67 +828,54 @@ We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future wor
 
 \section{Related Work}\label{sec:relwork}
 
+Hash chaining is widely used: in Git repositories~\cite{GitHTTP}, Merkle trees~\cite{Merkle:1987}, blockchains~\cite{Bano:2019}, and peer-to-peer storage systems such as IPLD~\cite{IPLD}.
+Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \texttt{git fetch} and \texttt{git push}; to reduce the number of round trips, git's ``smart'' transfer protocol sends the most recent 32 hashes rather than just the heads~\cite{GitHTTP}.
+Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs, but do not present efficient reconciliation algorithms for bringing replicas up-to-date.
+
+% Git supports "skipping" to speed up negotiation, which finds the ancestor commits faster but may result in more commits than necessary being sent.
+% https://stackoverflow.com/questions/40484929/will-a-git-pull-develop-fetch-all-the-commits-reacheable-from-develop
+% https://git-scm.com/docs/git-config#Documentation/git-config.txt-fetchnegotiationAlgorithm
+
 Byzantine agreement has been the subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
 To tolerate $f$ faults, Byzantine agreement algorithms typically require $3f+1$ nodes~\cite{Castro:1999,Kotla:2007,Bessani:2014}, and some even require $5f+1$ nodes~\cite{Abd:2005,Martin:2006}.
-% Most algorithms also require at least one round of communication with at least $2f+1$ replicas, incurring both significant latency and limiting availability.
+Most algorithms also require at least one round of communication with at least $2f+1$ replicas, incurring both significant latency and limiting availability.
 Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and uses $2u+r+1$ nodes.
 Byzantine quorum systems~\cite{Malkhi:1998} generalize from a threshold $f$ of failures to a set of possible failures.
 Zeno~\cite{Singh:2009} makes progress with just $f+1$ nodes, but safety depends on less than $\frac{1}{3}$ of nodes being Byzantine-faulty.
 Previous work on Byzantine fault tolerant CRDTs~\cite{Chai:2014,Shoker:2017,Zhao:2016}, Secure Reliable Multicast~\cite{Malki:1996,Malkhi:2000}, Secure Causal Atomic Broadcast~\cite{Cachin:2001cj,Duan:2017} and Byzantine Lattice Agreement~\cite{DiLuna:2020} also assumes $3f+1$ nodes.
-% maybe mention this issues with re-configuring byzantine agreement algorithms.
+All of these algorithms require Sybil countermeasures, such as central control over the participating nodes' identities; moreover, many algorithms ignore the problem of reconfiguring the system to change the set of nodes.
+
+Little prior work tolerates arbitrary numbers of Byzantine-faulty nodes. Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadcast in this model: OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot uses a more complex replication algorithm involving a combination of logical clocks and hash chains to detect and recover from inconsistencies.
+We were not able to compare our algorithms to Depot because the available publications~\cite{Mahajan:2010,Mahajan:2011,Mahajan:2012} do not describe Depot's algorithm in sufficient detail to reproduce it.
+Depot's consistency model (fork-join-causal) is specific to a key-value data model, and unlike BEC it does not consider the problem of maintaining invariants.
+The authors of Depot have also shown that no system that tolerates Byzantine failures can enforce fork causal~\cite{Mahajan:2011} or stronger consistency in an always available, one-way convergent system~\cite{Mahajan:2011cac}. 
+BEC provides a weaker two-way convergence property, which requires that eventually a correct replica's updates are reflected on another correct replicas only if they can bidirectionally exchange messages for a sufficient period.
+
+Recent work by van der Linde et al.~\cite{vanderLinde:2020} also considers causally consistent replication in the face of Byzantine faults, taking a very different approach to ours: detecting cryptographic proof of faulty behavior, and banning nodes found to be misbehaving.
+This approach relies on a trusted central server and trusted hardware such as SGX, whereas we do not assume any trusted components.
 
 In SPORC~\cite{Feldman:2010wl}, BFT2F~\cite{Li:2007} and SUNDR~\cite{Mazieres:2002}, a faulty replica can partition the system, preventing some replicas from ever synchronizing again, so these systems do not satisfy the \emph{eventual update} property of BEC.
-Drabkin et al.~\cite{Drabkin:2005} present an algorithm for Byzantine reliable broadcast in the context of wireless networks, however this is insufficient to provide causal ordering.
-Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadcast while tolerating arbitrary numbers of faulty replicas.
-OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot uses a more complex algorithm involving logical clocks, which allow byzantine replicas to fork the system state (as described in \S\ref{sec:vectorclocks}), and a combination of version vectors and hash chains to detect and recover from forks.
-Depot's consistency model (fork-join-causal) is more complicated than BEC, and it is unclear which is more useful in practice.
-It has been shown that no system which tolerates byzantine failures can enforce fork causal~\cite{Mahajan:2011} or stronger consistency in an always available, one-way convergent system~\cite{Mahajan:2011cac}. 
-BEC provides the weaker two-way convergence property, which requires that eventually a correct replicas' updates are reflected on another correct replicas only if they can bi-bidirectionally exchange messages for a sufficient period.
+Drabkin et al.~\cite{Drabkin:2005} present an algorithm for Byzantine reliable broadcast, but it does not provide causal ordering.
 
-Beyond the field of Byzantine fault tolerance, the problems of computing the difference, union, or intersection between sets on remote hosts has been studied in various domains, including peer-to-peer systems, deduplication of backups, and error-correction.
-Approaches include using Bloom filters~\cite{Skjegstad:2011} similar to Algorithm 2, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2003}.
-These approaches are not designed to tolerate Byzantine faults.
+Our reconciliation algorithm is related to the problem of computing the difference, union, or intersection between sets on remote nodes.
+This problem has been studied in various domains, including peer-to-peer systems, deduplication of backups, and error-correction.
+Approaches include using Bloom filters~\cite{Skjegstad:2011}, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2003}.
+However, these approaches are not designed to tolerate Byzantine faults.
 
-Snapdoc~\cite{Kollmann:2019hf} has previously examined cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
+Snapdoc~\cite{Kollmann:2019hf} provides cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
 Truong et al.~\cite{Truong:2012et} present another scheme for authenticating CRDT history, but do not include a reconciliation protocol.
 
-Hash chaining is widely used: in blockchains~\cite{Bano:2019}, Git commit histories, Merkle trees~\cite{Merkle:1987}, and peer-to-peer storage systems such as IPLD~\cite{IPLD}.
-Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \texttt{git fetch}~\cite{GitHTTP}.
-Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs, but do not present efficient reconciliation algorithms.
+\I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} in the context of non-Byzantine systems.
+It is closely related to the concept of logical monotonicity~\cite{Conway:2012} and the CALM theorem~\cite{Ameloot:2013,Hellerstein:2010}, which states that coordination can be avoided for programs that are monotonic.
+COPS~\cite{Lloyd:2011} is an example of a non-Byzantine system that achieves causal consistency while avoiding coordination, and BEC is a Byzantine variant of COPS's Causal+ consistency model.
+Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:1991el}.
 
-% Recent work by van der Linde et al. http://www.vldb.org/pvldb/vol13/p2590-linde.pdf also considers the problem of causally consistent replication in the face of Byzantine faults, taking a very different approach to ours: detecting cryptographic proof of faulty behavior, and banning nodes found to be misbehaving. The fault detection relies on a trusted central server, and some of their algorithms rely on clock synchronization and trusted hardware such as SGX. By contrast, we do not require any trusted components in our system (except perhaps for the PKI). 
-
-% Searching for cryptographic proof of a replica misbehaving, and banning such a node from the system if such behavior is detected. Relies on a trusted central server that stores a hash of the most recent message sent by each node. Does not ensure convergence if the server colludes with malicious replicas. A malicious server can stop other replicas’ misbehavior being detected. (Section “eventual sibling detection”)
-
-% I’m not sure that banning malicious nodes is an effective approach. By the time faulty behavior is detected, it’s already too late, and the damage has been done. Some kind of rollback mechanism will be required to recover from this situation, but the paper doesn’t really discuss it.
-
-% This work places great emphasis on whether replicas are correctly reporting the causal dependencies of each operation; for our purposes this does not matter, since missing dependencies do no harm.
-
-% Look into related work from Albert's paper: secure broadcast [29, 50, 59] and preventing Eclipse attacks [80] (malicious nodes attempting to prevent communication between honest nodes)
-% [29] V. Drabkin, R. Friedman, and M. Segal. Efficient Byzantine broadcast in wireless ad-hoc networks. DSN’05 http://www.cs.technion.ac.il/users/wwwb/cgi-bin/tr-get.cgi/2006/CS/CS-2006-03.pdf
-% [50] H. C. Li, A. Clement, E. L. Wong, J. Napper, I. Roy, L. Alvisi, and M. Dahlin. Bar gossip. OSDI 2006 https://static.usenix.org/event/osdi06/tech/full_papers/li/li.pdf
-% [59] D. Malki and M. Reiter. A high-throughput secure reliable multicast protocol. 9th IEEE Workshop on Computer Security Foundations, CSFW ’96 https://users.ece.cmu.edu/~reiter/papers/1996/CSFW.pdf
-
-
-% TODO compare to Causal+ (convergent causal) consistency
-% https://www.cs.cmu.edu/~dga/papers/cops-sosp2011.pdf
-% https://people.eecs.berkeley.edu/~alig/papers/bolt-on-causal-consistency.pdf
-% http://www.vukolic.com/consistency-survey.pdf
-% S. Almeida, J. Leitão, and L. Rodrigues. Chainreaction: a causal+ consistent datastore based on chain replication. EuroSys 2013 http://groups.ist.utl.pt/~meic-padi.daemon/labs/presentations/X5-eurosys13-chainreaction-chain-replication.pdf
-
+% BAR Gossip uses a model of "rational" replicas that are assumed to maximise a given loss function
+% Harry C. Li, Allen Clement, et al. BAR Gossip. OSDI 2006 https://static.usenix.org/event/osdi06/tech/full_papers/li/li.pdf
 
 % Tseng et al.~\cite{Tseng:2019jb} prove that Byzantine causal memory can only be done with $3f+1$ processes?!
 
 % https://github.com/sipa/minisketch
-
-% Merkle clocks https://hector.link/presentations/merkle-crdts/merkle-crdts.pdf
-
-% Roy Friedman and Roni Licher. Hardening Cassandra Against Byzantine Failures.
-% https://arxiv.org/pdf/1610.02885.pdf
-
-% Git fetch negotiation algorithm, How does this compare to git fetch negotiation algorithms, default and skipping?  
-% https://stackoverflow.com/questions/40484929/will-a-git-pull-develop-fetch-all-the-commits-reacheable-from-develop
-% https://git-scm.com/docs/git-config#Documentation/git-config.txt-fetchnegotiationAlgorithm
 
 % Comparison to Julien Quintard work on byzantine file systems https://www.repository.cam.ac.uk/bitstream/handle/1810/243442/thesis.pdf?sequence=1&isAllowed=y
 % https://infinit.sh
@@ -899,16 +886,14 @@ Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs,
 % Send paper to Irmin authors?
 
 
-% Comparision to byz chain replication
-% https://link.springer.com/chapter/10.1007/978-3-642-35476-2_24
-
-
-
 \section{Conclusions}
 
 % Conjecture: the set of problems that can be solved without coordination in a non-Byzantine system is the same as the set of problems that is immune to Sybil attacks in a Byzantine system.
 
 % Potential follow-on work: algorithms to determine whether an update is safe with regard to commonly used invariants.
+
+% How to ensure that correct nodes form a connected component, as assumed in \S~\ref{sec:system-model}?
+% Connecting all-to-all is possible, but expensive if the number of replicas is large.
 
 Some systems, e.g.\ peer-to-peer Internet applications, need to tolerate arbitrary numbers of Byzantine-faulty replicas and are thus not suitable applications for Byzantine agreement.
 In this paper, we have defined Byzantine Eventual Consistency (BEC), a consistency model that can be achieved regardless of the number of Byzantine-faulty replicas in a system, and without making any synchrony assumptions.
