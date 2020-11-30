@@ -4,6 +4,7 @@ bits_per_item = 10
 hashes = 7
 
 import math
+import sys
 
 # Probability of collision when each hash is truncated to b bits:
 # n = number of items
@@ -19,7 +20,7 @@ import math
 def truncated_hash(bits_per_item, items):
     numerator = 2 ** (bits_per_item * items) - (2**bits_per_item - 1) ** items
     denominator = 2 ** (bits_per_item * items)
-    print(f"Truncated hash: {numerator / denominator}")
+    return numerator / denominator
 
 # Classic Bloom filter false positive probability formula
 # (this is not exact, but rather a lower bound):
@@ -39,7 +40,7 @@ def truncated_hash(bits_per_item, items):
 def classic_bloom(bits, items, hashes):
     numerator = (bits ** (hashes * items) - (bits - 1) ** (hashes * items)) ** hashes
     denominator = bits ** (hashes * hashes * items)
-    print(f"Classic Bloom: {numerator / denominator}")
+    return numerator / denominator
 
 # Binomial coefficient
 # Based on https://jamesmccaffrey.wordpress.com/2020/07/30/computing-a-stirling-number-of-the-second-kind-from-scratch-using-python/
@@ -71,17 +72,27 @@ def correct_bloom(bits, items, hashes):
     for i in range(1, bits + 1):
         numerator += i**hashes * math.factorial(i) * binomial(bits, i) * stirling(hashes * items, i)
     denominator = bits ** (hashes * (items + 1))
-    print(f"Correct Bloom: {numerator / denominator}")
+    return numerator / denominator
 
-for items in [1, 10, 100, 1000, 10000]:
-    print(f"With {items} items and {bits_per_item} bits per item:")
-    truncated_hash(bits_per_item, items)
-    classic_bloom(bits_per_item * items, items, hashes)
-    if items <= 100: # it takes about a minute for 100; don't bother for bigger numbers
-        correct_bloom(bits_per_item * items, items, hashes)
-    print("")
+if __name__ == "__main__":
+    if len(sys.argv) != 2 or (sys.argv[1] != "-plot" and sys.argv[1] != "-exact"):
+        print("Usage: false_pos.py -plot or false_pos.py -exact")
+    elif sys.argv[1] == "-plot":
+        for i in range(120):
+            items = round(math.exp(i/12))
+            trunc = truncated_hash(bits_per_item, items)
+            bloom = classic_bloom(bits_per_item * items, items, hashes)
+            print(f"{items} {trunc} {bloom}")
+    elif sys.argv[1] == "-exact":
+        for items in [1, 10, 100, 1000, 10000]:
+            print(f"With {items} items and {bits_per_item} bits per item:")
+            print(f"Truncated hash: {truncated_hash(bits_per_item, items)}")
+            print(f"Classic Bloom: {classic_bloom(bits_per_item * items, items, hashes)}")
+            if items <= 100: # it takes about a minute for 100; don't bother for bigger numbers
+                print(f"Correct Bloom: {correct_bloom(bits_per_item * items, items, hashes)}")
+            print("")
 
-# Output:
+# Output of false_pos.py -exact:
 #
 # With 1 items and 10 bits per item:
 # Truncated hash: 0.0009765625
