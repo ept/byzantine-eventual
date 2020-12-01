@@ -128,8 +128,9 @@ Unfortunately, proof-of-work is extraordinarily expensive: it has been estimated
 \emph{Permissioned} blockchains avoid this huge carbon footprint, but they have the downside of requiring central control over the peers that may join the system, undermining the principle of decentralization.
 Other mechanisms, such as \emph{proof-of-stake}~\cite{Bano:2019}, are at present unproven.
 
-The reason why permissioned blockchains must control membership is that they rely on Byzantine agreement, which assumes that at most $f$ out of $n$ nodes are Byzantine-faulty.
-It is well established that without synchrony, Byzantine agreement is impossible if $n<3f+1$~\cite{Dwork:1988,Lamport:1982}.
+The reason why permissioned blockchains must control membership is that they rely on Byzantine agreement, which assumes that at most $f$ nodes are Byzantine-faulty.
+To tolerate $f$ faults, Byzantine agreement algorithms typically require at least $3f+1$ nodes~\cite{Castro:1999}.
+% It is well established that without synchrony, Byzantine agreement is impossible if $n<3f+1$~\cite{Dwork:1988,Lamport:1982}.
 If more than $f$ nodes are faulty, these algorithms can guarantee neither safety (agreement) nor liveness (progress).
 Thus, a Sybil attack that causes the bound of $f$ faulty nodes to be exceeded can result in the system's guarantees being violated; for example, in a cryptocurrency, they could allow the same coin to be spent multiple times (a \emph{double-spending} attack).
 
@@ -175,7 +176,7 @@ To strengthen this model, Shapiro et al.~\cite{Shapiro:2011} introduce \emph{str
 
 Read operations can be performed on any replica at any time, and they return that replica's current state at that point in time.
 
-In the context of replication databases, one way of achieving SEC is by using a reliable broadcast protocol (e.g.\ a gossip protocol~\cite{Leitao:2009fi}) to disseminate the updates resulting from transaction execution to all replicas; furthermore, when an a set of updates is delivered to a replica, it applies the updates to its state using a commutative function.
+In the context of replicated databases, one way of achieving SEC is by executing a transaction at one replica, disseminating the updates from the transaction to the other replicas using a reliable broadcast protocol (e.g.\ a gossip protocol~\cite{Leitao:2009fi}), and applying the updates to each replica's state using a commutative function.
 Let $S' = \mathrm{apply}(S, u)$ be the function that applies the set of updates $u$ to the replica state $S$, resulting in an updated replica state $S'$.
 Then two sets of updates $u_1$ and $u_2$ commute if
 \[ \forall S.\; \mathrm{apply}(\mathrm{apply}(S, u_1), u_2) = \mathrm{apply}(\mathrm{apply}(S, u_2), u_1). \]
