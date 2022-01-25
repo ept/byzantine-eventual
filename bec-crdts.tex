@@ -1,0 +1,143 @@
+\documentclass[sigplan,review]{acmart}
+\setcopyright{none}
+
+\begin{document}
+\title{Making CRDTs Byzantine Fault Tolerant}
+\author{Martin Kleppmann}
+\email{martin@kleppmann.com}
+\orcid{0000-0001-7252-6958}
+\affiliation{%
+  \institution{University of Cambridge}
+  \streetaddress{William Gates Building, JJ Thomson Avenue}
+  \city{Cambridge}
+  \country{UK}
+  \postcode{CB3 0FD}
+}
+
+\begin{abstract}
+TODO
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+    <concept>
+        <concept_id>10010520.10010521.10010537.10010540</concept_id>
+        <concept_desc>Computer systems organization~Peer-to-peer architectures</concept_desc>
+        <concept_significance>500</concept_significance>
+    </concept>
+    <concept>
+        <concept_id>10002978.10003006.10003013</concept_id>
+        <concept_desc>Security and privacy~Distributed systems security</concept_desc>
+        <concept_significance>300</concept_significance>
+    </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Computer systems organization~Peer-to-peer architectures}
+\ccsdesc[300]{Security and privacy~Distributed systems security}
+
+\keywords{Byzantine fault tolerance, CRDTs, eventual consistency}
+\maketitle
+
+\section{Introduction}
+
+A key characteristic of many peer-to-peer (p2p) systems is that peers are not under the control of a single authority~\cite{Buford:2010}; indeed, many p2p applications are \emph{open, trustless} systems in which anybody on the Internet can run a node and join the system.
+As the operators of nodes cannot be trusted, it must be assumed that some nodes may not correctly follow the specified protocol of the network: be it due to bugs in implementations, deliberate attempts to obtain an advantage over other nodes, or sheer vandalism, a p2p system cannot rely on nodes always behaving the way that the designers of the system intended.
+Nodes may send false or contradictory messages to other nodes, and they may try to actively undermine any guarantees the system aims to provide.
+
+When a node deviates from the specified protocol, we call it \emph{Byzantine-faulty} (or simply \emph{Byzantine}), regardless of whether the deviation is by accident or by malice~\cite{Lamport:1982}.
+Byzantine behaviour is not always detectable by other nodes, since a Byzantine node may attempt to hide its protocol violations.
+One approach would be to try to identify Byzantine nodes and exclude them from the system, but this is unlikely to be effective if the banned node can simply rejoin the system under a different identity.
+A more robust approach is to \emph{tolerate} Byzantine faults: that is, to ensure that the system can meet its advertised guarantees even when some of its nodes are Byzantine-faulty.
+
+Conflict-free Replicated Data Types (CRDTs)~\cite{Shapiro:2011} are often presented as an approach for providing consistency of replicated data in peer-to-peer systems~\cite{vanderLinde:2017fu,Weiss:2009ht,Nicolaescu:2016}, because they do not require a central server for concurrency control.
+However, despite ostensibly targeting p2p systems, the vast majority of CRDT algorithms actually do not tolerate Byzantine faults, since they assume that all participating nodes correctly follow the protocol.
+If such algorithms are deployed in a system with Byzantine nodes, the algorithm cannot guarantee the consistency properties that CRDTs are supposed to provide, and nodes may end up with permanently inconsistent replicas of the shared data.
+
+In some circumstances, the lack of Byzantine fault tolerance can be justified by restricting CRDT-based collaboration to small, trusted groups of nodes: for example, in a collaborative editor, the set of users who are authorised to edit a document may be limited to immediate colleagues, who may trust each other to run the CRDT algorithm correctly.
+However, as the range of collaborators is widened to public settings such as wikis~\cite{Nedelec:2016eo,Weiss:2007,Weiss:2009ht}, and as CRDT designers seek to enable collaboration at ``massive scale''~\cite{Andre:2013,Weiss:2009ht,Lv:2016}, blindly trusting collaborators to do everything correctly seems like an increasingly dangerous assumption.
+
+Fortunately, it is possible to retrofit Byzantine fault tolerance to some CRDTs without having to redesign them from scratch.
+This paper introduces some general-purpose principles that can be used to make operation-based CRDT algorithms robust against Byzantine faults.
+
+\section{Background and system model}
+
+This section highlights some of the problems that CRDT algorithms encounter when faced with Byzantine faults.
+
+\subsection{Nodes and network links}
+
+This paper assumes a peer-to-peer system in which all nodes are equal, and in which nodes can communicate by exchanging messages over pairwise network links.
+The network is not necessarily complete, i.e.\ it is not required for every node to be able to communicate with every other node.
+Nodes and network links are assumed to be asynchronous and unreliable, so messages may be lost.
+However, we can assume that network links are authenticated (e.g. using cryptographic signatures), so that a node is able to reliably determine which remote node it is communicating with.
+
+Many papers on Byzantine fault tolerance assume that no more than some upper bound of nodes is Byzantine (a common assumption is that there are $3f+1$ nodes in the system, and that no more than $f$ of them are Byzantine).
+This assumption is problematic for p2p systems, since it necessitates centralised control over which nodes are allowed to join the network~-- otherwise many adversary-controlled nodes could join the network and overwhelm it, which is known as a Sybil attack~\cite{Douceur:2002}.
+
+In contrast, this paper makes no such assumption about the number of Byzantine nodes: it is possible to guarantee the correctness of CRDTs even in systems in which \emph{arbitrarily many} nodes are Byzantine, e.g.\ where the Byzantine nodes outnumber the correct nodes.
+This is possible because CRDT-based applications are \emph{invariant confluent}, as explained in prior work~\cite{BECPreprint}.
+The algorithms developed in this paper can therefore safely be used in open p2p systems that anybody can join, without requiring expensive Sybil countermeasures such as proof-of-work~\cite{Nakamoto:2008}.
+
+\subsection{Correctness of CRDTs}
+
+The standard model of correctness for CRDTs is Strong Eventual Consistency~\cite{Shapiro:2011,Gomes:2017gy}, which requires:
+\begin{description}
+\item[Eventual delivery:] An update delivered at some correct replica is eventually delivered to all correct replicas.
+\item[Convergence:] Correct replicas that have delivered the same updates have equivalent state.
+\item[Termination:] All method executions terminate.
+\end{description}
+A replica (or node) is \emph{correct} if it is not faulty.
+
+Termination is generally easy to ensure, so we focus on the other two properties.
+Systems usually ensure eventual delivery by using a reliable broadcast protocol, such as a gossip protocol~\cite{Leitao:2009fi}, to disseminate updates through the network.
+To ensure convergence, operation-based CRDTs construct updates such that they are commutative and can be applied in any order without affecting the resulting replica state.
+In some cases, a causal delivery algorithm additionally ensures that when one update has a dependency on an earlier update, the earlier update is delivered before the later update on all replicas.
+
+\subsection{Eventual delivery with Byzantine nodes}
+
+In a non-Byzantine system, eventual delivery can obviously only be achieved if there is some way for every pair of correct nodes to communicate, either directly or indirectly via other correct nodes.
+Two nodes that are permanently partitioned from each other can never communicate and hence cannot deliver the same updates.
+
+This idea generalises directly to Byzantine systems: if $p$ and $q$ are correct nodes, and if all of the communication paths between $p$ and $q$ go via Byzantine nodes, then eventual delivery cannot be guaranteed, since the Byzantine nodes may choose to block the communication between $p$ and $q$.
+To ensure eventual delivery in the presence of Byzantine nodes, we therefore have to assume that any two correct nodes can communicate either directly, or indirectly via other correct, non-Byzantine nodes.
+
+We focus on the case where two correct nodes $p$ and $q$ can communicate with each other directly; the case of indirect communication via other correct nodes then consists simply of several instances of such pairwise direct communication, chained together.
+Eventual delivery then requires that if $p$ has delivered some update $u$, then $q$ must also eventually deliver $u$.
+
+To ensure that $p$ and $q$ eventually deliver the same set of updates, a simple but inefficient algorithm would be: periodically, $p$ sends $q$ every update that it has not already received from $q$, and vice versa.
+This algorithm has the downside that for every update it has ever received, a node needs to keep track of which nodes have seen the update.
+The advantage of this algorithm is that it is robust against Byzantine nodes: regardless of whether an update originated from a Byzantine or non-Byzantine node, correct nodes will propagate it to other correct nodes.
+
+\subsubsection{Vector clocks}
+
+
+\section{Tolerating Byzantine faults}
+
+Unique operation identifiers are also known as \emph{dots}
+
+\section{Related Work}
+
+Content addressable networks: Bittorrent~\cite{Pouwelse:2005}, IPFS, Git~\cite{ProGit}
+
+% Ali Shoker et al https://dl.acm.org/doi/10.1145/3064889.3064895
+% https://link.springer.com/chapter/10.1007/978-3-030-78198-9_4
+
+% Albert van der Linde's Byzantine CRDT-based system extending Legion \cite{vanderLinde:2020}
+% assumes trusted servers
+% for clients, considers both fully Byzantine and *rational* (assuming clients will deviate from the protocol only if this cannot be detected). Primarily focusses on rational.
+% Works by excluding Byzantine replicas when a proof of misbehaviour is produced; it is unclear how the system recovers from misbehaviour that has already happened by the time the misbehaving replica is excluded.
+
+% Zhao et al.~\cite{Zhao:2013ie,Zhao:2016,Chai:2014}
+% Byzantine fault tolerance for CRDTs
+% require 3f+1 replicas to tolerate f Byzantine nodes (both among the servers and among the users)
+
+% Alex Auvolat's Merkle Search Tree is a state-based Byzantine CRDT
+
+\begin{acks}
+TODO
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}
