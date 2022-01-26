@@ -1,4 +1,5 @@
 \documentclass[sigplan,review]{acmart}
+\usepackage{tikz}
 \setcopyright{none}
 
 \begin{document}
@@ -39,7 +40,7 @@ TODO
 \keywords{Byzantine fault tolerance, CRDTs, eventual consistency}
 \maketitle
 
-\section{Introduction}
+\section{Introduction}\label{sec:introduction}
 
 A key characteristic of many peer-to-peer (p2p) systems is that peers are not under the control of a single authority~\cite{Buford:2010}; indeed, many p2p applications are \emph{open, trustless} systems in which anybody on the Internet can run a node and join the system.
 As the operators of nodes cannot be trusted, it must be assumed that some nodes may not correctly follow the specified protocol of the network: be it due to bugs in implementations, deliberate attempts to obtain an advantage over other nodes, or sheer vandalism, a p2p system cannot rely on nodes always behaving the way that the designers of the system intended.
@@ -60,11 +61,11 @@ However, as the range of collaborators is widened to public settings such as wik
 Fortunately, it is possible to retrofit Byzantine fault tolerance to some CRDTs without having to redesign them from scratch.
 This paper introduces some general-purpose principles that can be used to make operation-based CRDT algorithms robust against Byzantine faults.
 
-\section{Background and system model}
+\section{Background and system model}\label{sec:background}
 
 This section highlights some of the problems that CRDT algorithms encounter when faced with Byzantine faults.
 
-\subsection{Nodes and network links}
+\subsection{Nodes and network links}\label{sec:system-model}
 
 This paper assumes a peer-to-peer system in which all nodes are equal, and in which nodes can communicate by exchanging messages over pairwise network links.
 The network is not necessarily complete, i.e.\ it is not required for every node to be able to communicate with every other node.
@@ -78,7 +79,22 @@ In contrast, this paper makes no such assumption about the number of Byzantine n
 This is possible because CRDT-based applications are \emph{invariant confluent}, as explained in prior work~\cite{BECPreprint}.
 The algorithms developed in this paper can therefore safely be used in open p2p systems that anybody can join, without requiring expensive Sybil countermeasures such as proof-of-work~\cite{Nakamoto:2008}.
 
-\subsection{Correctness of CRDTs}
+\begin{figure*}
+\centering
+\begin{tikzpicture}
+\draw (0, 0.5) node [above] {$p$} -- (0, -3);
+\draw (3, 0.5) node [above] {$r$} -- (3, -3);
+\draw (6, 0.5) node [above] {$q$} -- (6, -3);
+\draw[thick,->] (3, 0) to node [above,sloped] {$(r, 1): A$} (0, -0.6) node [left] {$\mathit{vec} = (p:0,q:0,r:1),\; \mathcal{U}_p = \{A\}$};
+\draw[thick,->] (3, -0.1) to node [above,sloped] {$(r, 1): B$} (6, -0.7) node [right] {$\mathit{vec} = (p:0,q:0,r:1),\; \mathcal{U}_q = \{B\}$};
+\draw[thick,->] (0, -1.5) to node [above,pos=0.25,sloped] {$(p:0,q:0,r:1)$} (6, -2.6) node [right] {$\mathit{vec} = (p:0,q:0,r:1),\; \mathcal{U}_q = \{B\}$};
+\draw[thick,->] (6, -1.5) to node [above,pos=0.25,sloped] {$(p:0,q:0,r:1)$} (0, -2.6) node [left] {$\mathit{vec} = (p:0,q:0,r:1),\; \mathcal{U}_p = \{A\}$};
+\end{tikzpicture}
+\caption{Byzantine node $r$ sends two different updates ($A$ and $B$) with the same ID $(r,1)$ to correct nodes $p$ and $q$. Now, $p$ and $q$ have identical vector clocks, even though they have delivered different sets of updates $\mathcal{U}_p \ne \mathcal{U}_q$.}
+\label{fig:vectorclocks}
+\end{figure*}
+
+\subsection{Correctness of CRDTs}\label{sec:sec}
 
 The standard model of correctness for CRDTs is Strong Eventual Consistency~\cite{Shapiro:2011,Gomes:2017gy}, which requires:
 \begin{description}
@@ -93,7 +109,7 @@ Systems usually ensure eventual delivery by using a reliable broadcast protocol,
 To ensure convergence, operation-based CRDTs construct updates such that they are commutative and can be applied in any order without affecting the resulting replica state.
 In some cases, a causal delivery algorithm additionally ensures that when one update has a dependency on an earlier update, the earlier update is delivered before the later update on all replicas.
 
-\subsection{Eventual delivery with Byzantine nodes}
+\subsection{Eventual delivery with Byzantine nodes}\label{sec:delivery}
 
 In a non-Byzantine system, eventual delivery can obviously only be achieved if there is some way for every pair of correct nodes to communicate, either directly or indirectly via other correct nodes.
 Two nodes that are permanently partitioned from each other can never communicate and hence cannot deliver the same updates.
@@ -108,12 +124,112 @@ To ensure that $p$ and $q$ eventually deliver the same set of updates, a simple 
 This algorithm has the downside that for every update it has ever received, a node needs to keep track of which nodes have seen the update.
 The advantage of this algorithm is that it is robust against Byzantine nodes: regardless of whether an update originated from a Byzantine or non-Byzantine node, correct nodes will propagate it to other correct nodes.
 
-\subsubsection{Vector clocks}
+\subsubsection{Vector clocks}\label{sec:vector-clocks}
 
+It would be desirable to have a more efficient protocol for nodes $p$ and $q$ to determine which updates they need to exchange so that, at the end, both have delivered the same set of updates (an \emph{anti-entropy} or \emph{reconciliation} protocol).
+A common algorithm for this purpose is to use \emph{vector clocks}: each node sequentially numbers the updates that it generates, and so the set of updates that a node has delivered can be summarised by remembering just the highest sequence number from each node.
 
-\section{Tolerating Byzantine faults}
+Unfortunately, vector clocks are not safe to use in the presence of Byzantine nodes, as shown in Figure~\ref{fig:vectorclocks}.
+This is because a Byzantine node may generate several distinct updates with the same sequence number, and send them to different nodes.
+Subsequently, when correct nodes $p$ and $q$ exchange vector clocks, they may believe that they have delivered the same set of updates because their vector clocks are identical, even though in fact they have delivered different updates.
 
-Unique operation identifiers are also known as \emph{dots}
+Even if updates are signed, this type of misbehaviour by Byzantine nodes cannot be ruled out.
+The duplicate sequence numbers might later be detected, but this would require an additional protocol on top of vector clocks to ensure eventual delivery.
+
+\subsection{Convergence with Byzantine nodes}\label{sec:convergence}
+
+Achieving the convergence property of Strong Eventual Consistency depends on the state update logic that a CRDT algorithm executes when an update is delivered.
+We can assume that correct nodes all execute the same update logic, but Byzantine nodes may send arbitrarily malformed updates to the correct nodes.
+
+Some types of updates can easily be identified as malformed and rejected, for example because they do not follow the message structure expected by the CRDT algorithm.
+If the decision whether to reject an update is a deterministic function of the update itself, and does not depend on the state of the delivering node, then it is easy to ensure convergence, since all correct nodes will make the same decision on whether to reject a given update.
+
+More problematic are updates that may or may not be valid, depending on the replica state of the node delivering the update.
+To give a few examples:
+\begin{itemize}
+\item Many CRDTs assign a unique identifier to each item (e.g.\ each element in a sequence); the data structure does not allow multiple items with the same ID, since then an ID would be ambiguous.
+Say a Byzantine node generates two different updates $u_1$ and $u_2$ that create two different items with the same ID.
+If a node has already delivered $u_1$ and then subsequently delivers $u_2$, the update $u_2$ will be rejected, but a node that has not previously delivered $u_1$ may accept $u_2$.
+Since one node accepted $u_2$ and the other rejected it, those nodes fail to converge, even if we have eventual delivery.
+
+\item In many CRDTs, one operation depends on a prior one: for example, an element in a sequence can only be deleted if that element was previously inserted, but a nonexistent element cannot be deleted.
+With non-Byzantine nodes, the metadata on updates can ensure that causally prior updates are delivered before causally later ones, but Byzantine nodes may not set this metadata correctly.
+Consequently, if update $u_2$ depends on update $u_1$, it could happen that some nodes deliver $u_1$ before $u_2$ and hence process both updates correctly, but other nodes may try to deliver $u_2$ and fail because they have not yet delivered $u_1$.
+This situation also leads to divergence.
+
+\item Some CRDTs include values in an update that must be computed in a certain way.
+For example, in WOOT~\cite{Oster:2006} and YATA~\cite{Nicolaescu:2016}, an insertion operation must reference the IDs of the predecessor and successor elements, and the algorithms depend on the predecessor appearing before the successor in the sequence.
+The order of these elements is not apparent from the IDs alone, so the algorithm must inspect the CRDT state to check that the predecessor and successor references are valid.
+\end{itemize}
+
+\section{Tolerating Byzantine faults}\label{sec:solution}
+
+To achieve Byzantine fault tolerance, CRDT implementations must be able to ensure eventual delivery and convergence even in the presence of Byzantine nodes, overcoming the problems listed in Sections~\ref{sec:delivery} and~\ref{sec:convergence}.
+This section lays out a general-purpose approach for CRDTs to tolerate Byzantine faults.
+
+\subsection{Constructing a hash graph}\label{sec:hash-graph}
+
+Let $u$ be any update, encoded as a byte string.
+We then identify $u$ by its hash $H(u)$, where $H$ is a cryptographic hash function such as SHA-256 or SHA-3.
+We assume that $H$ is collision-resistant, i.e.\ that it is computationally infeasible to find distinct $x$ and $y$ such that $H(x) = H(y)$.
+This is a standard assumption in cryptographic protocols.
+
+Every update $u$ contains a set of \emph{predecessor hashes}, which are hashes of updates that causally precede $u$ (in other words, the \emph{causal dependencies} of $u$).
+The first update in a system has an empty set of predecessors.
+In a system with no concurrency, each update after the first contains one predecessor, namely the hash of the update that occurred immediately before.
+When updates are generated concurrently and subsequently merged, the next update contains multiple predecessors.
+
+Dependencies that can be reached transitively via other dependencies are not included in the set of predecessor hashes, which ensures that this set remains small, even in systems with a large number of updates.
+We define the \emph{heads} to be the set of updates that are currently not a dependency of any other update.
+
+Updates and predecessor hashes form a directed acyclic graph (DAG).
+This graph resembles a Git commit history, with one difference: because merges of concurrent updates happen automatically in a CRDT, there is no concept of a ``merge commit''.
+Instead, after concurrent updates have occurred, we simply have a DAG with multiple heads; the next update that causally depends on those heads has multiple predecessor hashes.
+
+\subsection{Ensuring eventual delivery}\label{sec:ensuring-delivery}
+
+Using cryptographic hashes of updates has several appealing properties.
+One is that if two nodes $p$ and $q$ exchange the hashes of their current heads, and find them to be identical, then they can be sure that the set of updates they have observed is also identical, because the hashes of the heads indirectly cover all updates.
+If the heads of $p$ and $q$ are mismatched, the nodes can run a graph traversal algorithm to determine which parts of the graph they have in common, and send each other those parts of the graph that the other node is lacking.
+
+Our prior work~\cite{BECPreprint} presents optimised algorithms for reconciling two nodes' sets of updates via hash graphs.
+This process can be very efficient because the number of heads is typically very small: for example, with up to three heads (i.e.\ three concurrently generated updates) and 256-bit hashes, the entire set of updates delivered by a node can be summarised in less than 100 bytes, regardless of how many updates have occurred or how many nodes have been involved.
+
+Moreover, causally ordered delivery is easy to achieve with this hash graph: when a node receives new updates from another node, it simply ensures that dependencies (identified by predecessor hashes) are delivered before the updates that depend on them.
+A Byzantine node may generate an update with arbitrary predecessor hashes, including hashes that do not resolve to any update.
+This is not a problem: it simply results in the update with the missing dependency never being delivered.
+
+Byzantine nodes may add arbitrary vertices to the hash graph, but~-- assuming they cannot generate hash collisions~-- it is not possible for them to do anything that would prevent correct nodes from delivering the same set of updates as they communicate.
+A proof of this property appears in prior work~\cite{BECPreprint}.
+Byzantine nodes may attempt to cause a performance degradation by generating a large number of concurrent updates, and hence a large number of heads, but this will not affect the correctness of the algorithm.
+
+Hence, we can guarantee eventual delivery, requiring only the minimal assumption from Section~\ref{sec:delivery} that every correct node can eventually communicate with every other correct node, either directly or indirectly via other correct nodes.
+
+\subsection{Unique IDs}\label{sec:unique-ids}
+
+As highlighted in Section~\ref{sec:convergence}, many CRDTs require operations to have unique IDs (sometimes known as \emph{dots}~\cite{Almeida:2016}).
+Most CRDTs generate such IDs by giving each node or replica a unique identifier, and combining that identifier with a per-node counter or sequence number.
+This method of generating IDs only works with trusted nodes, since a Byzantine node can easily generate duplicate IDs.
+
+However, building upon the hash graph of updates, we have a simple way of generating unique IDs that is not susceptible to Byzantine misbehaviour: the ID of an operation is the hash of the update containing that operation.
+If an update contains multiple operations or requires multiple IDs, the IDs within an update can be a number $1,2,\dots$ concatenated with the update hash.
+
+In CRDTs where the IDs need not satisfy any further properties besides uniqueness, it should be easy to switch to this scheme.
+If there are further requirements on IDs, such as ordering properties, further checks are needed as described in Section~\ref{sec:check-validity}.
+
+The downside of using hashes as IDs is that they require more space than other schemes.
+To avoid the storage cost of explicitly materialising all of the hashes, it would be possible to design a compression scheme that recomputes hashes when necessary.
+
+\subsection{Checking validity of updates}\label{sec:check-validity}
+
+If every possible update that a Byzantine node could generate is valid, we are done.
+However, if it is possible for an update to be rejected because it is invalid, ensuring convergence also requires that all correct nodes agree on whether a given update is valid or not, as discussed in Section~\ref{sec:convergence}.
+
+The validity of an update $u$ may depend on which updates happened previously.
+Let $\mathcal{U}_p$ be the set of updates that have been delivered at node $p$ immediately before delivering $u$, and let $\mathcal{U}_q$ be the similar set at node $q$.
+We then need to ensure that $p$ and $q$ make the same decision about whether $u$ is valid, even if $\mathcal{U}_p \ne \mathcal{U}_q$.
+
+TODO
 
 \section{Related Work}
 
