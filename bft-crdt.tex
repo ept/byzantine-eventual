@@ -51,7 +51,7 @@ Nodes may send false or contradictory messages to other nodes, and they may try 
 
 When a node deviates from the specified protocol, we call it \emph{Byzantine-faulty} (or simply \emph{Byzantine}), regardless of whether the deviation is by accident or by malice~\cite{Lamport:1982}.
 Byzantine behaviour is not always detectable by other nodes, since a Byzantine node may attempt to hide its protocol violations.
-One approach would be to try to identify Byzantine nodes and exclude them from the system, but this is unlikely to be effective if the banned node can simply rejoin the system under a different identity.
+One approach would be to try to identify Byzantine nodes and exclude them from the system, but this is unlikely to be effective if the banned node can simply rejoin the system under a different identity, and the system would still have to somehow repair the damage already done by the Byzantine node.
 A more robust approach is to \emph{tolerate} Byzantine faults: that is, to ensure that the system can meet its advertised guarantees even when some of its nodes are Byzantine-faulty.
 
 Conflict-free Replicated Data Types (CRDTs)~\cite{Shapiro:2011} are often presented as an approach for providing consistency of replicated data in peer-to-peer systems~\cite{vanderLinde:2017fu,Weiss:2009ht,Nicolaescu:2016}, because they do not require a central server for concurrency control.
@@ -71,9 +71,10 @@ This section highlights some of the problems that CRDT algorithms encounter when
 \subsection{Nodes and network links}\label{sec:system-model}
 
 This paper assumes a peer-to-peer system in which all nodes are equal, and in which nodes can communicate by exchanging messages over pairwise network links.
+The set of nodes need not be known, and may change over time.
 The network is not necessarily complete, i.e.\ it is not required for every node to be able to communicate with every other node.
 Nodes and network links are assumed to be asynchronous and unreliable, so messages may be lost.
-However, we can assume that network links are authenticated (e.g. using cryptographic signatures), so that a node is able to reliably determine which remote node it is communicating with.
+However, we assume that network links are authenticated (e.g. using cryptographic signatures), so that a node is able to reliably determine which remote node it is communicating with, and messages are not corrupted.
 
 Many papers on Byzantine fault tolerance assume that no more than some upper bound of nodes is Byzantine (a common assumption is that there are $3f+1$ nodes in the system, and that no more than $f$ of them are Byzantine).
 This assumption is problematic for P2P systems, since it necessitates centralised control over which nodes are allowed to join the network~-- otherwise many adversary-controlled nodes could join the network and overwhelm it, which is known as a Sybil attack~\cite{Douceur:2002}.
@@ -124,7 +125,7 @@ We focus on the case where two correct nodes $p$ and $q$ can communicate with ea
 Eventual delivery then requires that if $p$ has delivered some update $u$, then $q$ must also eventually deliver $u$.
 
 To ensure that $p$ and $q$ eventually deliver the same set of updates, a simple but inefficient algorithm would be: periodically, $p$ sends $q$ every update that it has not already received from $q$, and vice versa.
-This algorithm has the downside that for every update it has ever received, a node needs to keep track of which nodes have seen the update.
+This algorithm has the downside that many updates may be sent to nodes that have already received them from another node, wasting network bandwidth.
 The advantage of this algorithm is that it is robust against Byzantine nodes: regardless of whether an update originated from a Byzantine or non-Byzantine node, correct nodes will propagate it to other correct nodes.
 
 \subsubsection{Vector clocks}\label{sec:vector-clocks}
@@ -251,9 +252,9 @@ To check whether the ID contained in an update $u$ is valid, we take the maximum
 
 \subsection{Adapting existing CRDT algorithms}
 
-I believe that the techniques listed here~-- generating unique IDs based on the hashes of updates, and ensuring that all correct nodes agree on whether an update is valid~-- are sufficient to guarantee convergence in a Byzantine setting: that is, any update that a Byzantine node might produce will either be rejected by all correct nodes, or result in a legitimate CRDT state update on all correct nodes (in the sense that a non-Byzantine node may have generated the same update).
-Moreover, I believe that most operation-based CRDTs can be made Byzantine fault tolerant in this way.
-I leave a detailed exploration of this hypothesis in the context of particular CRDT algorithms for future work.
+I conjecture that the techniques listed here~-- generating unique IDs based on the hashes of updates, and ensuring that all correct nodes agree on whether an update is valid~-- are sufficient to guarantee convergence in a Byzantine setting: that is, any update that a Byzantine node might produce will either be rejected by all correct nodes, or result in a legitimate CRDT state update on all correct nodes (in the sense that a non-Byzantine node may have generated the same update).
+Moreover, most operation-based CRDTs can be made Byzantine fault tolerant in this way.
+I leave a detailed proof of this conjecture in the context of particular CRDT algorithms for future work.
 
 If authentication of updates is desired, i.e.\ if it is important to know which node generated which update, then updates can additionally be signed.
 However, this is not necessary for achieving Strong Eventual Consistency.
@@ -275,7 +276,7 @@ If a Byzantine replica behaves in a way that leaves cryptographic evidence of fa
 
 Jacob et al.~\cite{Jacob:2021} suggest that it is possible for CRDTs to tolerate an arbitrary number of Byzantine nodes using hash graphs, but do not propose any particular algorithm.
 
-Merkle Search Tree~\cite{Auvolat:2019} is a state-based CRDT for sets that is is able to tolerate any number of Byzantine nodes.
+Merkle Search Tree~\cite{Auvolat:2019} is a state-based CRDT for sets that is able to tolerate any number of Byzantine nodes.
 It can be regarded as a state-based counterpart to the operation-based approach in this paper.
 
 \section{Conclusions and future work}\label{sec:conclusions}
