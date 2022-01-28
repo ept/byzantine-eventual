@@ -94,8 +94,8 @@ The algorithms developed in this paper can therefore safely be used in open P2P 
 \draw[thick,->] (0, -1.5) to node [above,pos=0.25,sloped] {$(p:0,q:0,r:1)$} (6, -2.6) node [right] {$\mathit{vec} = (p:0,q:0,r:1),\; \mathcal{U}_q = \{B\}$};
 \draw[thick,->] (6, -1.5) to node [above,pos=0.25,sloped] {$(p:0,q:0,r:1)$} (0, -2.6) node [left] {$\mathit{vec} = (p:0,q:0,r:1),\; \mathcal{U}_p = \{A\}$};
 \end{tikzpicture}
-\caption{Byzantine node $r$ sends two different updates ($A$ and $B$) with the same ID $(r,1)$ to correct nodes $p$ and $q$. Now, $p$ and $q$ have identical vector clocks, even though they have delivered different sets of updates $\mathcal{U}_p \ne \mathcal{U}_q$.}
-\label{fig:vectorclocks}
+\caption{Byzantine node $r$ sends two different updates ($A$ and $B$) with the same ID $(r,1)$ to correct nodes $p$ and $q$. Now, $p$ and $q$ have identical version vectors, even though they have delivered different sets of updates $\mathcal{U}_p \ne \mathcal{U}_q$.}
+\label{fig:version-vectors}
 \end{figure*}
 
 \subsection{Correctness of CRDTs}\label{sec:sec}
@@ -128,17 +128,17 @@ To ensure that $p$ and $q$ eventually deliver the same set of updates, a simple 
 This algorithm has the downside that many updates may be sent to nodes that have already received them from another node, wasting network bandwidth.
 The advantage of this algorithm is that it is robust against Byzantine nodes: regardless of whether an update originated from a Byzantine or non-Byzantine node, correct nodes will propagate it to other correct nodes.
 
-\subsubsection{Vector clocks}\label{sec:vector-clocks}
+\subsubsection{Version vectors}\label{sec:vectors}
 
 It would be desirable to have a more efficient protocol for nodes $p$ and $q$ to determine which updates they need to exchange so that, at the end, both have delivered the same set of updates (an \emph{anti-entropy} or \emph{reconciliation} protocol).
-A common algorithm for this purpose is to use \emph{vector clocks}: each node sequentially numbers the updates that it generates, and so the set of updates that a node has delivered can be summarised by remembering just the highest sequence number from each node.
+A common algorithm for this purpose is to use \emph{version vectors}~\cite{ParkerJr:1983}: each node sequentially numbers the updates that it generates, and so the set of updates that a node has delivered can be summarised by remembering just the highest sequence number from each node.
 
-Unfortunately, vector clocks are not safe in the presence of Byzantine nodes, as shown in Figure~\ref{fig:vectorclocks}.
+Unfortunately, version vectors are not safe in the presence of Byzantine nodes, as shown in Figure~\ref{fig:version-vectors}.
 This is because a Byzantine node may generate several distinct updates with the same sequence number, and send them to different nodes.
-Subsequently, when correct nodes $p$ and $q$ exchange vector clocks, they may believe that they have delivered the same set of updates because their vector clocks are identical, even though they have in fact delivered different updates.
+Subsequently, when correct nodes $p$ and $q$ exchange version vectors, they may believe that they have delivered the same set of updates because their version vectors are identical, even though they have in fact delivered different updates.
 
 Even if updates are signed, this type of misbehaviour by Byzantine nodes cannot be ruled out.
-The reuse of the same sequence number might later be detected, but this would require an additional protocol on top of vector clocks.
+The reuse of the same sequence number might later be detected, but this would require an additional protocol on top of version vectors.
 
 \subsection{Convergence with Byzantine nodes}\label{sec:convergence}
 
