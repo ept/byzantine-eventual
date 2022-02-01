@@ -276,7 +276,7 @@ However, this is not necessary for achieving Strong Eventual Consistency.
 
 \section{Related Work}\label{sec:relwork}
 
-The idea of referring to some data item using a cryptographic hash of its content, also known as \emph{content addressing}, is used in many systems, including Git~\cite{ProGit}, Bittorrent~\cite{Pouwelse:2005}, and IPFS~\cite{Benet:2014}.
+The idea of referring to some data item using a cryptographic hash of its content, also known as \emph{content addressing}, is used in many systems, including Git~\cite{ProGit}, BitTorrent~\cite{Pouwelse:2005}, and IPFS~\cite{Benet:2014}.
 Similarly, hash graphs are widely used: in Git~\cite{ProGit}, Merkle trees~\cite{Merkle:1987}, blockchains~\cite{Baird:2016tq}, IPLD~\cite{IPLD}, and others~\cite{Kang:2003}.
 
 However, there are fairly few attempts to provide Byzantine fault tolerance for CRDTs, and to my knowledge none that have the characteristics of the approach in this paper.
@@ -286,7 +286,7 @@ The $3f+1$ assumption means these protocols cannot be deployed in open peer-to-p
 In contrast, my approach makes no assumption about the number of Byzantine nodes.
 
 Van der Linde et al.~\cite{vanderLinde:2020} have different goals in their CRDT-based system with untrusted nodes: this work is concerned, for example, with ensuring that nodes correctly report their causal dependencies, whereas my approach permits nodes to generate arbitrary causal dependencies (since they do not affect the eventual delivery or convergence properties).
-This approach relies on trusted servers and primarily focusses on \emph{rational} clients (assuming clients will deviate from the protocol only if this cannot be detected).
+This approach relies on trusted servers and primarily focuses on \emph{rational} clients (assuming clients will deviate from the protocol only if this cannot be detected).
 If a Byzantine replica behaves in a way that leaves cryptographic evidence of faulty behaviour, that replica can be excluded from the system, but it is unclear how the system recovers from misbehaviour that has already occurred by the time that replica is excluded.
 
 Jacob et al.~\cite{Jacob:2021} suggest that it is possible for CRDTs to tolerate an arbitrary number of Byzantine nodes using hash graphs, but do not propose any particular algorithm.
