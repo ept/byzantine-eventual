@@ -4,16 +4,6 @@
 \usepackage{tikz} % for figures
 \usepackage{subcaption} % for subfigures
 
-\newcommand\vldbdoi{XX.XX/XXX.XX}
-\newcommand\vldbpages{XXX-XXX}
-\newcommand\vldbvolume{14}
-\newcommand\vldbissue{1}
-\newcommand\vldbyear{2020}
-\newcommand\vldbauthors{\authors}
-\newcommand\vldbtitle{\shorttitle} 
-\newcommand\vldbavailabilityurl{}
-\newcommand\vldbpagestyle{plain} % use 'plain' for review versions, 'empty' for camera ready
-
 \hyphenation{time-stamp time-stamps re-con-cilia-tion data-center}
 \renewcommand{\floatpagefraction}{.8}%
 
@@ -83,31 +73,7 @@ We introduce an algorithm that guarantees BEC based on Byzantine causal broadcas
 \end{abstract}
 \maketitle
 
-%%% do not modify the following VLDB block %%
-%%% VLDB block start %%%
-\pagestyle{\vldbpagestyle}
-\begingroup\small\noindent\raggedright\textbf{PVLDB Reference Format:}\\
-\vldbauthors. \vldbtitle. PVLDB, \vldbvolume(\vldbissue): \vldbpages, \vldbyear.\\
-\href{https://doi.org/\vldbdoi}{doi:\vldbdoi}
-\endgroup
-\begingroup
-\renewcommand\thefootnote{}\footnote{\noindent
-This work is licensed under the Creative Commons BY-NC-ND 4.0 International License. Visit \url{https://creativecommons.org/licenses/by-nc-nd/4.0/} to view a copy of this license. For any use beyond those covered by this license, obtain permission by emailing \href{mailto:info@vldb.org}{info@vldb.org}. Copyright is held by the owner/author(s). Publication rights licensed to the VLDB Endowment. \\
-\raggedright Proceedings of the VLDB Endowment, Vol. \vldbvolume, No. \vldbissue\ %
-ISSN 2150-8097. \\
-\href{https://doi.org/\vldbdoi}{doi:\vldbdoi} \\
-}\addtocounter{footnote}{-1}\endgroup
-%%% VLDB block end %%%
-
-%%% do not modify the following VLDB block %%
-%%% VLDB block start %%%
-\ifdefempty{\vldbavailabilityurl}{}{
-\vspace{.3cm}
-\begingroup\small\noindent\raggedright\textbf{PVLDB Artifact Availability:}\\
-The source code, data, and/or other artifacts have been made available at \url{\vldbavailabilityurl}.
-\endgroup
-}
-%%% VLDB block end %%%
+% TODO: Frame our protocol as a type of distributed ledger?
 
 \section{Introduction}
 
@@ -608,7 +574,7 @@ Sending messages in this way is not strictly necessary, as the periodic reconcil
 Moreover, when a recipient delivers messages, it may also choose to eagerly relay them to other replicas it is connected to, without waiting for the next reconciliation (line~\ref{line:eager-relay}); this also reduces latency, but may result in a replica redundantly receiving messages that it already has.
 The literature on gossip protocols examines in detail the question of when replicas should forward messages they receive~\cite{Leitao:2009fi}, while considering trade-offs of delivery latency and bandwidth use; we leave a detailed discussion out of scope for this paper.
 
-We prove in Appendix~\ref{sec:proof} that this algorithm implements all five properties of causal broadcast.
+We prove in Appendix~\ref{sec:proof} (in the supplemental material of this paper) that this algorithm implements all five properties of causal broadcast.
 Even though Byzantine-faulty replicas may send arbitrarily malformed messages, a correct replica will not deliver messages without a complete predecessor graph.
 Any messages delivered by one correct replica will eventually reach every other correct replica through reconciliations.
 After reconciliation, both replicas have delivered the same set of messages.
@@ -685,7 +651,7 @@ Thus, if the reconciliations are frequent, they can employ a small Bloom filter 
 
 This optimized algorithm also tolerates Byzantine faults.
 For example, a faulty replica may send a correct replica an arbitrarily corrupted Bloom filter, but this only changes the set of messages in the reply from the correct replica, and has no effect on $\mathcal{M}$ at the correct replica.
-We formally analyze the correctness of this algorithm in Appendix~\ref{sec:proof}.
+We formally analyze the correctness of this algorithm in Appendix~\ref{sec:proof} (in the supplemental material).
 
 \begin{table*}
 \caption{Determining safety of updates with respect to different types of invariant}\label{tab:safety}
@@ -783,14 +749,20 @@ If these conditions are met, we apply the updates to the replica state $S$ on li
 We remove any deleted tuples, and we augment any insertions with the hash of the message.
 This ensures that subsequent deletions can unambiguously reference the element of $S$ to be deleted, even if multiple replicas concurrently insert the same tuple into the same relation.
 
-We prove in Appendix~\ref{sec:bec-proof} that this algorithm ensures Byzantine Eventual Consistency.
+We prove in Appendix~\ref{sec:bec-proof} (in the supplemental material) that this algorithm ensures Byzantine Eventual Consistency.
 This algorithm could be extended with other operations besides insertion and deletion: for example, it might be useful to support an operation that adds a (possibly negative) value to a numeric attribute; such an operation would commute trivially with other operations of the same type, allowing several concurrent updates to a numeric value (e.g.\ an account balance) to be merged.
 Further data models and operations can be implemented using CRDT techniques (\S~\ref{sec:crdts}).
 
 
+% TODO: evaluation should compare to libp2p, Git, Depot, OldBlue
+% Also Matrix? https://matrix.org/docs/guides/implementing-stateres
+% https://ieeexplore.ieee.org/document/9351908
+% (see also email from Jamie Brandon)
+
 \section{Evaluation}\label{sec:evaluation}
 
-To evaluate the algorithms introduced in \S~\ref{sec:algorithm} we implemented a prototype and measured its behavior.\footnote{Source code available at \url{https://github.com/ept/byzantine-eventual}}
+To evaluate the algorithms introduced in \S~\ref{sec:algorithm} we implemented a prototype and measured its behavior.
+The source code of our prototype is included in the supplemental material of this paper.
 Our prototype runs all replicas in-memory in a single process, simulating a message-passing network and recording statistics such as the number of messages, hashes, and Bloom filter bits transmitted, in order to measure the algorithm's network communication costs.
 In our experiments we use four replicas, each replica generating updates at a constant rate, and every pair of replicas periodically reconciles their states.
 We then vary the intervals at which reconciliations are performed (with longer intervals, more updates accumulate between reconciliations) and measure the network communication cost of performing the reconciliation.
@@ -859,6 +831,16 @@ It is closely related to the concept of logical monotonicity~\cite{Conway:2012} 
 COPS~\cite{Lloyd:2011} is an example of a non-Byzantine system that achieves causal consistency while avoiding coordination, and BEC is a Byzantine variant of COPS's Causal+ consistency model.
 Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:1991el}.
 
+
+% Byzantine-tolerant causal broadcast https://doi.org/10.1016/j.tcs.2021.06.021
+% Also by Alex Auvolat: https://hal.inria.fr/hal-02303490/document
+
+% Compare to Matrix https://ieeexplore.ieee.org/document/9351908
+
+% Secure Scuttlebutt~\cite{Kermarrec:2020} also uses hash chains, but it relies on vector clocks for replication, so it suffers from the problem illustrated in Figure~\ref{fig:vectorclocks}.
+
+% Some more suggestions for related work in this thread: https://news.ycombinator.com/item?id=25278128
+
 % Snapdoc~\cite{Kollmann:2019hf} provides cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
 % Truong et al.~\cite{Truong:2012et} present another scheme for authenticating CRDT history, but do not include a reconciliation protocol.
 
@@ -868,6 +850,11 @@ Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:19
 % Tseng et al.~\cite{Tseng:2019jb} prove that Byzantine causal memory can only be done with $3f+1$ processes?!
 
 % https://github.com/sipa/minisketch
+% Minisketch is proposed for gossip in Bitcoin: https://arxiv.org/abs/1905.10518
+% See email from Greg Maxwell on 10 Nov 2021
+
+% Consider cuckoo filters or quotient filters?
+% https://en.wikipedia.org/wiki/Quotient_filter
 
 % Comparison to Julien Quintard work on byzantine file systems https://www.repository.cam.ac.uk/bitstream/handle/1810/243442/thesis.pdf?sequence=1&isAllowed=y
 % https://infinit.sh
@@ -877,6 +864,12 @@ Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:19
 % https://github.com/mirage/irmin/blob/master/src/irmin/sync_ext.ml#L86-L123
 % Send paper to Irmin authors?
 
+% Dynamic Byzantine Reliable Broadcast from OPODIS 2020
+% Assumes at most 1/3 are honest
+% https://arxiv.org/pdf/2001.06271.pdf
+
+% Byz-GentleRain: causal consistency with 3f+1
+% https://hengxin.github.io/papers/2021-SSS-BA-ByzGentleRain.pdf
 
 \section{Conclusions}\label{sec:conc}
 
@@ -910,7 +903,7 @@ This work was funded in part by EP/T022493/1.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
-\appendix
+\appendix\newpage
 
 \section{Proofs for causal broadcast}\label{sec:proof}
 
