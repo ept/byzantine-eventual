@@ -11,7 +11,7 @@
 \newcommand{\I}{$\mathcal{I}\!$}
 
 \begin{document}
-\title{Byzantine Eventual Consistency and the Fundamental Limits of Peer-to-Peer Databases}
+\title{Byzantine Eventual Consistency}
 
 \author{Martin Kleppmann}
 \orcid{0000-0001-7252-6958}
@@ -65,8 +65,8 @@
 %\keywords{replication, Byzantine fault tolerance, eventual consistency, CRDTs, broadcast protocols}
 
 \begin{abstract}
-Sybil attacks, in which a large number of adversary-controlled nodes join a network, are a concern for many peer-to-peer database systems, necessitating expensive countermeasures such as proof-of-work.
-However, there is a category of database applications that are, by design, immune to Sybil attacks because they can tolerate arbitrary numbers of Byzantine-faulty nodes.
+Sybil attacks, in which a large number of adversary-controlled nodes join a network, are a concern for many permissionless decentralized systems, necessitating expensive countermeasures such as proof-of-work.
+However, there is a category of distributed applications that are, by design, immune to Sybil attacks because they can tolerate arbitrary numbers of Byzantine-faulty nodes.
 In this paper, we characterize this category of applications using a consistency model we call \emph{Byzantine Eventual Consistency} (BEC).
 We introduce an algorithm that guarantees BEC based on Byzantine causal broadcast, prove its correctness, and demonstrate near-optimal performance in a prototype implementation.
 %We also show that \I-confluence (invariant confluence) is a necessary and sufficient condition for the existence of such an algorithm.
@@ -78,21 +78,21 @@ We introduce an algorithm that guarantees BEC based on Byzantine causal broadcas
 \section{Introduction}
 
 Peer-to-peer systems are of interest to many communities for a number of reasons: their lack of central control by a single party can make them more resilient, and less susceptible to censorship and denial-of-service attacks than centralized services.
-Examples of widely deployed peer-to-peer applications include file sharing~\cite{Pouwelse:2005}, scientific dataset sharing~\cite{Robinson:2018}, decentralized social networking~\cite{Tarr:2019}, cryptocurrencies~\cite{Nakamoto:2008}, and blockchains~\cite{Bano:2019}.
+Examples of widely deployed peer-to-peer applications include file sharing~\cite{Pouwelse:2005,Benet:2014}, scientific dataset sharing~\cite{Robinson:2018}, decentralized social networking~\cite{Tarr:2019}, cryptocurrencies~\cite{Nakamoto:2008}, and blockchains~\cite{Bano:2019}.
 
-Many peer-to-peer systems are essentially replicated database systems, albeit often with an application-specific data model.
+Many peer-to-peer systems are essentially replicated state machines, albeit often with an application-specific data model.
 For example, in a cryptocurrency, the replicated state comprises the balance of each user's account; in BitTorrent~\cite{Pouwelse:2005}, it is the files being shared.
 Some blockchains support more general data storage and smart contracts (essentially, deterministic stored procedures) that are executed as serializable transactions by a consensus algorithm.
 
-The central challenge faced by peer-to-peer databases is that peers cannot be trusted because anybody in the world can add peers to the network.
+The central challenge faced by these decentralized systems is that peers cannot be trusted because anybody in the world can add peers to the network.
 Thus, we must assume that some subset of peers are malicious; such peers are also called \emph{Byzantine-faulty}, which means that they may deviate from the specified protocol in arbitrary ways.
 Moreover, a malicious party may perform a \emph{Sybil attack}~\cite{Douceur:2002}: launching a large number of peers, potentially causing the Byzantine-faulty peers to outnumber the honest ones.
 
 Several countermeasures against Sybil attacks are used.
 Bitcoin popularized the concept of \emph{proof-of-work}~\cite{Nakamoto:2008}, in which a peer's voting power depends on the computational effort it expends.
 Unfortunately, proof-of-work is extraordinarily expensive: it has been estimated that as of 2020, Bitcoin alone represents almost half of worldwide datacenter electricity use~\cite{deVries:2020}.
+Other mechanisms, such as \emph{proof-of-stake}~\cite{Bano:2019}, are at present unproven at scale.
 \emph{Permissioned} blockchains avoid this huge carbon footprint, but they have the downside of requiring central control over the peers that may join the system, undermining the principle of decentralization.
-Other mechanisms, such as \emph{proof-of-stake}~\cite{Bano:2019}, are at present unproven.
 
 The reason why permissioned blockchains must control membership is that they rely on Byzantine agreement, which assumes that at most $f$ nodes are Byzantine-faulty.
 To tolerate $f$ faults, Byzantine agreement algorithms typically require at least $3f+1$ nodes~\cite{Castro:1999}.
@@ -105,30 +105,32 @@ This state of affairs raises the question: if Byzantine agreement cannot be achi
 A system that tolerates arbitrary numbers of Byzantine-faulty nodes is immune to Sybil attacks: even if the malicious peers outnumber the honest ones, it is still able to function correctly.
 This makes such systems of large practical importance: being immune to Sybil attacks means neither proof-of-work nor the central control of permissioned blockchains is required.
 
-In this paper, we provide a precise characterization of the types of problems that can and cannot be solved in the face of arbitrary numbers of Byzantine-faulty nodes.
-We do this by viewing peer-to-peer networks through the lens of distributed database systems and their consistency models.
-Our analysis is based on using \emph{invariants}~-- predicates over database states~-- to express an application's correctness properties, such as integrity constraints.
+% In this paper, we provide a precise characterization of the types of problems that can and cannot be solved in the face of arbitrary numbers of Byzantine-faulty nodes.
+% We do this by viewing peer-to-peer networks through the lens of distributed database systems and their consistency models.
+% Our analysis is based on using \emph{invariants}~-- predicates over database states~-- to express an application's correctness properties, such as integrity constraints.
 
-Our key result is a theorem stating that it is possible for a peer-to-peer database to be immune to Sybil attacks if and only if all of the possible transactions are \emph{\I-confluent} (invariant confluent) with respect to all of the application's invariants on the database.
-\I-confluence, defined in Section~\ref{sec:confluence}, was originally introduced for non-Byzantine systems~\cite{Bailis:2014}, and our result shows that it is also applicable in a Byzantine context.
-Our result does not solve the problem of Bitcoin electricity consumption, because (as we show later) a cryptocurrency is not \I-confluent.
-However, there is a wide range of applications that \emph{are} \I-confluent, and which can therefore be implemented in a permissionless peer-to-peer system without resorting to proof-of-work.
-Our work shows how to do this.
+% Our key result is a theorem stating that it is possible for a peer-to-peer database to be immune to Sybil attacks if and only if all of the possible transactions are \emph{\I-confluent} (invariant confluent) with respect to all of the application's invariants on the database.
+% \I-confluence, defined in Section~\ref{sec:confluence}, was originally introduced for non-Byzantine systems~\cite{Bailis:2014}, and our result shows that it is also applicable in a Byzantine context.
+% Our result does not solve the problem of Bitcoin electricity consumption, because (as we show later) a cryptocurrency is not \I-confluent.
+% However, there is a wide range of applications that \emph{are} \I-confluent, and which can therefore be implemented in a permissionless peer-to-peer system without resorting to proof-of-work.
+% Our work shows how to do this.
 
 Our contributions in this paper are as follows:
 \begin{enumerate}
-    \item We define a consistency model for replicated databases, called \emph{Byzantine eventual consistency} (BEC), which can be achieved in systems with arbitrary numbers of Byzantine-faulty nodes.
+    \item We define a consistency model for distributed systems, called \emph{Byzantine eventual consistency} (BEC), which can be achieved in systems with arbitrary numbers of Byzantine-faulty nodes.
     \item We introduce replication algorithms that ensure BEC, and prove their correctness without bounding the number of Byzantine faults.
     Our approach first defines \emph{Byzantine causal broadcast}, a mechanism for reliably multicasting messages to a group of nodes, and then uses it for BEC replication.
     \item We evaluate the performance of a prototype implementation of our algorithms, and demonstrate that our optimized algorithm incurs only a small network communication overhead, making it viable for use in practical systems.
-    \item We prove that \I-confluence is a necessary and sufficient condition for the existence of a BEC replication algorithm, and we use this result to determine which applications can be immune to Sybil attacks.
+    % \item We prove that \I-confluence is a necessary and sufficient condition for the existence of a BEC replication algorithm, and we use this result to determine which applications can be immune to Sybil attacks.
 \end{enumerate}
 
-\section{Background and Definitions}
+% TODO: Replace the cut text with a paragraph addressing the fact that BEC is not suitable for cypto but is still useful
+
+\section{Background}
 
 We first introduce background required for the rest of the paper.
 
-\subsection{Strong Eventual Consistency and CRDTs}\label{sec:crdts}
+\subsection{Strong Eventual Consistency}\label{sec:crdts}
 
 Eventual consistency is usually defined as: ``If no further updates are made, then eventually all replicas will be in the same state~\cite{Vogels:2009ca}.''
 This is a very weak model: it does not specify when the consistent state will be reached, and the premise ``if no further updates are made'' may never be true in a system in which updates happen continuously.
@@ -152,37 +154,37 @@ These abstract datatypes are designed such that concurrent updates to their stat
 CRDTs have been used to implement a range of applications, such as key-value stores~\cite{Akkoorath2016Cure,Zawirski2015SwiftCloud}, multi-user collaborative text editors~\cite{Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many others.
 Several papers present techniques for achieving commutativity in different datatypes~\cite{Kleppmann:2017,Preguica:2018gi,Shapiro:2011wy,Weiss:2009ht}.
 
-\subsection{Invariant confluence}\label{sec:confluence}
+% \subsection{Invariant confluence}\label{sec:confluence}
 
-An \emph{invariant} is a predicate over replica states, i.e.\ a function $I(S)$ that takes a replica state $S$ and returns either $\mathsf{true}$ or $\mathsf{false}$.
-Invariants can represent many types of consistency properties and constraints commonly found in databases, such as referential integrity, uniqueness, or restrictions on the value of a data item (e.g.\ requiring it to be non-negative).
+% An \emph{invariant} is a predicate over replica states, i.e.\ a function $I(S)$ that takes a replica state $S$ and returns either $\mathsf{true}$ or $\mathsf{false}$.
+% Invariants can represent many types of consistency properties and constraints commonly found in databases, such as referential integrity, uniqueness, or restrictions on the value of a data item (e.g.\ requiring it to be non-negative).
 
-Informally, a set of transactions is \I-confluent with regard to an invariant $I$ if different replicas can independently execute subsets of the transactions, each ensuring that $I$ is preserved, and we can be sure that the result of merging the updates from those transactions will still satisfy $I$.
-More formally, let $T = \{T_1, \dots, T_n\}$ be the set of transactions executed by a system, and let $u_i$ be the updates resulting from the execution of $T_i$.
-Assume that for all $i,j \in [1,n]$, if $T_i$ and $T_j$ were executed concurrently by different replicas (written $T_i \parallel T_j$), then updates $u_i$ and $u_j$ commute.
-Then we say that $T$ is \I-confluent with regard to invariant $I$ if:
-\begin{align*}
-    \forall i,j \in [1,n].\; \forall S.\; & (T_i \parallel T_j) \wedge I(S) \wedge I(\mathrm{apply}(S, u_i)) \wedge I(\mathrm{apply}(S, u_j)) \\
-    & \Longrightarrow I(\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)).
-\end{align*}
-As $u_i$ and $u_j$ commute, this also implies $I(\mathrm{apply}(\mathrm{apply}(S, u_j), u_i))$.
+% Informally, a set of transactions is \I-confluent with regard to an invariant $I$ if different replicas can independently execute subsets of the transactions, each ensuring that $I$ is preserved, and we can be sure that the result of merging the updates from those transactions will still satisfy $I$.
+% More formally, let $T = \{T_1, \dots, T_n\}$ be the set of transactions executed by a system, and let $u_i$ be the updates resulting from the execution of $T_i$.
+% Assume that for all $i,j \in [1,n]$, if $T_i$ and $T_j$ were executed concurrently by different replicas (written $T_i \parallel T_j$), then updates $u_i$ and $u_j$ commute.
+% Then we say that $T$ is \I-confluent with regard to invariant $I$ if:
+% \begin{align*}
+%     \forall i,j \in [1,n].\; \forall S.\; & (T_i \parallel T_j) \wedge I(S) \wedge I(\mathrm{apply}(S, u_i)) \wedge I(\mathrm{apply}(S, u_j)) \\
+%     & \Longrightarrow I(\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)).
+% \end{align*}
+% As $u_i$ and $u_j$ commute, this also implies $I(\mathrm{apply}(\mathrm{apply}(S, u_j), u_i))$.
 
-As an example, consider a uniqueness constraint, i.e.\ $I(S)=\mathsf{true}$ if there is no more than one data item in $S$ for which a particular attribute has a given value.
-If $T_1$ and $T_2$ are both transactions that create data items with the same value in that attribute, then $\{T_1,T_2\}$ is not \I-confluent with regard to $I$: each of $T_1$ and $T_2$ individually preserves the constraint, but the combination of the two does not.
+% As an example, consider a uniqueness constraint, i.e.\ $I(S)=\mathsf{true}$ if there is no more than one data item in $S$ for which a particular attribute has a given value.
+% If $T_1$ and $T_2$ are both transactions that create data items with the same value in that attribute, then $\{T_1,T_2\}$ is not \I-confluent with regard to $I$: each of $T_1$ and $T_2$ individually preserves the constraint, but the combination of the two does not.
 
-As a second example, say that $I(S)=\mathsf{true}$ if every user in $S$ has a non-negative account balance.
-If $T_1$ and $T_2$ are both transactions that increase the same user's account balance, then $\{T_1,T_2\}$ is \I-confluent with regard to $I$, because the sum of the two positive balance updates cannot cause the balance to become negative (assuming no overflow).
-However, if $T_1$ and $T_2$ decrease the same user's account balance, then they are not \I-confluent with regard to $I$: any one of the transactions may be fine, but the sum of the two could cause the balance to become negative.
+% As a second example, say that $I(S)=\mathsf{true}$ if every user in $S$ has a non-negative account balance.
+% If $T_1$ and $T_2$ are both transactions that increase the same user's account balance, then $\{T_1,T_2\}$ is \I-confluent with regard to $I$, because the sum of the two positive balance updates cannot cause the balance to become negative (assuming no overflow).
+% However, if $T_1$ and $T_2$ decrease the same user's account balance, then they are not \I-confluent with regard to $I$: any one of the transactions may be fine, but the sum of the two could cause the balance to become negative.
 
-\I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} in the context of non-Byzantine systems, along with a proof that a set of transactions can be executed in a \emph{coordination-free} manner if and only if those transactions are \I-confluent with regard to all of the application's invariants.
-``Coordination-free'' means, loosely speaking, that one replica does not have to wait for a response from any other replica before it can commit a transaction.
+% \I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} in the context of non-Byzantine systems, along with a proof that a set of transactions can be executed in a \emph{coordination-free} manner if and only if those transactions are \I-confluent with regard to all of the application's invariants.
+% ``Coordination-free'' means, loosely speaking, that one replica does not have to wait for a response from any other replica before it can commit a transaction.
 
 \subsection{System model}\label{sec:system-model}
 
 Our system consists of a finite set of replicas, which may vary over time.
 Any replica may execute transactions.
 Each replica is either \emph{correct} or \emph{faulty}, but a correct replica does not know whether another replica is faulty.
-A correct replica follows the specified protocol, whereas a faulty replica may deviate from the protocol in arbitrary ways (i.e.\ it is Byzantine-faulty~\cite{Lamport:1982}).
+A correct replica is not crashed and follows the specified protocol, whereas a faulty replica may deviate from the protocol in arbitrary ways (i.e.\ it is Byzantine-faulty~\cite{Lamport:1982}).
 Faulty replicas may collude and attempt to deceive correct replicas; we model such worst-case behavior by assuming a malicious adversary who controls the behavior of all faulty replicas.
 We allow any subset of replicas to be faulty.
 We consider all replicas to be equal peers, making no distinction e.g.\ between clients and servers.
@@ -215,9 +217,9 @@ The easiest way of satisfying this assumption is to connect each replica to ever
 
 \section{Byzantine Eventual Consistency}\label{sec:byzantine-crdts}
 
-We now define Byzantine Eventual Consistency (BEC), and prove that \I-confluence is both necessary and sufficient to implement it.
+% We now define Byzantine Eventual Consistency (BEC), and prove that \I-confluence is both necessary and sufficient to implement it.
 
-\subsection{Definition of BEC}\label{sec:bec-definition}
+% \subsection{Definition of BEC}\label{sec:bec-definition}
 
 We say that a replica \emph{generates} a set of updates if those updates are the result of that replica executing a committed transaction.
 We say a replicated database provides \emph{Byzantine Eventual Consistency} if it satisfies the following properties in the system model of \S~\ref{sec:system-model}:
@@ -230,77 +232,77 @@ We say a replicated database provides \emph{Byzantine Eventual Consistency} if i
 \item[Authenticity:] If a correct replica applies an update that is labeled as originating from replica $s$, then that update was generated by replica $s$.
 %\item[Non-duplication:] A correct replica does not apply the same update more than once.
 \item[Causal consistency:] If a correct replica generates or applies update $u_1$ before generating update $u_2$, then all correct replicas apply $u_1$ before $u_2$.
-\item[Invariant preservation:] The state of a correct replica always satisfies all of the application's declared invariants.
+% \item[Invariant preservation:] The state of a correct replica always satisfies all of the application's declared invariants.
 \end{description}
 
 Read operations can be performed at any time, and their result reflects the replica state that results from applying only updates made by committed transactions.
 In other words, we require \emph{read committed} transaction isolation~\cite{Adya:2000}, but we do not assume serializable isolation.
-BEC is a strengthening of SEC (\S~\ref{sec:crdts}); the main differences are that SEC assumes a non-Byzantine system, and SEC does not require atomicity, causal consistency, or invariant preservation.
+BEC is a strengthening of SEC (\S~\ref{sec:crdts}); the main differences are that SEC assumes a non-Byzantine system, and SEC does not require atomicity, or causal consistency.
 
 BEC ensures that all correct replicas converge towards the same shared state, even if they also communicate with any number of Byzantine-faulty replicas.
 Essentially, BEC ensures that faulty replicas cannot permanently corrupt the state of correct replicas.
 As is standard in Byzantine systems, the properties above only constrain the behavior of correct replicas, since we can make no assumptions or guarantees about the behavior or state of faulty replicas.
 
-\subsection{Existence of a BEC algorithm}\label{sec:theorem}
+% \subsection{Existence of a BEC algorithm}\label{sec:theorem}
 
-For the following theorem we define a replication algorithm to be \emph{fault-tolerant} if it is able to commit transactions while at most one replica is crashed or unreachable.
-In other words, in a system with $r$ replicas, a replica is able to commit a transaction after receiving responses from up to $r-2$ replicas (all but itself and one unavailable replica).
-We adopt this very weak definition of fault tolerance since it makes the following theorem stronger; the theorem also holds for algorithms that tolerate more than one fault.
+% For the following theorem we define a replication algorithm to be \emph{fault-tolerant} if it is able to commit transactions while at most one replica is crashed or unreachable.
+% In other words, in a system with $r$ replicas, a replica is able to commit a transaction after receiving responses from up to $r-2$ replicas (all but itself and one unavailable replica).
+% We adopt this very weak definition of fault tolerance since it makes the following theorem stronger; the theorem also holds for algorithms that tolerate more than one fault.
 
-We are now ready to prove our main theorem:
-\begin{theorem}\label{theorem}
-Assume an asynchronous\footnote{This theorem also holds for partially synchronous~\cite{Dwork:1988} systems, in which network latency is only temporarily unbounded, but eventually becomes bounded. However, for simplicity, we assume an asynchronous system in this proof.} system with a finite set of replicas, of which any subset may be Byzantine-faulty.
-Assume there is a known set of invariants that the data on each replica should satisfy.
-Then there exists a fault-tolerant algorithm that ensures BEC if and only if the set of all transactions executed by correct replicas is \I-confluent with respect to each of the invariants.
-\end{theorem}
+% We are now ready to prove our main theorem:
+% \begin{theorem}\label{theorem}
+% Assume an asynchronous\footnote{This theorem also holds for partially synchronous~\cite{Dwork:1988} systems, in which network latency is only temporarily unbounded, but eventually becomes bounded. However, for simplicity, we assume an asynchronous system in this proof.} system with a finite set of replicas, of which any subset may be Byzantine-faulty.
+% Assume there is a known set of invariants that the data on each replica should satisfy.
+% Then there exists a fault-tolerant algorithm that ensures BEC if and only if the set of all transactions executed by correct replicas is \I-confluent with respect to each of the invariants.
+% \end{theorem}
 
-\begin{proof}
-For the backward direction, we assume that the set of transactions executed by correct replicas is \I-confluent with respect to all of the invariants.
-Then the algorithm defined in \S~\ref{sec:algorithm} ensures BEC, as proved in Appendices~\ref{sec:proof} and~\ref{sec:bec-proof}, demonstrating the existence of an algorithm that ensures BEC.
+% \begin{proof}
+% For the backward direction, we assume that the set of transactions executed by correct replicas is \I-confluent with respect to all of the invariants.
+% Then the algorithm defined in \S~\ref{sec:algorithm} ensures BEC, as proved in Appendices~\ref{sec:proof} and~\ref{sec:bec-proof}, demonstrating the existence of an algorithm that ensures BEC.
 
-For the forward direction, we assume that the set of transactions $T$ executed by correct replicas is not \I-confluent with respect to at least one invariant $I$. We must then show that under this assumption, there is no fault-tolerant algorithm that ensures BEC and preserves all invariants in the presence of an arbitrary number of Byzantine-faulty replicas.
-We do this by assuming that such an algorithm exists and deriving a contradiction.
+% For the forward direction, we assume that the set of transactions $T$ executed by correct replicas is not \I-confluent with respect to at least one invariant $I$. We must then show that under this assumption, there is no fault-tolerant algorithm that ensures BEC and preserves all invariants in the presence of an arbitrary number of Byzantine-faulty replicas.
+% We do this by assuming that such an algorithm exists and deriving a contradiction.
 
-If $T$ is not \I-confluent with respect to $I$, then there must exist concurrently executed transactions $T_i, T_j \in T$ that violate \I-confluence.
-That is, $u_i$ and $u_j$ are the sets of updates generated by $T_i$ and $T_j$ respectively, and there exists a replica state $S$ such that
-\[ I(S) \wedge I(\mathrm{apply}(S, u_i)) \wedge I(\mathrm{apply}(S, u_j)) \wedge \neg I(\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)). \]
+% If $T$ is not \I-confluent with respect to $I$, then there must exist concurrently executed transactions $T_i, T_j \in T$ that violate \I-confluence.
+% That is, $u_i$ and $u_j$ are the sets of updates generated by $T_i$ and $T_j$ respectively, and there exists a replica state $S$ such that
+% \[ I(S) \wedge I(\mathrm{apply}(S, u_i)) \wedge I(\mathrm{apply}(S, u_j)) \wedge \neg I(\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)). \]
 
-Let $R$ be the set of replicas.
-Let $p$ be the correct replica that executes $T_i$, let $q$ be the correct replica that executes $T_j$, and assume that all of the remaining replicas $R \setminus \{p,q\}$ are Byzantine-faulty.
-Assume $p$ and $q$ are both in the state $S$ before executing $T_i$ and $T_j$.
+% Let $R$ be the set of replicas.
+% Let $p$ be the correct replica that executes $T_i$, let $q$ be the correct replica that executes $T_j$, and assume that all of the remaining replicas $R \setminus \{p,q\}$ are Byzantine-faulty.
+% Assume $p$ and $q$ are both in the state $S$ before executing $T_i$ and $T_j$.
 
-Now we let $p$ and $q$ execute $T_i$ and $T_j$ concurrently.
-The transaction execution and replication algorithm may perform arbitrary computation and communication among replicas.
-However, since the system is asynchronous, messages may be subject to unbounded network latency.
-Assume that in this execution, messages between $p$ and $q$ are severely delayed, while messages between any other pairs of replicas are received quickly.
+% Now we let $p$ and $q$ execute $T_i$ and $T_j$ concurrently.
+% The transaction execution and replication algorithm may perform arbitrary computation and communication among replicas.
+% However, since the system is asynchronous, messages may be subject to unbounded network latency.
+% Assume that in this execution, messages between $p$ and $q$ are severely delayed, while messages between any other pairs of replicas are received quickly.
 
-Since the replication algorithm is fault-tolerant, replica $p$ must eventually commit $T_i$ without receiving any message from $q$, and similarly $q$ must eventually commit $T_j$ without receiving any message from $p$.
-Both transactions may communicate with any subset of $R \setminus \{p,q\}$, but since all of these replicas are Byzantine-faulty, they may fail to inform $p$ about $q$'s conflicting transaction $T_j$, and fail to inform $q$ about $p$'s conflicting transaction $T_i$.
-Thus, $T_i$ and $T_j$ are both eventually committed.
+% Since the replication algorithm is fault-tolerant, replica $p$ must eventually commit $T_i$ without receiving any message from $q$, and similarly $q$ must eventually commit $T_j$ without receiving any message from $p$.
+% Both transactions may communicate with any subset of $R \setminus \{p,q\}$, but since all of these replicas are Byzantine-faulty, they may fail to inform $p$ about $q$'s conflicting transaction $T_j$, and fail to inform $q$ about $p$'s conflicting transaction $T_i$.
+% Thus, $T_i$ and $T_j$ are both eventually committed.
 
-After both $T_i$ and $T_j$ have been committed, communication between $p$ and $q$ becomes fast again.
-Due to the \emph{eventual update} property of BEC, $u_i$ must eventually be applied at $q$, and $u_j$ must eventually be applied at $p$, resulting in the state $\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)$ on both replicas, in which $I$ is violated.
-This contradicts our earlier assumption that the algorithm always preserves invariants.
+% After both $T_i$ and $T_j$ have been committed, communication between $p$ and $q$ becomes fast again.
+% Due to the \emph{eventual update} property of BEC, $u_i$ must eventually be applied at $q$, and $u_j$ must eventually be applied at $p$, resulting in the state $\mathrm{apply}(\mathrm{apply}(S, u_i), u_j)$ on both replicas, in which $I$ is violated.
+% This contradicts our earlier assumption that the algorithm always preserves invariants.
 
-Since we did not make any assumptions about the internal structure of the algorithm, this argument shows that no fault-tolerant algorithm exists that guarantees BEC in this setting.
-\end{proof}
+% Since we did not make any assumptions about the internal structure of the algorithm, this argument shows that no fault-tolerant algorithm exists that guarantees BEC in this setting.
+% \end{proof}
 
-\subsection{Discussion}\label{sec:bec-discussion}
+% \subsection{Discussion}\label{sec:bec-discussion}
 
-Theorem~\ref{theorem} shows us that an application can be implemented in a system with arbitrarily many Byzantine-faulty replicas if and only if its transactions are \I-confluent with respect to its invariants.
-It is both a negative (impossibility) and a positive (existence) result.
+% Theorem~\ref{theorem} shows us that an application can be implemented in a system with arbitrarily many Byzantine-faulty replicas if and only if its transactions are \I-confluent with respect to its invariants.
+% It is both a negative (impossibility) and a positive (existence) result.
 
-As an example of impossibility, consider a cryptocurrency, which must reduce a user's account balance when a user makes a payment, and which must ensure that a user does not spend more money than they have.
-As we saw in \S~\ref{sec:confluence}, payment transactions from the same payer are not \I-confluent with regard to the account balance invariant, and thus a cryptocurrency cannot be immune to Sybil attacks.
-For this reason, it needs Sybil countermeasures such as proof-of-work or centrally managed permissions.
+% As an example of impossibility, consider a cryptocurrency, which must reduce a user's account balance when a user makes a payment, and which must ensure that a user does not spend more money than they have.
+% As we saw in \S~\ref{sec:confluence}, payment transactions from the same payer are not \I-confluent with regard to the account balance invariant, and thus a cryptocurrency cannot be immune to Sybil attacks.
+% For this reason, it needs Sybil countermeasures such as proof-of-work or centrally managed permissions.
 
-On the other hand, many of the CRDT applications listed in \S~\ref{sec:crdts} only require \I-confluent transactions and invariants.
-Theorem~\ref{theorem} shows that it is possible to implement such applications without any Sybil countermeasures, because it is possible to ensure BEC and preserve all invariants regardless of how many Byzantine-faulty replicas are in the system.
+% On the other hand, many of the CRDT applications listed in \S~\ref{sec:crdts} only require \I-confluent transactions and invariants.
+% Theorem~\ref{theorem} shows that it is possible to implement such applications without any Sybil countermeasures, because it is possible to ensure BEC and preserve all invariants regardless of how many Byzantine-faulty replicas are in the system.
 
-Even in applications that are not fully \I-confluent, our result shows that the \I-confluent portions of the application can be implemented without incurring the costs of Sybil countermeasures, and a Byzantine consensus algorithm need only be used for those transactions that are not \I-confluent with respect to the application's invariants.
-For example, an auction could aggregate bids in an \I-confluent manner, and only require consensus to decide the winning bid.
-As another example, most of the transactions and invariants in the TPC-C benchmark are \I-confluent~\cite{Bailis:2014}.
-% TODO: citation for the auction example? I saw it in a talk somewhere, can't remember which...
+% Even in applications that are not fully \I-confluent, our result shows that the \I-confluent portions of the application can be implemented without incurring the costs of Sybil countermeasures, and a Byzantine consensus algorithm need only be used for those transactions that are not \I-confluent with respect to the application's invariants.
+% For example, an auction could aggregate bids in an \I-confluent manner, and only require consensus to decide the winning bid.
+% As another example, most of the transactions and invariants in the TPC-C benchmark are \I-confluent~\cite{Bailis:2014}.
+% % TODO: citation for the auction example? I saw it in a talk somewhere, can't remember which...
 
 \section{Background on broadcast}\label{sec:broadcast}
 
@@ -409,8 +411,7 @@ A causal broadcast algorithm in a Byzantine system must not be vulnerable to suc
 
 \section{Algorithms for BEC}\label{sec:algorithm}
 
-We now demonstrate how to implement BEC and therefore preserve \I-confluent invariants in a system with arbitrarily many Byzantine faults.
-We begin by first presenting two causal broadcast algorithms (\S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2}), and then defining a replication algorithm on top (\S~\ref{sec:implementing-bec}).
+We now demonstrate how to implement BEC in a system with arbitrarily many Byzantine faults by presenting two causal broadcast algorithms (\S~\ref{sec:algorithm1} and \S~\ref{sec:algorithm2}).
 At the core of our protocol is a reconciliation algorithm that ensures two replicas have delivered the same set of broadcast messages, in causal order.
 The reconciliation is efficient in the sense that when two correct replicas communicate, they only exchange broadcast messages that the other replica has not already delivered.
 
@@ -594,14 +595,14 @@ We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``
 
 \begin{algorithm*}
     \begin{algorithmic}[1]
-    \On{connecting to replica $q$, and periodically}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}\hspace*{5cm}~}
-        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables\hspace*{5cm}~}
+    \On{connecting to replica $q$, and periodically}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}}
+        \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables}
         \State $\mathit{oldHeads} := \Call{LoadHeads}{q}$\label{line:load-heads}
         \State $\mathit{filter} := \textsc{MakeBloomFilter}(\Call{MessagesSince}{\mathit{oldHeads}})$\label{line:make-bloom}
         \State \textbf{send} $\langle\mathsf{heads}: \mathrm{heads}(\mathcal{M}_\mathsf{conn}),\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$ \label{line:a2-send-heads}
     \EndOn
     \State
-    \On{receiving $\langle\mathsf{heads}: \mathit{hs},\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$}\Comment{Replaces lines \ref{line:recv-heads}--\ref{line:recv-heads-end}\hspace*{5cm}~}\label{line:a2-recv-heads}
+    \On{receiving $\langle\mathsf{heads}: \mathit{hs},\, \mathsf{oldHeads}: \mathit{oldHeads},\, \mathsf{filter}: \mathit{filter}\rangle$}\Comment{Replaces lines \ref{line:recv-heads}--\ref{line:recv-heads-end}}\label{line:a2-recv-heads}
         \State $\mathit{bloomNegative} := \{m \in \Call{MessagesSince}{\mathit{oldHeads}} \mid \neg\Call{BloomMember}{\mathit{filter}, m}\}$\label{line:bloom-member}
         \State $\mathit{reply} := \left(\mathit{bloomNegative} \,\cup\, \bigcup_{m \in \mathit{bloomNegative}} \mathrm{succ}^*(\mathcal{M}_\mathsf{conn}, m)\right) \setminus \mathit{sent}$\label{line:bloom-succ}
         \If{$\mathit{reply} \neq \{\}$}
@@ -653,20 +654,20 @@ This optimized algorithm also tolerates Byzantine faults.
 For example, a faulty replica may send a correct replica an arbitrarily corrupted Bloom filter, but this only changes the set of messages in the reply from the correct replica, and has no effect on $\mathcal{M}$ at the correct replica.
 We formally analyze the correctness of this algorithm in Appendix~\ref{sec:proof} (in the supplemental material).
 
-\begin{table*}
-\caption{Determining safety of updates with respect to different types of invariant}\label{tab:safety}
-\begin{tabular}{l|l}
-\toprule
-\textbf{Invariant} & \textbf{Update is unsafe if it\dots} \\
-\midrule
-Row-level check constraint & Inserts/updates tuple with a value that violates the check \\
-Attribute has non-negative value & Subtracts a positive amount from the value of that attribute \\
-Foreign key constraint & Deletes a tuple from the constraint's target relation \\
-Uniqueness of an attribute & Inserts tuple with user-chosen value of that attribute (may be safe if the value is \\ & determined by the hash of the message containing the update) \\
-Value is materialized view of a query & All updates are safe, provided materialized view is updated after applying updates \\
-\bottomrule
-\end{tabular}
-\end{table*}
+% \begin{table*}
+% \caption{Determining safety of updates with respect to different types of invariant}\label{tab:safety}
+% \begin{tabular}{l|l}
+% \toprule
+% \textbf{Invariant} & \textbf{Update is unsafe if it\dots} \\
+% \midrule
+% Row-level check constraint & Inserts/updates tuple with a value that violates the check \\
+% Attribute has non-negative value & Subtracts a positive amount from the value of that attribute \\
+% Foreign key constraint & Deletes a tuple from the constraint's target relation \\
+% Uniqueness of an attribute & Inserts tuple with user-chosen value of that attribute (may be safe if the value is \\ & determined by the hash of the message containing the update) \\
+% Value is materialized view of a query & All updates are safe, provided materialized view is updated after applying updates \\
+% \bottomrule
+% \end{tabular}
+% \end{table*}
 
 \subsection{Discussion}\label{sec:algorithm-discussion}
 
@@ -696,22 +697,22 @@ Note that it is possible for one replica to complete reconciliation and to deliv
 Thus, when we load the heads from the previous reconciliation on line~\ref{line:load-heads} of Algorithm~\ref{fig:algorithm2}, the local and the remote replica's $\mathit{oldHeads}$ may differ.
 This does not affect the correctness of the algorithm.
 
-\begin{algorithm}
-    \begin{algorithmic}[1]
-    \On{commit of local transaction $T$}
-        \State \textbf{let} $(\mathit{ins}, \mathit{del}) := \Call{GeneratedUpdates}{T}$
-        \State \textbf{broadcast} $(\mathit{ins}, \mathit{del})$ by causal broadcast
-    \EndOn
-    \State
-    \On{delivering $m$ by causal broadcast}
-        \State \textbf{let} $((\mathit{ins}, \mathit{del}), \mathit{hs}, \mathit{sig}) := m$
-        \If{updates $(\mathit{ins}, \mathit{del})$ are safe w.r.t. all invariants \textbf{and}\label{line:safety-check}\\\hspace{3em}$\forall (h,r,t) \in \mathit{del}.\; h \in \{H(m') \mid m' \in \mathrm{pred}^*(\mathcal{M}, m)\}$}\label{line:pred-check}
-            \State $S := S \setminus \mathit{del} \,\cup\, \{(H(m), \mathit{rel}, \mathit{tuple}) \mid (\mathit{rel}, \mathit{tuple}) \in \mathit{ins}\}$ \label{line:state-update}
-        \EndIf
-    \EndOn
-    \end{algorithmic}
-    \caption{BEC database replication using causal broadcast.}\label{fig:algorithm3}
-\end{algorithm}
+% \begin{algorithm}
+%     \begin{algorithmic}[1]
+%     \On{commit of local transaction $T$}
+%         \State \textbf{let} $(\mathit{ins}, \mathit{del}) := \Call{GeneratedUpdates}{T}$
+%         \State \textbf{broadcast} $(\mathit{ins}, \mathit{del})$ by causal broadcast
+%     \EndOn
+%     \State
+%     \On{delivering $m$ by causal broadcast}
+%         \State \textbf{let} $((\mathit{ins}, \mathit{del}), \mathit{hs}, \mathit{sig}) := m$
+%         \If{updates $(\mathit{ins}, \mathit{del})$ are safe w.r.t. all invariants \textbf{and}\label{line:safety-check}\\\hspace{3em}$\forall (h,r,t) \in \mathit{del}.\; h \in \{H(m') \mid m' \in \mathrm{pred}^*(\mathcal{M}, m)\}$}\label{line:pred-check}
+%             \State $S := S \setminus \mathit{del} \,\cup\, \{(H(m), \mathit{rel}, \mathit{tuple}) \mid (\mathit{rel}, \mathit{tuple}) \in \mathit{ins}\}$ \label{line:state-update}
+%         \EndIf
+%     \EndOn
+%     \end{algorithmic}
+%     \caption{BEC database replication using causal broadcast.}\label{fig:algorithm3}
+% \end{algorithm}
 
 \begin{figure*}
   \includegraphics[width=\textwidth,keepaspectratio=true]{evaluation/plots.pdf}
@@ -719,39 +720,39 @@ This does not affect the correctness of the algorithm.
   \label{fig:evaluation}
 \end{figure*}
 
-\subsection{BEC replication using causal broadcast}\label{sec:implementing-bec}
+% \subsection{BEC replication using causal broadcast}\label{sec:implementing-bec}
 
-Given the Byzantine causal broadcast protocol we have defined, we now introduce a replication algorithm that ensures Byzantine Eventual Consistency, assuming \I-confluence.
-The details depend on the data model of the database being replicated, and the types of updates allowed.
-Algorithm~\ref{fig:algorithm3} shows an approach for a relational database that supports insertion and deletion of tuples in unordered relations (updates are performed by deletion and re-insertion).
+% Given the Byzantine causal broadcast protocol we have defined, we now introduce a replication algorithm that ensures Byzantine Eventual Consistency, assuming \I-confluence.
+% The details depend on the data model of the database being replicated, and the types of updates allowed.
+% Algorithm~\ref{fig:algorithm3} shows an approach for a relational database that supports insertion and deletion of tuples in unordered relations (updates are performed by deletion and re-insertion).
 
-Let each replica have state $S$, which is stored durably, and which is initially the empty set.
-$S$ is a set of triples: $(h, \mathit{rel}, \mathit{tuple}) \in S$ means the relation named $\mathit{rel}$ contains the tuple $\mathit{tuple}$, and that tuple was inserted by a message whose hash is $h$.
-We assume the schema of $\mathit{tuple}$ is known to the application, and we ignore DDL in this example.
-Our algorithm gives each replica a full copy of the database $S$; sharding/partitioning could be added if required.
+% Let each replica have state $S$, which is stored durably, and which is initially the empty set.
+% $S$ is a set of triples: $(h, \mathit{rel}, \mathit{tuple}) \in S$ means the relation named $\mathit{rel}$ contains the tuple $\mathit{tuple}$, and that tuple was inserted by a message whose hash is $h$.
+% We assume the schema of $\mathit{tuple}$ is known to the application, and we ignore DDL in this example.
+% Our algorithm gives each replica a full copy of the database $S$; sharding/partitioning could be added if required.
 
-When a transaction $T$ executes, we allow it to read the current state of $S$ at the local replica.
-When $T$ commits, we assume the function $\textsc{GeneratedUpdates}(T)$ returns the inserts and deletions performed in $T$.
-Insertions are represented as pairs of $(\mathit{rel}, \mathit{tuple})$ indicating the insertion of $\mathit{tuple}$ into the relation named $\mathit{rel}$.
-Deletions are represented by the $(h, \mathit{rel}, \mathit{tuple})$ triple to be deleted.
-We encode these updates as a message and disseminate it to the other replicas via Byzantine causal broadcast.
+% When a transaction $T$ executes, we allow it to read the current state of $S$ at the local replica.
+% When $T$ commits, we assume the function $\textsc{GeneratedUpdates}(T)$ returns the inserts and deletions performed in $T$.
+% Insertions are represented as pairs of $(\mathit{rel}, \mathit{tuple})$ indicating the insertion of $\mathit{tuple}$ into the relation named $\mathit{rel}$.
+% Deletions are represented by the $(h, \mathit{rel}, \mathit{tuple})$ triple to be deleted.
+% We encode these updates as a message and disseminate it to the other replicas via Byzantine causal broadcast.
 
-When a message is delivered by causal broadcast (including self-delivery to the replica that sent the message), we first check on line~\ref{line:safety-check} of Algorithm~\ref{fig:algorithm3} whether the updates are \emph{safe} with regard to all of the invariants in the application.
-An update is unsafe if applying that update could cause the set of transactions to no longer be \I-confluent with regard to a particular invariant.
-For example, a deletion of a tuple in a particular relation is unsafe if there is a referential integrity invariant enforcing a foreign key constraint whose target is that relation, because a different transaction could concurrently insert a tuple that has a foreign key reference to the deleted tuple, leading to a constraint violation.
-Rules for determining safety for various common types of invariant are described in Table~\ref{tab:safety}; for a deeper analysis of the \I-confluence of different types of constraint, see the extended version of Bailis et al.'s paper~\cite{Bailis:2014ext}.
-Note that safety can be determined as a function of only the updates and the invariants, without depending on the current replica state.
-The check for safety at the time of delivering a message is necessary because even if we assume that correct replicas only generate safe updates, faulty replicas may generate unsafe updates, which must be ignored by correct replicas.
+% When a message is delivered by causal broadcast (including self-delivery to the replica that sent the message), we first check on line~\ref{line:safety-check} of Algorithm~\ref{fig:algorithm3} whether the updates are \emph{safe} with regard to all of the invariants in the application.
+% An update is unsafe if applying that update could cause the set of transactions to no longer be \I-confluent with regard to a particular invariant.
+% For example, a deletion of a tuple in a particular relation is unsafe if there is a referential integrity invariant enforcing a foreign key constraint whose target is that relation, because a different transaction could concurrently insert a tuple that has a foreign key reference to the deleted tuple, leading to a constraint violation.
+% Rules for determining safety for various common types of invariant are described in Table~\ref{tab:safety}; for a deeper analysis of the \I-confluence of different types of constraint, see the extended version of Bailis et al.'s paper~\cite{Bailis:2014ext}.
+% Note that safety can be determined as a function of only the updates and the invariants, without depending on the current replica state.
+% The check for safety at the time of delivering a message is necessary because even if we assume that correct replicas only generate safe updates, faulty replicas may generate unsafe updates, which must be ignored by correct replicas.
 
-In addition to checking safety, we check on line~\ref{line:pred-check} that any deletions in the message $m$ are for tuples that were inserted by a message that causally precedes $m$.
-This ensures that the insertion is applied before the deletion on all replicas, which is necessary to ensure convergence.
-If these conditions are met, we apply the updates to the replica state $S$ on line~\ref{line:state-update}.
-We remove any deleted tuples, and we augment any insertions with the hash of the message.
-This ensures that subsequent deletions can unambiguously reference the element of $S$ to be deleted, even if multiple replicas concurrently insert the same tuple into the same relation.
+% In addition to checking safety, we check on line~\ref{line:pred-check} that any deletions in the message $m$ are for tuples that were inserted by a message that causally precedes $m$.
+% This ensures that the insertion is applied before the deletion on all replicas, which is necessary to ensure convergence.
+% If these conditions are met, we apply the updates to the replica state $S$ on line~\ref{line:state-update}.
+% We remove any deleted tuples, and we augment any insertions with the hash of the message.
+% This ensures that subsequent deletions can unambiguously reference the element of $S$ to be deleted, even if multiple replicas concurrently insert the same tuple into the same relation.
 
-We prove in Appendix~\ref{sec:bec-proof} (in the supplemental material) that this algorithm ensures Byzantine Eventual Consistency.
-This algorithm could be extended with other operations besides insertion and deletion: for example, it might be useful to support an operation that adds a (possibly negative) value to a numeric attribute; such an operation would commute trivially with other operations of the same type, allowing several concurrent updates to a numeric value (e.g.\ an account balance) to be merged.
-Further data models and operations can be implemented using CRDT techniques (\S~\ref{sec:crdts}).
+% We prove in Appendix~\ref{sec:bec-proof} (in the supplemental material) that this algorithm ensures Byzantine Eventual Consistency.
+% This algorithm could be extended with other operations besides insertion and deletion: for example, it might be useful to support an operation that adds a (possibly negative) value to a numeric attribute; such an operation would commute trivially with other operations of the same type, allowing several concurrent updates to a numeric value (e.g.\ an account balance) to be merged.
+% Further data models and operations can be implemented using CRDT techniques (\S~\ref{sec:crdts}).
 
 
 % TODO: evaluation should compare to libp2p, Git, Depot, OldBlue
@@ -759,7 +760,7 @@ Further data models and operations can be implemented using CRDT techniques (\S~
 % https://ieeexplore.ieee.org/document/9351908
 % (see also email from Jamie Brandon)
 
-\section{Evaluation}\label{sec:evaluation}
+\section{Experimental Evaluation}\label{sec:evaluation}
 
 To evaluate the algorithms introduced in \S~\ref{sec:algorithm} we implemented a prototype and measured its behavior.
 The source code of our prototype is included in the supplemental material of this paper.
@@ -811,7 +812,8 @@ All of these algorithms require Sybil countermeasures, such as central control o
 
 Little prior work tolerates arbitrary numbers of Byzantine-faulty replicas. Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadcast in this model: OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot uses a more complex replication algorithm involving a combination of logical clocks and hash chains to detect and recover from inconsistencies.
 We were not able to compare our algorithms to Depot because the available publications~\cite{Mahajan:2010,Mahajan:2011,Mahajan:2012} do not describe Depot's algorithm in sufficient detail to reproduce it.
-Depot's consistency model (fork-join-causal) is specific to a key-value data model, and unlike BEC it does not consider the problem of maintaining invariants.
+Depot's consistency model (fork-join-causal) is specific to a key-value data model.
+% and unlike BEC it does not consider the problem of maintaining invariants.
 Mahajan et al.\ have also shown that no system that tolerates Byzantine failures can enforce fork causal~\cite{Mahajan:2011} or stronger consistency in an always available, one-way convergent system~\cite{Mahajan:2011cac}. 
 BEC provides a weaker two-way convergence property, which requires that eventually a correct replica's updates are reflected on another correct replica only if they can bidirectionally exchange messages for a sufficient period.
 
@@ -826,14 +828,18 @@ This problem has been studied in various domains, including peer-to-peer systems
 Approaches include using Bloom filters~\cite{Skjegstad:2011}, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2003}.
 However, these approaches are not designed to tolerate Byzantine faults.
 
-\I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} in the context of non-Byzantine systems.
-It is closely related to the concept of logical monotonicity~\cite{Conway:2012} and the CALM theorem~\cite{Ameloot:2013,Hellerstein:2010}, which states that coordination can be avoided for programs that are monotonic.
+% \I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} in the context of non-Byzantine systems.
+% It is closely related to the concept of logical monotonicity~\cite{Conway:2012} and the CALM theorem~\cite{Ameloot:2013,Hellerstein:2010}, which states that coordination can be avoided for programs that are monotonic.
 COPS~\cite{Lloyd:2011} is an example of a non-Byzantine system that achieves causal consistency while avoiding coordination, and BEC is a Byzantine variant of COPS's Causal+ consistency model.
 Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:1991el}.
 
 
 % Byzantine-tolerant causal broadcast https://doi.org/10.1016/j.tcs.2021.06.021
 % Also by Alex Auvolat: https://hal.inria.fr/hal-02303490/document
+
+% https://arxiv.org/abs/2112.11337
+
+% https://dl.acm.org/doi/abs/10.1145/3493426.3493824
 
 % Compare to Matrix https://ieeexplore.ieee.org/document/9351908
 
@@ -874,24 +880,24 @@ Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:19
 \section{Conclusions}\label{sec:conc}
 
 Many peer-to-peer systems tolerate only a bounded number of Byzantine-faulty nodes, and therefore need to employ expensive countermeasures against Sybil attacks, such as proof-of-work, or centrally controlled permissions for joining the system.
-In this work we asked the question: what are the limits of what we can achieve without introducing Sybil countermeasures?
-In other words, which applications can tolerate arbitrary numbers of Byzantine faults?
+% In this work we asked the question: what are the limits of what we can achieve without introducing Sybil countermeasures?
+% In other words, which applications can tolerate arbitrary numbers of Byzantine faults?
+% We have answered this question with both a positive and a negative result.
+% Our positive result is an algorithm that achieves Byzantine Eventual Consistency in such a system, provided that the application's transactions are \I-confluent with regard to its invariants.
+% Our negative result is an impossibility proof showing that such an algorithm does not exist if the application is not \I-confluent.
+% We proved our algorithms correct, and demonstrated that our optimized algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it immediately applicable in practice.
+In this work, we have demonstrated that some applications that can tolerate arbitrary numbers of Byzantine faults by utilizing Byzantine Eventual Consistency and Byzantine Causal Broadcast. 
 
-We have answered this question with both a positive and a negative result.
-Our positive result is an algorithm that achieves Byzantine Eventual Consistency in such a system, provided that the application's transactions are \I-confluent with regard to its invariants.
-Our negative result is an impossibility proof showing that such an algorithm does not exist if the application is not \I-confluent.
-We proved our algorithms correct, and demonstrated that our optimized algorithm incurs only a small network communication overhead compared to the theoretical optimum, making it immediately applicable in practice.
-
-As shown in \S~\ref{sec:crdts}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
-These applications are already \I-confluent, and adopting our approach will allow those systems to gain robustness against Byzantine faults.
+As discussed in \S~\ref{sec:crdts}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
+Adopting our approach will allow those systems to gain robustness against Byzantine faults.
 For systems that currently require all nodes to be trusted, and hence can only be deployed in trusted datacenter networks, adding Byzantine fault tolerance opens up new opportunities for deployment in untrusted peer-to-peer settings.
 
-We hope that BEC will inspire further research to ensure the correctness of data systems in the presence of arbitrary numbers of Byzantine faults.
+We hope that BEC will inspire further research to ensure the correctness of decentralized systems in the presence of arbitrary numbers of Byzantine faults.
 Some open questions include:
 \begin{itemize}
     \item How can we best ensure that correct replicas form a connected component, as assumed in \S~\ref{sec:system-model}?
     Connecting each replica to every other is the simplest solution, but it can be expensive if the number of replicas is large.
-    \item How can we formalize Table~\ref{tab:safety}, i.e.\ the process of checking whether an update is safe with regard to an invariant?
+    % \item How can we formalize Table~\ref{tab:safety}, i.e.\ the process of checking whether an update is safe with regard to an invariant?
     \item Is it generally true that a problem can be solved without coordination in a non-Byzantine system if and only if it is immune to Sybil attacks in a Byzantine context?
 \end{itemize}
 
@@ -1079,98 +1085,98 @@ These replicas will eventually relay $m$ to their direct neighbors, and so on, u
 Therefore, $m$ is eventually delivered by $q$.
 \end{proof}
 
-\section{Proofs for BEC replication}\label{sec:bec-proof}
+% \section{Proofs for BEC replication}\label{sec:bec-proof}
 
-In this appendix we prove that Algorithm~\ref{fig:algorithm3} provides Byzantine Eventual Consistency, as defined in \S~\ref{sec:bec-definition}.
+% In this appendix we prove that Algorithm~\ref{fig:algorithm3} provides Byzantine Eventual Consistency, as defined in \S~\ref{sec:bec-definition}.
 
-\begin{lemma}\label{lemma:safety-check}
-For a given message $m$, the conditions on lines~\ref{line:safety-check} and~\ref{line:pred-check} of Algorithm~\ref{fig:algorithm3} evaluate to the same result ($\mathsf{true}$ or $\mathsf{false}$) on all correct replicas.
-\end{lemma}
+% \begin{lemma}\label{lemma:safety-check}
+% For a given message $m$, the conditions on lines~\ref{line:safety-check} and~\ref{line:pred-check} of Algorithm~\ref{fig:algorithm3} evaluate to the same result ($\mathsf{true}$ or $\mathsf{false}$) on all correct replicas.
+% \end{lemma}
 
-\begin{proof}
-The safety check on line~\ref{line:safety-check} depends only on the updates in the message and the invariants, and not on the replica state.
-We assume that all correct replicas use the same invariants, so they will agree on whether the updates are safe.
+% \begin{proof}
+% The safety check on line~\ref{line:safety-check} depends only on the updates in the message and the invariants, and not on the replica state.
+% We assume that all correct replicas use the same invariants, so they will agree on whether the updates are safe.
 
-The predecessor check on line~\ref{line:pred-check} depends only on $m$ and the set of its predecessors; this set is the same on all correct replicas, since it is unambiguously determined by $m$'s causal dependency hashes, and a replica ensures that if a message is in $\mathcal{M}$, its predecessors are also in $\mathcal{M}$.
-\end{proof}
+% The predecessor check on line~\ref{line:pred-check} depends only on $m$ and the set of its predecessors; this set is the same on all correct replicas, since it is unambiguously determined by $m$'s causal dependency hashes, and a replica ensures that if a message is in $\mathcal{M}$, its predecessors are also in $\mathcal{M}$.
+% \end{proof}
 
-\begin{lemma}\label{lemma:commutative}
-In Algorithm~\ref{fig:algorithm3}, for all replica states $S$, and for all messages $m_1$, $m_2$ such that neither message is a predecessor of the other, delivering $m_1$ first and then $m_2$ has the same effect as delivering $m_2$ first and then $m_1$.
-\end{lemma}
+% \begin{lemma}\label{lemma:commutative}
+% In Algorithm~\ref{fig:algorithm3}, for all replica states $S$, and for all messages $m_1$, $m_2$ such that neither message is a predecessor of the other, delivering $m_1$ first and then $m_2$ has the same effect as delivering $m_2$ first and then $m_1$.
+% \end{lemma}
 
-\begin{proof}
-Consider first the conditions on lines~\ref{line:safety-check} and~\ref{line:pred-check} of Algorithm~\ref{fig:algorithm3}; by Lemma~\ref{lemma:safety-check}, these conditions always evaluate to the same value for a given message, regardless of the replica state and the order in which the messages are delivered.
-If they evaluate to $\mathsf{false}$ for both $m_1$ and $m_2$, the state $S$ is not modified, so these updates commute.
-If the conditions are $\mathsf{false}$ for one message and $\mathsf{true}$ for the other, only one of the message deliveries updates the replica state, so these updates commute.
+% \begin{proof}
+% Consider first the conditions on lines~\ref{line:safety-check} and~\ref{line:pred-check} of Algorithm~\ref{fig:algorithm3}; by Lemma~\ref{lemma:safety-check}, these conditions always evaluate to the same value for a given message, regardless of the replica state and the order in which the messages are delivered.
+% If they evaluate to $\mathsf{false}$ for both $m_1$ and $m_2$, the state $S$ is not modified, so these updates commute.
+% If the conditions are $\mathsf{false}$ for one message and $\mathsf{true}$ for the other, only one of the message deliveries updates the replica state, so these updates commute.
 
-Now consider the case when the conditions are $\mathsf{true}$ for both messages.
-Let the following:
-\begin{align*}
-    m_1 &= ((\mathit{ins}_1, \mathit{del}_1), \mathit{hs}_1, \mathit{sig}_1) \\
-    m_2 &= ((\mathit{ins}_2, \mathit{del}_2), \mathit{hs}_2, \mathit{sig}_2) \\
-    \mathit{ins}_1' &= \{(H(m_1), \mathit{rel}, \mathit{tuple}) \mid (\mathit{rel}, \mathit{tuple}) \in \mathit{ins}_1\} \\
-    \mathit{ins}_2' &= \{(H(m_2), \mathit{rel}, \mathit{tuple}) \mid (\mathit{rel}, \mathit{tuple}) \in \mathit{ins}_2\}
-\end{align*}
-Since the condition on line~\ref{line:pred-check} is true, we have
-\[ \forall (h,r,t) \in \mathit{del}_1.\; h \in \{H(m') \mid m' \in \mathrm{pred}^*(\mathcal{M}, m_1)\}. \]
-Recall that $m_2 \notin \mathrm{pred}^*(\mathcal{M}, m_1)$ by assumption, from which we can deduce that $\forall (h,r,t) \in \mathit{del}_1.\; h \ne H(m_2).$
-On the other hand, every element in $\mathit{ins}_2'$ contains $H(m_2)$, so $\mathit{ins}_2'$ cannot have any elements in common with $\mathit{del}_1$, that is, $\mathit{ins}_2' \cap \mathit{del}_1 = \{\}$.
-By similar argument, $\mathit{ins}_1' \cap \mathit{del}_2 = \{\}$.
+% Now consider the case when the conditions are $\mathsf{true}$ for both messages.
+% Let the following:
+% \begin{align*}
+%     m_1 &= ((\mathit{ins}_1, \mathit{del}_1), \mathit{hs}_1, \mathit{sig}_1) \\
+%     m_2 &= ((\mathit{ins}_2, \mathit{del}_2), \mathit{hs}_2, \mathit{sig}_2) \\
+%     \mathit{ins}_1' &= \{(H(m_1), \mathit{rel}, \mathit{tuple}) \mid (\mathit{rel}, \mathit{tuple}) \in \mathit{ins}_1\} \\
+%     \mathit{ins}_2' &= \{(H(m_2), \mathit{rel}, \mathit{tuple}) \mid (\mathit{rel}, \mathit{tuple}) \in \mathit{ins}_2\}
+% \end{align*}
+% Since the condition on line~\ref{line:pred-check} is true, we have
+% \[ \forall (h,r,t) \in \mathit{del}_1.\; h \in \{H(m') \mid m' \in \mathrm{pred}^*(\mathcal{M}, m_1)\}. \]
+% Recall that $m_2 \notin \mathrm{pred}^*(\mathcal{M}, m_1)$ by assumption, from which we can deduce that $\forall (h,r,t) \in \mathit{del}_1.\; h \ne H(m_2).$
+% On the other hand, every element in $\mathit{ins}_2'$ contains $H(m_2)$, so $\mathit{ins}_2'$ cannot have any elements in common with $\mathit{del}_1$, that is, $\mathit{ins}_2' \cap \mathit{del}_1 = \{\}$.
+% By similar argument, $\mathit{ins}_1' \cap \mathit{del}_2 = \{\}$.
 
-A replica that first delivers $m_1$ and then $m_2$ is in the final state
-\begin{align*}
-S' &= (((S \setminus \mathit{del}_1) \cup \mathit{ins}_1') \setminus \mathit{del}_2) \cup \mathit{ins}_2' \\
-&= (((S \setminus \mathit{del}_1) \setminus \mathit{del}_2) \cup \mathit{ins}_1') \cup \mathit{ins}_2' \quad\text{since } \mathit{ins}_1' \cap \mathit{del}_2 = \{\} \\
-&= (((S \setminus \mathit{del}_2) \setminus \mathit{del}_1) \cup \mathit{ins}_2') \cup \mathit{ins}_1' \quad\text{by commutativity} \\
-&= (((S \setminus \mathit{del}_2) \cup \mathit{ins}_2') \setminus \mathit{del}_1) \cup \mathit{ins}_1' \quad\text{since } \mathit{ins}_2' \cap \mathit{del}_1 = \{\}
-\end{align*}
-which equals the final state of a replica that first delivers $m_2$ and then $m_1$.
-Therefore, the updates by $m_1$ and $m_2$ commute.
-\end{proof}
+% A replica that first delivers $m_1$ and then $m_2$ is in the final state
+% \begin{align*}
+% S' &= (((S \setminus \mathit{del}_1) \cup \mathit{ins}_1') \setminus \mathit{del}_2) \cup \mathit{ins}_2' \\
+% &= (((S \setminus \mathit{del}_1) \setminus \mathit{del}_2) \cup \mathit{ins}_1') \cup \mathit{ins}_2' \quad\text{since } \mathit{ins}_1' \cap \mathit{del}_2 = \{\} \\
+% &= (((S \setminus \mathit{del}_2) \setminus \mathit{del}_1) \cup \mathit{ins}_2') \cup \mathit{ins}_1' \quad\text{by commutativity} \\
+% &= (((S \setminus \mathit{del}_2) \cup \mathit{ins}_2') \setminus \mathit{del}_1) \cup \mathit{ins}_1' \quad\text{since } \mathit{ins}_2' \cap \mathit{del}_1 = \{\}
+% \end{align*}
+% which equals the final state of a replica that first delivers $m_2$ and then $m_1$.
+% Therefore, the updates by $m_1$ and $m_2$ commute.
+% \end{proof}
 
-Note that these proofs do not make any assumptions about the sender of a message, and therefore they hold for any messages, even those sent by a malicious replica.
+% Note that these proofs do not make any assumptions about the sender of a message, and therefore they hold for any messages, even those sent by a malicious replica.
 
-\begin{theorem}
-Assume that the safety check on line~\ref{line:safety-check} of Algorithm~\ref{fig:algorithm3} only allows updates from transactions that are \I-confluent with regard to all of the application's declared invariants.
-Then Algorithm~\ref{fig:algorithm3} ensures Byzantine Eventual Consistency, as defined in \S~\ref{sec:bec-definition}, in the Byzantine system model of \S~\ref{sec:system-model}.
-\end{theorem}
+% \begin{theorem}
+% Assume that the safety check on line~\ref{line:safety-check} of Algorithm~\ref{fig:algorithm3} only allows updates from transactions that are \I-confluent with regard to all of the application's declared invariants.
+% Then Algorithm~\ref{fig:algorithm3} ensures Byzantine Eventual Consistency, as defined in \S~\ref{sec:bec-definition}, in the Byzantine system model of \S~\ref{sec:system-model}.
+% \end{theorem}
 
-\begin{proof}
-The \emph{self-update}, \emph{authenticity}, and \emph{causal consistency} properties follow directly from the \emph{self-delivery}, \emph{authenticity}, and \emph{causal order} properties of causal broadcast (\S~\ref{sec:broadcast-properties}), respectively.
+% \begin{proof}
+% The \emph{self-update}, \emph{authenticity}, and \emph{causal consistency} properties follow directly from the \emph{self-delivery}, \emph{authenticity}, and \emph{causal order} properties of causal broadcast (\S~\ref{sec:broadcast-properties}), respectively.
 
-The \emph{atomicity} property of BEC follows from the fact that all updates generated by a transaction are encoded into a single message, and the delivery of that message occurs within an \emph{atomic} block on every correct replica (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver}).
+% The \emph{atomicity} property of BEC follows from the fact that all updates generated by a transaction are encoded into a single message, and the delivery of that message occurs within an \emph{atomic} block on every correct replica (Algorithm~\ref{fig:algorithm}, line~\ref{line:deliver}).
 
-To prove the \emph{eventual update} update property of BEC, we rely upon the \emph{eventual delivery} property of causal broadcast, which ensures that any message delivered by one correct replica will eventually be delivered by all correct replicas.
-Moreover, by Lemma~\ref{lemma:safety-check}, one correct replica applies the updates in a message if and only if another correct replica applies it.
+% To prove the \emph{eventual update} update property of BEC, we rely upon the \emph{eventual delivery} property of causal broadcast, which ensures that any message delivered by one correct replica will eventually be delivered by all correct replicas.
+% Moreover, by Lemma~\ref{lemma:safety-check}, one correct replica applies the updates in a message if and only if another correct replica applies it.
 
-To prove the \emph{convergence} property of BEC, assume two correct replicas $p$ and $q$ have delivered the same set of messages.
-We must then show that both replicas are in the same state.
-Due to the \emph{non-duplication} property of causal broadcast, no message is delivered more than once.
-Therefore, the sequence of message deliveries at $p$ is a permutation of the sequence of deliveries at $q$.
-Moreover, due to the \emph{causal order} property, if both replicas have delivered $m_1$ and $m_2$, and if $m_1$ is a predecessor of $m_2$, then $m_1$ appears before $m_2$ in both replicas' delivery sequences.
+% To prove the \emph{convergence} property of BEC, assume two correct replicas $p$ and $q$ have delivered the same set of messages.
+% We must then show that both replicas are in the same state.
+% Due to the \emph{non-duplication} property of causal broadcast, no message is delivered more than once.
+% Therefore, the sequence of message deliveries at $p$ is a permutation of the sequence of deliveries at $q$.
+% Moreover, due to the \emph{causal order} property, if both replicas have delivered $m_1$ and $m_2$, and if $m_1$ is a predecessor of $m_2$, then $m_1$ appears before $m_2$ in both replicas' delivery sequences.
 
-It is therefore possible to permute $p$'s delivery sequence into $q$'s delivery sequence by repeatedly swapping adjacent messages in that sequence, such that neither message is a predecessor of the other~\cite{Gomes:2017gy}.
-By Lemma~\ref{lemma:commutative}, swapping two such adjacent message deliveries does not change the replica state after delivering those messages.
-Thus, each such swap of adjacent messages leaves the final state of the replica unchanged, and therefore $p$ and $q$ must be in the same state.
+% It is therefore possible to permute $p$'s delivery sequence into $q$'s delivery sequence by repeatedly swapping adjacent messages in that sequence, such that neither message is a predecessor of the other~\cite{Gomes:2017gy}.
+% By Lemma~\ref{lemma:commutative}, swapping two such adjacent message deliveries does not change the replica state after delivering those messages.
+% Thus, each such swap of adjacent messages leaves the final state of the replica unchanged, and therefore $p$ and $q$ must be in the same state.
 
-Finally, to prove the \emph{invariant preservation} property of BEC we must show that correct replicas are always in a state that satisfies all of the application's declared invariants.
-We use proof by induction over the sequence of messages delivered by a correct replica.
-The base case is a replica with an empty database, where no messages have been delivered, and where all invariants are satisfied by assumption.
-For the inductive step, assume a replica that has delivered messages $m_1, \dots, m_n$ in that order, and that is in a state in which all invariants are satisfied.
-We must then show that after delivering one more message, $m_{n+1}$, the invariants continue to be satisfied.
+% Finally, to prove the \emph{invariant preservation} property of BEC we must show that correct replicas are always in a state that satisfies all of the application's declared invariants.
+% We use proof by induction over the sequence of messages delivered by a correct replica.
+% The base case is a replica with an empty database, where no messages have been delivered, and where all invariants are satisfied by assumption.
+% For the inductive step, assume a replica that has delivered messages $m_1, \dots, m_n$ in that order, and that is in a state in which all invariants are satisfied.
+% We must then show that after delivering one more message, $m_{n+1}$, the invariants continue to be satisfied.
 
-Split the sequence $m_1, \dots, m_n$ into a prefix $m_1, \dots, m_{i-1}$ and a suffix $m_i, \dots, m_n$ such that the suffix is the longest possible suffix in which all messages are concurrent with $m_{n+1}$ (that is, either the prefix is empty, or $m_{i-1}$ is a predecessor of $m_{n+1}$).
-By Lemma~\ref{lemma:commutative}, the replica state after delivering $m_1, \dots, m_n, m_{n+1}$ is the same as the state after delivering $m_1, \dots, m_{n+1}, m_n$ in that order.
-By repeated pairwise swaps of concurrent messages, that state is the same as after delivering $m_1, \dots, m_{i-1}, m_{n+1}, m_i, \dots, m_n$.
-Immediately before $m_i$ is the earliest possible point at which $m_{n+1}$ can be delivered by causal broadcast.
+% Split the sequence $m_1, \dots, m_n$ into a prefix $m_1, \dots, m_{i-1}$ and a suffix $m_i, \dots, m_n$ such that the suffix is the longest possible suffix in which all messages are concurrent with $m_{n+1}$ (that is, either the prefix is empty, or $m_{i-1}$ is a predecessor of $m_{n+1}$).
+% By Lemma~\ref{lemma:commutative}, the replica state after delivering $m_1, \dots, m_n, m_{n+1}$ is the same as the state after delivering $m_1, \dots, m_{n+1}, m_n$ in that order.
+% By repeated pairwise swaps of concurrent messages, that state is the same as after delivering $m_1, \dots, m_{i-1}, m_{n+1}, m_i, \dots, m_n$.
+% Immediately before $m_i$ is the earliest possible point at which $m_{n+1}$ can be delivered by causal broadcast.
 
-Let $S$ be the state of the replica after delivering $m_1, \dots, m_{i-1}$, and let $I$ be one of the application's declared invariants.
-We have $I(S)$ by the inductive hypothesis.
-By assumption, the safety check on line~\ref{line:safety-check} of Algorithm~\ref{fig:algorithm3} does not allow updates that would cause the immediate violation of an invariant.
-Moreover, by the definition of \I-confluence (\S~\ref{sec:confluence}), if $I(\mathrm{apply}(S, m_i))$ and $I(\mathrm{apply}(S, m_{n+1}))$ for concurrent $m_i$ and $m_{n+1}$, then the invariant is also satisfied after both $m_i$ and $m_{n+1}$ have been delivered: $I(\mathrm{apply}(\mathrm{apply}(S, m_i), m_{n+1}))$.
-By repeated swapping of adjacent messages in this order we move $m_{n+1}$ back to the end of the sequence, at each step ensuring that $I$ continues to be satisfied due to \I-confluence.
-This shows that $I$ must still be satisfied after delivering $m_1, \dots, m_n, m_{n+1}$, as required:
-\[ I(\mathrm{apply}(\mathrm{apply}(\dots\mathrm{apply}(\{\}, m_1), \dots, m_n), m_{n+1})). \]
-\end{proof}
+% Let $S$ be the state of the replica after delivering $m_1, \dots, m_{i-1}$, and let $I$ be one of the application's declared invariants.
+% We have $I(S)$ by the inductive hypothesis.
+% By assumption, the safety check on line~\ref{line:safety-check} of Algorithm~\ref{fig:algorithm3} does not allow updates that would cause the immediate violation of an invariant.
+% Moreover, by the definition of \I-confluence (\S~\ref{sec:confluence}), if $I(\mathrm{apply}(S, m_i))$ and $I(\mathrm{apply}(S, m_{n+1}))$ for concurrent $m_i$ and $m_{n+1}$, then the invariant is also satisfied after both $m_i$ and $m_{n+1}$ have been delivered: $I(\mathrm{apply}(\mathrm{apply}(S, m_i), m_{n+1}))$.
+% By repeated swapping of adjacent messages in this order we move $m_{n+1}$ back to the end of the sequence, at each step ensuring that $I$ continues to be satisfied due to \I-confluence.
+% This shows that $I$ must still be satisfied after delivering $m_1, \dots, m_n, m_{n+1}$, as required:
+% \[ I(\mathrm{apply}(\mathrm{apply}(\dots\mathrm{apply}(\{\}, m_1), \dots, m_n), m_{n+1})). \]
+% \end{proof}
 
 \end{document}
