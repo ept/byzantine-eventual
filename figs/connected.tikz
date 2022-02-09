@@ -53,7 +53,6 @@
 \draw (r) -- (s);
 \end{tikzpicture}
 
-\vspace{0.5cm}
 \begin{tikzpicture}
 \tikzstyle{correct}=[draw,circle,inner sep=3pt]
 \tikzstyle{faulty}=[draw,circle,inner sep=3pt,fill=red!30]
