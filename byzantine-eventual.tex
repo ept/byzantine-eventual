@@ -510,6 +510,7 @@ Stability can be determined by keeping track of the latest heads for each node, 
 When one of the communicating nodes is Byzantine-faulty, the reconciliation algorithm may never terminate, e.g.\ because the faulty node may send hashes that do not resolve to any message, and so the state $\mathit{missing} = \{\}$ is never reached.
 However, in a non-terminating protocol run no messages are delivered and $\mathcal{M}$ is never updated, and so the actions of the faulty node have no effect on the state of the correct node.
 Reconciliations with other nodes are unaffected, since nodes may perform multiple reconciliations concurrently.
+Faulty nodes could also attempt a denial-of-service attack by sending an overwhelming number of messages to correct nodes; correct nodes can defend against this by using a fair scheduling algorithm that ensures reconciliations with correct nodes continue to be processed.
 
 In a protocol run that terminates, the only possible protocol violations from a Byzantine-faulty node are to omit heads, or to extend the set $\mathcal{M}$ with well-formed messages (i.e.\ messages containing only hashes that resolve to other messages, signed with the private key of one of the nodes in the system).
 Any omitted messages will eventually be received through reconciliations with other correct nodes, and any added messages will be forwarded to other nodes; either way, the eventual delivery property of causal broadcast is preserved.
@@ -525,21 +526,6 @@ Thus, when we load the heads from the previous reconciliation on line~\ref{line:
 This does not affect the correctness of the algorithm.
 
 
-\begin{figure}
-    \begin{subfigure}{0.49\columnwidth}
-    \centering
-    \input{figs/evaluation1.tikz}
-    \caption{Messages at $p$ before reconciliation.}
-    \end{subfigure}
-    \begin{subfigure}{0.49\columnwidth}
-    \centering
-    \input{figs/evaluation2.tikz}
-    \caption{Messages at $q$ before reconciliation.}
-    \end{subfigure}
-    \caption{Reconciliation scenario used in our evaluation.}
-    \label{fig:evaluation-dags}
-\end{figure}
-
 % TODO: evaluation should compare to libp2p, Git, Depot, OldBlue
 % Also Matrix? https://matrix.org/docs/guides/implementing-stateres
 % https://ieeexplore.ieee.org/document/9351908
@@ -550,58 +536,68 @@ This does not affect the correctness of the algorithm.
 We evaluate our algorithm from Section~\ref{sec:algorithm} by comparing its performance to several existing hash graph reconciliation algorithms: two algorithms used by the Git version control system~\cite{GitHTTP,GitSkipping}, and the OldBlue~\cite{VanGundy:2012} algorithm, which is similar to our Algorithm~\ref{fig:algorithm}.
 For Git, we run Git version 2.35.1 and use mitmproxy~\cite{mitmproxy} to record its communication with \texttt{github.com} using Git's ``smart'' HTTP protocol~\cite{GitHTTP}.
 For OldBlue and our Algorithm~\ref{fig:algorithm2}, we implemented a prototype in JavaScript, which runs all nodes in-memory in a single process and simulates a message-passing network.
+% TODO: URL of anonymised source code
 To ensure a fair comparison, in the case of Git we measure only the size of HTTP request and response bodies, and we exclude overheads from HTTP headers, TLS, and TCP.
 
-In these experiments we test the scenario illustrated in Figure~\ref{fig:evaluation-dags}.
-Two nodes $p$ and $q$ are assumed to have the first $n$ messages (in a linear hash chain) in common.
-Then $p$ adds a further $n$ messages, and $q$ independently adds another $n$ messages.
-Finally, $p$ and $q$ reconcile their states, and we measure the number of round trips and the number of bytes transmitted in the course of this reconciliation.
-
-TODO work in progress\dots
-
-
-To evaluate the algorithms introduced in Section~\ref{sec:algorithm} we implemented a prototype and measured its behavior.
-% TODO: URL of anonymised source code
-Our prototype runs all nodes in-memory in a single process, simulating a message-passing network and recording statistics such as the number of messages, hashes, and Bloom filter bits transmitted, in order to measure the algorithm's network communication costs.
-In our experiments we use four nodes, each node generating updates at a constant rate, and every pair of nodes periodically reconciles their states.
-We then vary the intervals at which reconciliations are performed (with longer intervals, more updates accumulate between reconciliations) and measure the network communication cost of performing the reconciliation.
-To ensure we exercise the reconciliation algorithm, nodes do not eagerly send messages (lines~\ref{line:eager-send} and~\ref{line:eager-relay} of Algorithm~\ref{fig:algorithm} are omitted), and we rely only on periodic reconciliation to exchange messages.
-For each of the following data points we compute the average over 600 reconciliations (100 reconciliations between each distinct pair of nodes) performed at regular intervals.
+\begin{figure}
+    \begin{subfigure}{0.49\columnwidth}
+    \centering
+    \input{figs/evaluation1.tikz}
+    \caption{Hash graph at $p$ before reconciliation.}
+    \end{subfigure}
+    \begin{subfigure}{0.49\columnwidth}
+    \centering
+    \input{figs/evaluation2.tikz}
+    \caption{Hash graph at $q$ before reconciliation.}
+    \end{subfigure}
+    \caption{Reconciliation scenario used in our evaluation.}
+    \label{fig:evaluation-dags}
+\end{figure}
 
 \begin{figure*}
   \includegraphics[width=\textwidth,keepaspectratio=true]{evaluation/comparison.pdf}
-  \caption{Results from the evaluation of our prototype. Left: number of round trips to complete a reconciliation; right: network bandwidth used per reconciliation (lower is better).}
+  \caption{Results from the evaluation of our prototype (lower is better). Left: number of network round trips to complete one reconciliation; right: protocol overhead, in kB, of one reconciliation.}
   \label{fig:evaluation}
 \end{figure*}
 
-First, we measure the average number of round-trips required to complete one reconciliation (Figure~\ref{fig:evaluation} left).
-The greater the number of updates generated between reconciliations, the longer the paths in the predecessor graph.
-Therefore, when Algorithm~\ref{fig:algorithm} is used, the number of round trips increases linearly with the number of updates added.
-However, Algorithm~\ref{fig:algorithm2} reduces each reconciliation to 1.03 round trips on average, and this number remains constant as the number of updates grows.
-96.7\% of reconciliations with Algorithm~\ref{fig:algorithm2} complete in one round trip, 3.2\% require two round trips, and 0.04\% require three or more round trips.
-These figures are based on using Bloom filters with 10 bits per entry and 7 hash functions.
+In this experiment we test the scenario illustrated in Figure~\ref{fig:evaluation-dags}.
+Two nodes $p$ and $q$ are assumed to have the first $n$ messages (in a linear hash chain) in common.
+Then $p$ adds a further $n$ messages in a linear sequence, and $q$ independently also adds $n$ messages.
+Finally, $p$ and $q$ reconcile their states, and we measure the number of round trips and the number of bytes transmitted in the course of this reconciliation.
+Figure~\ref{fig:evaluation} shows the results for values of $1 \le n \le 1000$.
 
-Next, we estimate the network traffic resulting from the use of our algorithms.
-For this, we assume that each update is 200 bytes in size (not counting its predecessor hashes), hashes are 32 bytes in size (SHA-256), and Bloom filters use 10 bits per element.
-Moreover, we assume that each request or response message incurs an additional constant overhead of 100 bytes (e.g.\ for TCP/IP packet headers and signatures).
-We compute the number of kilobytes sent per reconciliation (in both directions) using each algorithm.
+In this experiment we let each message be a random string of 1,000 bytes.
+In Git, we simulate a message by committing a 1,000-byte random file to the repository, and we perform a reconciliation between a client node and a server node by running \texttt{git fetch} followed by \texttt{git push}.
+We define the protocol overhead, shown on the right side of Figure~\ref{fig:evaluation}, to be the network traffic sent during the reconciliation, minus the total size of the messages that need to be exchanged.
+For example, with $n=1000$, the total size of messages to be exchanged is 2~MB ($1000 \times 1000$ bytes in each direction); if the reconciliation sends 2.464~MB over the network then the overhead is 464~kB.
 
-Figure~\ref{fig:evaluation} (right) shows the results from this experiment.
-The gray line represents a hypothetical optimal algorithm that transmits only new messages, but no additional metadata such as hashes or Bloom filters.
-Compared to this optimum, Algorithm~\ref{fig:algorithm2} incurs a near-constant overhead of approximately 1~kB per reconciliation for the heads and predecessor hashes, Bloom filter, and occasional additional round trips.
-In contrast, the cost of Algorithm~\ref{fig:algorithm} is more than double the optimal, primarily because it sends many $\mathsf{needs}$ messages containing hashes, and it sends messages in many small responses rather than batched into one response.
-Thus, we can see that in terms of network performance, Algorithm~\ref{fig:algorithm2} is close to the optimum in terms of both round trips and bytes transmitted, making it viable for use in practice.
+With OldBlue and our Algorithm~\ref{fig:algorithm}, which resolve one missing hash dependency at a time, the number of round trips grows linearly with the length of the longest hash chain since the last reconciliation, as expected.
+The default negotiation algorithm in \texttt{git fetch} works by the client first sending its 32 most recent hashes, and then doubling the number of hashes on each subsequent request, until the client and server find a hash that they have in common.
+The alternative \emph{skipping} algorithm in Git, enabled by the option \texttt{fetch.negotiationAlgorithm=skipping}, avoids sending every single hash by sending a sample of hashes from the history instead.
+For small $n$, \texttt{git fetch} takes 3 round trips and \texttt{git push} another 2 round trips.
+With $n=1000$ this grows to 8 round trips for \texttt{fetch} and 3 round trips for \texttt{push} in the case of the default algorithm; with the skipping algorithm the cost of the \texttt{fetch} remains at 3 round trips.
 
-In our prototype, all nodes correctly follow the protocol.
+In contrast, with our Algorithm~\ref{fig:algorithm2}, a reconciliation requires a constant 1.03 round trips on average, regardless of the number of messages since the last reconciliation.
+97.7\% of reconciliations with our algorithm complete in one round trip, 2.3\% require two round trips, and 0.02\% require three or more round trips.
+These figures are based on using Bloom filters with 10 bits per entry and 7 hash functions, and 32-byte hashes (SHA-256).
+
+In terms of protocol overhead, our algorithm also achieves considerably better results than the alternatives: around 1~kB, growing slowly to 3~kB with $n=1000$ (most of which is the Bloom filters).
+Git's default algorithm and OldBlue have a similar overhead of 464~kB and 528~kB respectively at $n=1000$; Git's skipping algorithm has the highest overhead of 905~kB since the server unnecessarily sends the client some messages that the client already has.
+With a 1,000-byte message size, this is a 45\% overhead; with a smaller message size, the percentage overhead would be greater.
+For comparison, a 3~kB overhead is 0.15\%.
+Thus, we can see that in terms of network performance, our Algorithm~\ref{fig:algorithm2} is close to the optimum (one round trip and zero overhead).
+
+In our evaluation, all nodes correctly follow the protocol.
 Adding faulty nodes may alter the shape of the predecessor graph (e.g.\ resulting in more concurrent updates than there are nodes), but we believe that this would not fundamentally alter our results.
 We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future work.
+
 
 \section{Applications of Byzantine Causal Broadcast}\label{sec:crdts}
 
 TODO: in this section, explain how we can use causal broadcast to implement replicated storage systems, distributed applications, distributed ledgers
 
-Recent years have seen a surge in interest in decentralized peer-to-peer applications, under the umbrella of `web 3'. Such systems aim to enable a collection of different parties to cooperate in the distribution of computation without also distributing their trust to one another. At the time of writing, these applications are being built upon public distributed ledgers (blockchains) which provide a total ordering over events in a byzantine fault tolerance manner, however, applications logic is often executed \emph{off-chain} to avoid the high costs and long delays inherent in today's blockchains. 
-Byzantine causal broadcast offers a low-cost, lightweight alternative to distributed ledges and the Byzantine atomic broadcast they provide. For some applications, such as cryptocurrencies, casual broadcast alone is not a sufficient substitute for atomic broadcast. However, for many applications, causal broadcast is sufficient, the most obvious examples are group messaging or social media applications. 
+Recent years have seen a surge in interest in decentralized peer-to-peer applications, under the umbrella of `web 3'. Such systems aim to enable a collection of different parties to cooperate in the distribution of computation without also distributing their trust to one another. At the time of writing, these applications are being built upon public distributed ledgers (blockchains) which provide a total ordering over events in a byzantine fault tolerant manner, however, application logic is often executed \emph{off-chain} to avoid the high costs and long delays inherent in today's blockchains. 
+Byzantine causal broadcast offers a low-cost, lightweight alternative to distributed ledges and the Byzantine atomic broadcast they provide. For some applications, such as cryptocurrencies, causal broadcast alone is not a substitute for atomic broadcast, however, for many other applications, such as group messaging or social media platforms, causal broadcast is sufficient. 
 
 % Eventual consistency is usually defined as: ``If no further updates are made, then eventually all nodes will be in the same state~\cite{Vogels:2009ca}.''
 % This is a very weak model: it does not specify when the consistent state will be reached, and the premise ``if no further updates are made'' may never be true in a system in which updates happen continuously.
