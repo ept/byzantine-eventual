@@ -618,6 +618,8 @@ We were not able to compare our algorithms to Depot because the available public
 Depot's consistency model (fork-join-causal) is specific to a key-value data model.
 Mahajan et al.\ have also shown that no system that tolerates Byzantine failures can enforce fork causal~\cite{Mahajan:2011} or stronger consistency in an always available, one-way convergent system~\cite{Mahajan:2011cac}. 
 
+% Merkle-CRDTs~\cite{Sanjuan:2020} use a graph reconciliation algorithm equivalent to our unoptimized Algorithm~\ref{fig:algorithm}.
+
 Van der Linde et al.~\cite{vanderLinde:2020} consider causally consistent replication in the face of Byzantine faults, taking a very different approach to ours: detecting cryptographic proof of faulty behavior, and banning nodes found to be misbehaving.
 This approach relies on a trusted central server and trusted hardware such as Intel SGX, whereas we do not assume any trusted components.
 
