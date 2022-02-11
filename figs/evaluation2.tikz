@@ -1,0 +1,14 @@
+\begin{tikzpicture}[node distance=1.1cm]
+\node (m1) {$m_1$};
+\node (m2) [right of=m1] {\dots};
+\node (m3) [right of=m2] {$m_n$};
+\node (m4) [right of=m3] {$m_{n+1}'$};
+\node (m5) [right of=m4] {\dots};
+\node (m6) [right of=m5] {$m_{2n}'$};
+\draw[<-] (m1) -- (m2);
+\draw[<-] (m2) -- (m3);
+\draw[<-] (m3) -- (m4);
+\draw[<-] (m4) -- (m5);
+\draw[<-] (m5) -- (m6);
+\draw[decorate, decoration={brace, amplitude=5pt, mirror}] (m1.south west) -- node [below, inner sep=8pt] {known to $p$ and $q$} (m3.south east);
+\end{tikzpicture}
