@@ -1,0 +1,409 @@
+5901:7:version;2:14#4:mode;7:regular;9:websocket;0:~8:response;785:6:reason;0:,11:status_code;3:200#13:timestamp_end;17:1644515846.657295^15:timestamp_start;17:1644515846.656405^8:trailers;0:~7:content;186:001e# service=git-upload-pack
+0000000eversion 2
+0023agent=git/github-gf33fef312227
+0013ls-refs=unborn
+0027fetch=shallow wait-for-done filter
+0012server-option
+0017object-format=sha1
+0000,7:headers;417:29:6:server,16:GitHub Babel 2.0,]63:12:content-type,43:application/x-git-upload-pack-advertisement,]58:23:content-security-policy,27:default-src 'none'; sandbox,]43:7:expires,29:Fri, 01 Jan 1980 00:00:00 GMT,]20:6:pragma,8:no-cache,]57:13:cache-control,36:no-cache, max-age=0, must-revalidate,]26:4:vary,15:Accept-Encoding,]26:15:x-frame-options,4:DENY,]59:19:x-github-request-id,32:E807:4AB6:26E39B:28925A:62055206,]]12:http_version;8:HTTP/2.0,}7:request;489:4:path;51:/ept/git-test.git/info/refs?service=git-upload-pack,9:authority;10:github.com,6:scheme;5:https,6:method;3:GET,4:port;3:443#4:host;10:github.com;13:timestamp_end;17:1644515846.513005^15:timestamp_start;17:1644515846.512057^8:trailers;0:~7:content;0:,7:headers;188:28:10:user-agent,10:git/2.35.1,]15:6:accept,3:*/*,]36:15:accept-encoding,13:deflate, gzip,]37:15:accept-language,14:en-GB, *;q=0.9,]20:6:pragma,8:no-cache,]28:12:git-protocol,9:version=2,]]12:http_version;8:HTTP/2.0,}7:comment;0:;8:metadata;0:}6:marked;0:;9:is_replay;0:~11:intercepted;5:false!4:type;4:http;11:server_conn;3869:4:via2;0:~11:cipher_list;0:]11:cipher_name;22:TLS_AES_128_GCM_SHA256;11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;3297:1801:-----BEGIN CERTIFICATE-----
+MIIFBjCCBK2gAwIBAgIQDovzdw2S0Zbwu2H5PEFmvjAKBggqhkjOPQQDAjBnMQsw
+CQYDVQQGEwJVUzEXMBUGA1UEChMORGlnaUNlcnQsIEluYy4xPzA9BgNVBAMTNkRp
+Z2lDZXJ0IEhpZ2ggQXNzdXJhbmNlIFRMUyBIeWJyaWQgRUNDIFNIQTI1NiAyMDIw
+IENBMTAeFw0yMTAzMjUwMDAwMDBaFw0yMjAzMzAyMzU5NTlaMGYxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2Nv
+MRUwEwYDVQQKEwxHaXRIdWIsIEluYy4xEzARBgNVBAMTCmdpdGh1Yi5jb20wWTAT
+BgcqhkjOPQIBBggqhkjOPQMBBwNCAASt9vd1sdNJVApdEHG93CUGSyIcoiNOn6H+
+udCMvTm8DCPHz5GmkFrYRasDE77BI3q5xMidR/aW4Ll2a1A2ZvcNo4IDOjCCAzYw
+HwYDVR0jBBgwFoAUUGGmoNI1xBEqII0fD6xC8M0pz0swHQYDVR0OBBYEFCexfp+7
+JplQ2PPDU1v+MRawux5yMCUGA1UdEQQeMByCCmdpdGh1Yi5jb22CDnd3dy5naXRo
+dWIuY29tMA4GA1UdDwEB/wQEAwIHgDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYB
+BQUHAwIwgbEGA1UdHwSBqTCBpjBRoE+gTYZLaHR0cDovL2NybDMuZGlnaWNlcnQu
+Y29tL0RpZ2lDZXJ0SGlnaEFzc3VyYW5jZVRMU0h5YnJpZEVDQ1NIQTI1NjIwMjBD
+QTEuY3JsMFGgT6BNhktodHRwOi8vY3JsNC5kaWdpY2VydC5jb20vRGlnaUNlcnRI
+aWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hBMjU2MjAyMENBMS5jcmwwPgYDVR0g
+BDcwNTAzBgZngQwBAgIwKTAnBggrBgEFBQcCARYbaHR0cDovL3d3dy5kaWdpY2Vy
+dC5jb20vQ1BTMIGSBggrBgEFBQcBAQSBhTCBgjAkBggrBgEFBQcwAYYYaHR0cDov
+L29jc3AuZGlnaWNlcnQuY29tMFoGCCsGAQUFBzAChk5odHRwOi8vY2FjZXJ0cy5k
+aWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hB
+MjU2MjAyMENBMS5jcnQwDAYDVR0TAQH/BAIwADCCAQUGCisGAQQB1nkCBAIEgfYE
+gfMA8QB2ACl5vvCeOTkh8FZzn2Old+W+V32cYAr4+U1dJlwlXceEAAABeGq/vRoA
+AAQDAEcwRQIhAJ7miER//DRFnDJNn6uUhgau3WMt4vVfY5dGigulOdjXAiBIVCfR
+xjK1v4F31+sVaKzyyO7JAa0fzDQM7skQckSYWQB3ACJFRQdZVSRWlj+hL/H3bYbg
+IyZjrcBLf13Gg1xu4g8CAAABeGq/vTkAAAQDAEgwRgIhAJgAEkoJQRivBlwo7x67
+3oVsf1ip096WshZqmRCuL/JpAiEA3cX4rb3waLDLq4C48NSoUmcw56PwO/m2uwnQ
+prb+yh0wCgYIKoZIzj0EAwIDRwAwRAIgK+Kv7G+/KkWkNZg3PcQFp866Z7G6soxo
+a4etSZ+SRlYCIBSiXS20Wc+yjD111nPzvQUCfsP4+DKZ3K+2GKsERD6d
+-----END CERTIFICATE-----
+,1484:-----BEGIN CERTIFICATE-----
+MIIEGzCCAwOgAwIBAgIQBmcDW7sU/WOvwNaoU07+FjANBgkqhkiG9w0BAQsFADBs
+MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
+d3cuZGlnaWNlcnQuY29tMSswKQYDVQQDEyJEaWdpQ2VydCBIaWdoIEFzc3VyYW5j
+ZSBFViBSb290IENBMB4XDTIwMTIxNzAwMDAwMFoXDTMwMTIxNjIzNTk1OVowZzEL
+MAkGA1UEBhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMT8wPQYDVQQDEzZE
+aWdpQ2VydCBIaWdoIEFzc3VyYW5jZSBUTFMgSHlicmlkIEVDQyBTSEEyNTYgMjAy
+MCBDQTEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARnvW/xPOudvtC252wTq9ef
+6fbdFeWPkOscfpRTkciuHj7UcumQSH3lzkPEIx0KpesWa8epsks7QwkZ4fU/Tkf9
+o4IBhzCCAYMwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUUGGmoNI1xBEq
+II0fD6xC8M0pz0swHwYDVR0jBBgwFoAUsT7DaQP4v0cB1JgmGggC72NkK8MwDgYD
+VR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjB/Bggr
+BgEFBQcBAQRzMHEwJAYIKwYBBQUHMAGGGGh0dHA6Ly9vY3NwLmRpZ2ljZXJ0LmNv
+bTBJBggrBgEFBQcwAoY9aHR0cDovL2NhY2VydHMuZGlnaWNlcnQuY29tL0RpZ2lD
+ZXJ0SGlnaEFzc3VyYW5jZUVWUm9vdENBLmNydDBLBgNVHR8ERDBCMECgPqA8hjpo
+dHRwOi8vY3JsMy5kaWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlRVZS
+b290Q0EuY3JsMDAGA1UdIAQpMCcwCAYGZ4EMAQICMAgGBmeBDAECAzAHBgVngQwB
+ATAIBgZngQwBAgEwDQYJKoZIhvcNAQELBQADggEBAHMQH8hhiBfNbxwEwxbbTAnu
+jPyUh/oi0JrfZI3u9JuiLqca720D6foS/AB5+4EIxpm7CMG4MdN/l7oAiDipaCPv
+mOmpYUpnT7A63Cr0q4g84rI1ZmdqA40lVUUf6qC6E34tC73qDQF8TJSrfscWFdCl
+RXR9J4QGrkZ2VNMSDzlDRzWCaA95MfO8x01l+ZdopdE8FvM78gGd4zxeWb8v991+
+mBxTDepqKuy/jF5Rm6Bhfxr33ADRs60s1t16dtZ3pOYLALBTPD5KhZ6a+/dk5dnh
+6c4PaeZQYBUAh+GuxfaBlU4qQ8EtjBMCQHreMIwXHYHW5FRYGjgR4NMuaIw2jD0=
+-----END CERTIFICATE-----
+,]3:tls;4:true!5:error;0:~5:state;1:3#3:via;0:~11:tls_version;7:TLSv1.3;15:tls_established;4:true!19:timestamp_tls_setup;17:1644515846.488947^19:timestamp_tcp_setup;17:1644515846.438915^15:timestamp_start;17:1644515846.411307^13:timestamp_end;0:~14:source_address;25:13:192.168.1.141;5:59399#]3:sni;10:github.com;10:ip_address;22:12:140.82.121.3;3:443#]2:id;36:af2e4b06-0cdf-41e8-a2ed-87431d88832c;4:alpn;2:h2,7:address;20:10:github.com;3:443#]}11:client_conn;492:11:cipher_list;0:]11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;0:]3:tls;4:true!5:error;0:~8:sockname;19:9:127.0.0.1;4:8888#]5:state;1:3#11:tls_version;7:TLSv1.2;14:tls_extensions;0:]15:tls_established;4:true!19:timestamp_tls_setup;16:1644515846.50983^15:timestamp_start;17:1644515846.407813^13:timestamp_end;0:~3:sni;10:github.com;8:mitmcert;0:~2:id;36:2cfd86a0-f616-45fc-a2fd-e2c9cc8559cc;11:cipher_name;27:ECDHE-RSA-AES128-GCM-SHA256;4:alpn;2:h2,7:address;20:9:127.0.0.1;5:59398#]}5:error;0:~2:id;36:6c9be623-95a3-4131-b9f8-6a095d28c544;}5970:7:version;2:14#4:mode;7:regular;9:websocket;0:~8:response;656:6:reason;0:,11:status_code;3:200#13:timestamp_end;17:1644515846.800766^15:timestamp_start;17:1644515846.797717^8:trailers;0:~7:content;65:003d80c99afbbdde0f52286526f5e8d1552b21afdad6 refs/heads/main
+0000,7:headers;410:29:6:server,16:GitHub Babel 2.0,]56:12:content-type,36:application/x-git-upload-pack-result,]58:23:content-security-policy,27:default-src 'none'; sandbox,]43:7:expires,29:Fri, 01 Jan 1980 00:00:00 GMT,]20:6:pragma,8:no-cache,]57:13:cache-control,36:no-cache, max-age=0, must-revalidate,]26:4:vary,15:Accept-Encoding,]26:15:x-frame-options,4:DENY,]59:19:x-github-request-id,32:E807:4AB6:26E3BD:289281:62055206,]]12:http_version;8:HTTP/2.0,}7:request;687:4:path;33:/ept/git-test.git/git-upload-pack,9:authority;10:github.com,6:scheme;5:https,6:method;4:POST,4:port;3:443#4:host;10:github.com;13:timestamp_end;17:1644515846.660297^15:timestamp_start;17:1644515846.659727^8:trailers;0:~7:content;155:0014command=ls-refs
+0014agent=git/2.35.10016object-format=sha100010009peel
+000csymrefs
+000bunborn
+001bref-prefix refs/heads/
+001aref-prefix refs/tags/
+0000,7:headers;246:28:10:user-agent,10:git/2.35.1,]36:15:accept-encoding,13:deflate, gzip,]57:12:content-type,37:application/x-git-upload-pack-request,]49:6:accept,36:application/x-git-upload-pack-result,]28:12:git-protocol,9:version=2,]24:14:content-length,3:155,]]12:http_version;8:HTTP/2.0,}7:comment;0:;8:metadata;0:}6:marked;0:;9:is_replay;0:~11:intercepted;5:false!4:type;4:http;11:server_conn;3869:4:via2;0:~11:cipher_list;0:]11:cipher_name;22:TLS_AES_128_GCM_SHA256;11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;3297:1801:-----BEGIN CERTIFICATE-----
+MIIFBjCCBK2gAwIBAgIQDovzdw2S0Zbwu2H5PEFmvjAKBggqhkjOPQQDAjBnMQsw
+CQYDVQQGEwJVUzEXMBUGA1UEChMORGlnaUNlcnQsIEluYy4xPzA9BgNVBAMTNkRp
+Z2lDZXJ0IEhpZ2ggQXNzdXJhbmNlIFRMUyBIeWJyaWQgRUNDIFNIQTI1NiAyMDIw
+IENBMTAeFw0yMTAzMjUwMDAwMDBaFw0yMjAzMzAyMzU5NTlaMGYxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2Nv
+MRUwEwYDVQQKEwxHaXRIdWIsIEluYy4xEzARBgNVBAMTCmdpdGh1Yi5jb20wWTAT
+BgcqhkjOPQIBBggqhkjOPQMBBwNCAASt9vd1sdNJVApdEHG93CUGSyIcoiNOn6H+
+udCMvTm8DCPHz5GmkFrYRasDE77BI3q5xMidR/aW4Ll2a1A2ZvcNo4IDOjCCAzYw
+HwYDVR0jBBgwFoAUUGGmoNI1xBEqII0fD6xC8M0pz0swHQYDVR0OBBYEFCexfp+7
+JplQ2PPDU1v+MRawux5yMCUGA1UdEQQeMByCCmdpdGh1Yi5jb22CDnd3dy5naXRo
+dWIuY29tMA4GA1UdDwEB/wQEAwIHgDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYB
+BQUHAwIwgbEGA1UdHwSBqTCBpjBRoE+gTYZLaHR0cDovL2NybDMuZGlnaWNlcnQu
+Y29tL0RpZ2lDZXJ0SGlnaEFzc3VyYW5jZVRMU0h5YnJpZEVDQ1NIQTI1NjIwMjBD
+QTEuY3JsMFGgT6BNhktodHRwOi8vY3JsNC5kaWdpY2VydC5jb20vRGlnaUNlcnRI
+aWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hBMjU2MjAyMENBMS5jcmwwPgYDVR0g
+BDcwNTAzBgZngQwBAgIwKTAnBggrBgEFBQcCARYbaHR0cDovL3d3dy5kaWdpY2Vy
+dC5jb20vQ1BTMIGSBggrBgEFBQcBAQSBhTCBgjAkBggrBgEFBQcwAYYYaHR0cDov
+L29jc3AuZGlnaWNlcnQuY29tMFoGCCsGAQUFBzAChk5odHRwOi8vY2FjZXJ0cy5k
+aWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hB
+MjU2MjAyMENBMS5jcnQwDAYDVR0TAQH/BAIwADCCAQUGCisGAQQB1nkCBAIEgfYE
+gfMA8QB2ACl5vvCeOTkh8FZzn2Old+W+V32cYAr4+U1dJlwlXceEAAABeGq/vRoA
+AAQDAEcwRQIhAJ7miER//DRFnDJNn6uUhgau3WMt4vVfY5dGigulOdjXAiBIVCfR
+xjK1v4F31+sVaKzyyO7JAa0fzDQM7skQckSYWQB3ACJFRQdZVSRWlj+hL/H3bYbg
+IyZjrcBLf13Gg1xu4g8CAAABeGq/vTkAAAQDAEgwRgIhAJgAEkoJQRivBlwo7x67
+3oVsf1ip096WshZqmRCuL/JpAiEA3cX4rb3waLDLq4C48NSoUmcw56PwO/m2uwnQ
+prb+yh0wCgYIKoZIzj0EAwIDRwAwRAIgK+Kv7G+/KkWkNZg3PcQFp866Z7G6soxo
+a4etSZ+SRlYCIBSiXS20Wc+yjD111nPzvQUCfsP4+DKZ3K+2GKsERD6d
+-----END CERTIFICATE-----
+,1484:-----BEGIN CERTIFICATE-----
+MIIEGzCCAwOgAwIBAgIQBmcDW7sU/WOvwNaoU07+FjANBgkqhkiG9w0BAQsFADBs
+MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
+d3cuZGlnaWNlcnQuY29tMSswKQYDVQQDEyJEaWdpQ2VydCBIaWdoIEFzc3VyYW5j
+ZSBFViBSb290IENBMB4XDTIwMTIxNzAwMDAwMFoXDTMwMTIxNjIzNTk1OVowZzEL
+MAkGA1UEBhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMT8wPQYDVQQDEzZE
+aWdpQ2VydCBIaWdoIEFzc3VyYW5jZSBUTFMgSHlicmlkIEVDQyBTSEEyNTYgMjAy
+MCBDQTEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARnvW/xPOudvtC252wTq9ef
+6fbdFeWPkOscfpRTkciuHj7UcumQSH3lzkPEIx0KpesWa8epsks7QwkZ4fU/Tkf9
+o4IBhzCCAYMwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUUGGmoNI1xBEq
+II0fD6xC8M0pz0swHwYDVR0jBBgwFoAUsT7DaQP4v0cB1JgmGggC72NkK8MwDgYD
+VR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjB/Bggr
+BgEFBQcBAQRzMHEwJAYIKwYBBQUHMAGGGGh0dHA6Ly9vY3NwLmRpZ2ljZXJ0LmNv
+bTBJBggrBgEFBQcwAoY9aHR0cDovL2NhY2VydHMuZGlnaWNlcnQuY29tL0RpZ2lD
+ZXJ0SGlnaEFzc3VyYW5jZUVWUm9vdENBLmNydDBLBgNVHR8ERDBCMECgPqA8hjpo
+dHRwOi8vY3JsMy5kaWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlRVZS
+b290Q0EuY3JsMDAGA1UdIAQpMCcwCAYGZ4EMAQICMAgGBmeBDAECAzAHBgVngQwB
+ATAIBgZngQwBAgEwDQYJKoZIhvcNAQELBQADggEBAHMQH8hhiBfNbxwEwxbbTAnu
+jPyUh/oi0JrfZI3u9JuiLqca720D6foS/AB5+4EIxpm7CMG4MdN/l7oAiDipaCPv
+mOmpYUpnT7A63Cr0q4g84rI1ZmdqA40lVUUf6qC6E34tC73qDQF8TJSrfscWFdCl
+RXR9J4QGrkZ2VNMSDzlDRzWCaA95MfO8x01l+ZdopdE8FvM78gGd4zxeWb8v991+
+mBxTDepqKuy/jF5Rm6Bhfxr33ADRs60s1t16dtZ3pOYLALBTPD5KhZ6a+/dk5dnh
+6c4PaeZQYBUAh+GuxfaBlU4qQ8EtjBMCQHreMIwXHYHW5FRYGjgR4NMuaIw2jD0=
+-----END CERTIFICATE-----
+,]3:tls;4:true!5:error;0:~5:state;1:3#3:via;0:~11:tls_version;7:TLSv1.3;15:tls_established;4:true!19:timestamp_tls_setup;17:1644515846.488947^19:timestamp_tcp_setup;17:1644515846.438915^15:timestamp_start;17:1644515846.411307^13:timestamp_end;0:~14:source_address;25:13:192.168.1.141;5:59399#]3:sni;10:github.com;10:ip_address;22:12:140.82.121.3;3:443#]2:id;36:af2e4b06-0cdf-41e8-a2ed-87431d88832c;4:alpn;2:h2,7:address;20:10:github.com;3:443#]}11:client_conn;492:11:cipher_list;0:]11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;0:]3:tls;4:true!5:error;0:~8:sockname;19:9:127.0.0.1;4:8888#]5:state;1:3#11:tls_version;7:TLSv1.2;14:tls_extensions;0:]15:tls_established;4:true!19:timestamp_tls_setup;16:1644515846.50983^15:timestamp_start;17:1644515846.407813^13:timestamp_end;0:~3:sni;10:github.com;8:mitmcert;0:~2:id;36:2cfd86a0-f616-45fc-a2fd-e2c9cc8559cc;11:cipher_name;27:ECDHE-RSA-AES128-GCM-SHA256;4:alpn;2:h2,7:address;20:9:127.0.0.1;5:59398#]}5:error;0:~2:id;36:9938cc24-de65-48b6-a252-65b381809c80;}13305:7:version;2:14#4:mode;7:regular;9:websocket;0:~8:response;7838:6:reason;0:,11:status_code;3:200#13:timestamp_end;18:1644515846.9697568^15:timestamp_start;17:1644515846.958055^8:trailers;0:~7:content;7244:0014acknowledgments
+0031ACK 1f41d040212fcffe69e000d1713bae5e0d508258
+000aready
+0001000dpackfile
+0024Enumerating objects: 17, done.
+0023Counting objects:   5% (1/17)0085Counting objects:  11% (2/17)Counting objects:  17% (3/17)Counting objects:  23% (4/17)Counting objects:  29% (5/17)Counting0085 objects:  35% (6/17)Counting objects:  41% (7/17)Counting objects:  47% (8/17)Counting objects:  52% (9/17)Counting objects0071:  58% (10/17)Counting objects:  64% (11/17)Counting objects:  70% (12/17)Counting objects:  76% (13/17)0043Counting objects:  82% (14/17)Counting objects:  88% (15/17)0043Counting objects:  94% (16/17)Counting objects: 100% (17/17)002bCounting objects: 100% (17/17), done.
+0026Compressing objects:  10% (1/10)0026Compressing objects:  20% (2/10)0026Compressing objects:  30% (3/10)0026Compressing objects:  40% (4/10)0026Compressing objects:  50% (5/10)0047Compressing objects:  60% (6/10)Compressing objects:  70% (7/10)0047Compressing objects:  80% (8/10)Compressing objects:  90% (9/10)0027Compressing objects: 100% (10/10)002eCompressing objects: 100% (10/10), done.
+1792PACK      ”xœ¥ÌA
+Â0…á}N1{AfšLÒ‚ˆ{ñ“éE“–ïo<oùñø{31yÁL90’¤4Ì43i4©)“Ç	9ˆÛ¤YíÀ:D[FEsÆ4‰•Ñp¿çèÍÉ»ß×7iıQáú²m+R+œÊW.ÏŸu-g ~‚îs»–GïöGÂy÷¸RE”xœ¥ÌÁ
+B!…á½Oá>ˆ;:3*D´B¯#Eé½ˆ½ôåç]D{âM–‰!$(à9e4!ZpMÉŒLj]ÚĞ9—`È®>ÎŠó¸r"‹²„à2ĞÌ™ *¾Ç}ëúûx4}}É¾×Øš>Õ¯\?9®[=k`Dò6èÃ2§¦ÖÇòGBõ‚ûD—”xœ¥ÌÑ
+!…á{ŸÂû VW…ˆî£‡˜™i)]{ÿ¶ 'è\~pşÑE´¼x¶`,3°¥%N)“ Gï0Od,9¡TÃ.uh4€6ä9Ã’ÇL)Ï•%æ‘¾Æ}ëú†}¬U_ŸÒZÁZõ©|åòøÉ‘·rÖ&8çsÒ‡iŸÚµ¬cÈ	eÔÃFÜ”xœ¥ÌM
+Â0@á}N‘½ ™Î¤I@Š{ñù™Á¢IKˆ÷·À·üotf
+;¡ìgLdÊÙ!8G…©Ä)c0 öØ¹mKâ˜DJ1ŞXoÙKHDèŠ<T|ÇÖõ=ö±6}{ñ¾×Øš¾Ô¯\Ÿ?9ç­.f"ÖcĞ's¤­ëüÇB¡ú QEÂ”xœ¥ÌA
+Â0@Ñ}N1{AfÒdAÄ½xˆi:Á¢IKˆ÷·
+Àíãó{36–¨˜’²HBä1ª¢#+ûOÑ­Ú¬v hÂ€|N9':Ğ0ªEÃ)¢ø(N_ı¾4¸iës…ëÓÖµh­p*_¹<~²OK9q‘¢»mˆnÓ2÷n,œwoßØE*­xœ340031Q¨`¸şe²Û4ù´ç­3¤ß__"dòç@* Ÿ´§¸>xœèü{s0X³ï"2²¦nV«ƒdRÎ˜Wò vÄG´í˜Ïéñ"P;Z¥&¢¦%ô% Û™P»=:ŸCkÄPeMıÊŒaHCŞİR®õGÖd¯c$†ğaò‘4cC¿lŠW« úKh-eêz¬) ¯+½fõÅñ
+hg$&*Dš•)˜Õp/bæÑ_úÅR«D	èÓØÚ 3$HÆÃk”H½™šÊB(SîaKj2¢«ßÈj…<p<ïúw!F[6Ÿbê$”‡K¥©L¯OH¤AYüFÊ÷ÃÚ¼s.İ;çGR9xèlî=|y‚.Å„fW'{½3#Ú›áIMû·Çæ1V‘#4—w†oCóCŞİ™+¨šºO+Ô:rº¥½7(eœ‹»¼¬ìæÓ{˜,)Îš>úV^²ŸÇáÜì™
+áêş±ÃI;ğŞçäb?½ª$q¡f²D.¼K±(@MĞÄté¹3†òb¸‰©«rG
+¶ø4¯UÌ²ËÌT¥ìA]ƒÅ3ˆıv×¸
+­
+É ‰^_Z3¢8Løk,F!2ÿÁq
+OïÓRò˜éIthzyÚ)ÓtMå²ürWb­=0+¦ÅŞõ×P½Ü&ò_ïNı#Ë¯âd2FÚx‚Â4zUä(q»MtÜ’=;5œƒ»Zø8vl>×\T>Éâ$$aÍ·â ¸*¢gîş%a}Ãìj½ÔkóE¡ßø‹›m	TÊ.<£{¼[P¾o”YÂ÷s\Éèö6ip]àò_ãB‘—NñJÊÕYyYR'­8<‘T	î+u ïì¢İ3rêÀ½H[kø Ø ŞäÉiÄvĞ#ÿ9-@Ø'çÆ5×DÄŸÉÙ×l×”(„ôÔÑ
+G›:ÿdâD[Œ9ÀpÅ²¼³‘BMƒHÂ9ş\aë«4‘ôy†.Q¬.³íøÂä‡¤òË±ƒ1ı„‡^¹œÄnñ®®*‡˜\Ã†mY^=ˆ‘w¹:7 uÖmjRs|HU«Xï7hrt¥©gÑ¯’6Š¥u›½ñ×º‚7­eÜĞìÄ%Í×ğ;mÌàm&`u[ÄÜû/#%$«¤ÎXíV´›¸S]ã,WG¤@6Iua
+^×÷exğ¿¬ä„q(ù÷_bKÕCTşªˆ¦„h§„hÅÑ€&GMZŸ¬%?„êTGN”@|vFÁÌ¦ÍB8Ó.Bî£:'íëÁXQn¥ ¤l`€3lRt“[o‹-§=Ï¶‘Vo½¸CìkyŠŞ0À¥xé¼D ÅtçÉë»p=/Ë-™K£rÄ”qãÛ­xœ340031Q¨`xùjcP¼ëgåf±;Ûşû6¾»°kŠ ©­„¸>xœèü²F÷¤ë½[müïP%Gä ›™ßÊv‡‘0Àü<ù¢:gß÷k7pC½ê›Æì¨şøI¶ ÔŸ¦"¬'/³¤Àº)eq
+ÆÛu ³*ğÅ"Ş×ÙFÊø1Ë®B*¢ÜN"ôi¶±;ıDœæãVİ†?ù’Õ%ÿİ/ë¥:®¬«p	}avm‚E˜dçœÊ5bä ²ê“!¦D05bÚ8µ£ì	v&Î8~ÁæÏd0ŠÍKAJas®¬‡ÂÊ$ıÆ€.‹'~ùK¨N@úYtÚ<îñ¦ã:Ü¾N<²Íİ:x|lC~Ò¼'Š‘Yœªfğ†®!pv‡À5üØ¦œ!(îy×Â&VITòì*Ìè@bwe.÷È Ö
+_97°ê	Ôáÿ~LSéF FòuXÎï©ÓJjás3+u–½@È=C)@ÿ6ä÷L19›Mƒô"…tw›YEéjåp˜O³ÀJFL7Ps¹ ©åø>¡šñ‰°Qø€¦½²€BÅ3:Hàú0—Em´ö›r‚¬tò=‡åÙ¡6ŸRÍ™~¾úD…?#1_ãôD[Ä5.Û£-xïZë´ ‹âõU¨Oœ­plª¶Uf+w"ËÍ»‰tÖÎñÔÙäSbùLŸ¡B1œ,¼”
+—6œ9²ªÈı‹‹…°<h³çEt^{Ï_ş‘šq	ì³RGw jî¼®bÅ€½%´Bã.‘¿­¤0”ÎÓ	üÊúv?Ät¶nİ;ëjå‘‘ÙÇ+’…¸„¢³‹"?-MÖ/‰}‡a¥ğÔ¢ÉÊ4îÖÑ=K¤;3ÿ;“z:ÄÃšéÓ«¥&f·F!MİÌ…8™ğÀNëh÷ı<+ )ùâ¬!]İ?˜ffïÔŒ÷ZÓà£³ã2GµS5§:²¾azÊì"{}‹Ü0–rIxú© =YoØ&Òì
+¦–KË»e5{ıõ¹3 º{hKqÚ¨ş…u4¦m˜lÂÅ§ÉQvUp=„À„y°Ñ`,t¿;à’+Ä¶vKLÅ¥šˆµëÓîBBoD€^_‚ĞgU›ü·ºœ˜¦Ó½TÂ•L+bı‚ŒŒòV…"ìşõ`Æ¹kŸIQ¿ˆé¾C)n—G3ğßØ6
+
+‡Œğ’uÇÁìb(nÑLFeƒBê0õJ~/<y7÷çÖ„'zˆ{IpæVÌKGîZƒF$9'cM‡65lpI?ÚÚuÄVOÉ¸o{tşû¡DJ]ı_í±°Gµ.ƒ¿”€D†	ğFé!$bt·®‚-†éÈ­xœ340031Q¨`˜Ï*ü$^rroØdÏ|Ù‹/b¿]* „¦I¸>xœèü‡ö½|H[ûDÅè.µ£JfÅ!ı¹'Ş®ïİ|§¨·•Êªµ¼sµ‚ËSU‰ÌØŠ}jï« @²£<—ÛÛÍ5£	;2×1dŠkô|:cÂ§^jë•~“şÒÉìÙÈ}rAÕ}‚ıUª/ÿ¾?™èV!×lMre|Ï¦òìôV|lzx–ù~f([ÔY\†•Ã˜<¢’t<!êCG52w¦ã®÷˜'Zº†«ğª0‰='(Ó,®7¡cümÊ¸
+i-i^Vv ?ÎÛ±ÁÂ5\¶8îÉ+ò)—^8ŸQ	½Ğ·]ÜdEæößÙ³ÒoâĞ0±1ç«ê	9Ï¥îû'”åé7#1Õ"E+/íóàËÀµj¢4 €Ë´<íPì¹<0—9¯núƒˆƒé§}já‰VÂ:+Èÿyªä¬OØx?äëòTk?$°«õFB'~©eDUp¬îÌÏÅ tñYØ¥!RÂyf°lpˆeï”,ëÄªPPæŞK0Mö[5iÀ±yŸ—è‰·sü#”yÿ~8ÀÉp]ÑÔç¦süĞQYÁë8N ®VÁû+ºQâ¬‰='©-ƒXwW4VÌ§WZQ–ãh”hÏœû×{Mõ3™ûGk—¼\±ª#:»P-ù<0…ƒLmŸıÜÊNãÚšéÚÂcæbï ´“Q±e­ñ`V	_Ã"jïK¼ËJGFÒÊay.‚ã˜ş¿¼Y‹¬ë)“_etj~NiŞs=oPëŠRu™IÙ8·Ùìñ9¼MñÃcÁç·E’¦M-~x4Ğ¡û&nŠˆääºø,ïªM ²}|¶K?úüG–JQÔ¤ô°w#),Ì?/OÉ›;j7âàAÑBè¹¬ ˜Y¨¨?60·œJÎ¥°•`àƒóûù4Ø‘tyy°Úeuœ+9^É8:˜ÉËYIpÄ*e]Oª” â»>¶W’Dd×Ôe²CÜˆìá‘¦Ø$¶¹_œğLÈØú/„Ç°"k9?ñD)ã¤š¤¥°0‡ş( ïEáïºñt[«¤”“ÃÎ¸Œ$±4´£ƒ¸JòJ<?‰ÓÄùö>ª±‹Z•¢ÓtUöYËÖ¾Æ2¶$x>éÌ°`×û¯r%à¢˜?½LÑªàÆ„¬L}kÕáoô‹'G8nx
+"°i«Ÿ›ok“TCŒœ-¡Âa~	¯{?
+à.e0”Tî×Y”¡ º˜-Şé‡+¥îãæÌQÑ;Ì‚5îiaÈŠ­”FˆDÙ•xá³}ÙÕG x_6’heœ2×³òç­xœ340031Q¨`Ğ½(ù¶+áÆvî•ö8W5[0{ “
+
+¾¸>xœèü%´ä0óÖÕjÁ¥šóh}RŠDd"n>*
+M¥ŸûX—]
+Ä®°bŞ]“„~ÙåxP8=øfYidŠFmã+qk?¼èl ÇH ég¶ºfj¢ğŒ«èÃëi6ı6uúËû`M§Í„z¨Pòß){üœÍÓÒÕ»2„€]ÊÙ ¨ÖŸáñuwu—¶ô@ÇM­±az‚¨«sõ)?YWçÜQ1°‹Ø]­ôßF[•»L9Å‡‘VîÆÇpÓ½ÿ9’´z¶Âku~nÑº’¢­+HİÓ¶É3%~Çgö¼ô5½QúÙ¶.°:kEBÿAUEŒq	áãµ}û±Ø™çV‰wùDzË%½•İ×	¦×_MŒ…°Òı$iY7¸ñx"íç¹ğ…<˜Ñà¯cĞ0ÇáU!Z1¿c
+Ş¿
+1ÚYV|úI©ey¢":{jÊ¤‡ÙÚ!QôÎãm¡‹–üp¾ÿ›j&X“ıÇ˜¨MdıÁˆ,¯ùg"|~¡†VÃĞáà&,ùÆ“Ñ kwŸİkeƒ›°Ğ”(&$ñø€hhPÑìÃşŸ)’›'ƒ^,É‰ñÂ^	åzâAWAöM#>N™é[ñ„õ™_Õ#T¦F×…ª/NÒ¹ú;xí8ÿ°Ö‰)
+?Ò+‰óË–¼»®`!…à–Ï/«­èøÂJ„%Ù1„¾‡RA°ˆJRŒÔ–Ü-¼À“†U„›äe@²ı’™¥`îÇ!d´œ^D—°¹%ïùr@hS^S¥¹­VpßÊîA¸Ç;•·ù³­&Søÿ5W/âÿˆkÒöæó=¬	€ı şÿµs–­+•©[dcCÉÅ®ƒÏCÄ\IÄ÷vĞT^d·D‹øré…x(ÂDÒ(u¾Øa›BF;ÔMK™šıDM}ß‚<ô`±˜-ıt‡s¦éëøÅPØWu üó
+:şs£ÂxëtµÚ»yfY<T‘qÉ^“ûÍ7fùïë~Kµ´^0÷fêIğäø¡1)]
+ù#9rïß­²ã¢4Â	¶ÍÂÉqf¢²š>=İ€*£ zÑ¼©€0zˆœ,mÎ{Ä„^ÓªPfhPîöäÅ
+{ò½ŠŒç’0‰< øhP™Ë3ô¶Ôíß˜Õ5Ç^¤Ôë=ÃlõÙGøÃ	¤ó^w‹ç[ĞØYLM¹Wë!5÷àĞÒ‰~´E–öa–evYª9è Qâ9Àû%j9zXeÛ¿6æÇ”q®Éê;»³Z²àÓ;Ä$JaÊ¥å—ÖOÂ!ïÈØOûe1º,‡MÂòá|Kl·:u×{­xœ340031Q¨`¸RÁı/g‚R‡@ÍÏíÎï‹Rm· ”ÉC¸>xœèüé¢i'(´XZM·Òb:ZyÓÀ`C ]ÆNŠû“âr(²q­…Ü;ÂƒŞèÓÀÒš}ìüøÓiÎˆ`P!²“™ò5±
+¹¦2(@2àKj Ü—ëÒW€EgG1o“¢¦óGûUdÆıO‰
+IÉÄNÓ²ÌÙÏ]èQ=sJo)oW0>¦²tº;bÃ–kQ0dØÂCéÑ\]Øåf*oğåş)ö„b¶Ê]–ÒÌ]ê.Û³ùOíçCR²hÏ(ûCæàPç¤¢
+ıxØ)f.¯ÉªE->¤(åBàk\ê‰Nş¨klVùLG¾ıÂQ»ŠX›uÚî`$%^§(ŒQCÓg©)<×N3µaA?G–†ÅùEŠşSC¸O sé)KZzÇÏ5~ÃàÃ_&×}`hJ’9&ïƒxz°“^…ª¾àî¿’FŸàänÌ©õäY£ÊK¢¾5w¨O›ï\°‘â°t,Hk·Zãl­–A•ñÛ0kU ŠØÈ>–¤c0Xr$]éÓF½íô`qÖ+ÓVœdÏ›•Eßì¤šeEu\YÌ¤ï€Eè‚¤ˆ  bÄx‰öP”W@;cğRfÀ’BhÄ†—Su0¹Söa=ç2è”·*Wÿ¯[›b¹Êjöªî­ËÅ´}GîÚ¢=-/Sœ¨Yò±{89aƒò§/µ³‰Åõñ&Œ :ëu0éß]–Ï¨Dı]óÿnËiÒ"+ïÃ³ÛÄdİz%G@Oúûİ6Ÿ©7Œ&˜ëf¬,:”îªxV‘ñ¹£“ÎBÓús‹ä“÷Ê¬„©ÑÍ†ÕĞö0zpe2#gLVƒÖëI]½0bu’Cãû´‡â¸Îb8FŠZÃÜ‡»¤[¶ŸûgÊâúğA[P›€wY<?»Â¾çÜµµaz2ÅÄ·[qP¹iÄ{fP•Çê“1eI©ËyÈğöàI`	Å˜/éÿ‘ÿ?%çÜŞ7öZ)1lšxFäruDMD%ùÇ´¶õ‡î¯%$³T¢oz¨É3Cg”iod‹¬ß Yı,?tjşl?8Ä¿i†Ûò›yíW©Í`ÄZÁ¯)Ï³¤S÷È0^WökV‚gYj‚ÿZíEÒsTp±ªˆ!¿ƒó‰õ¼õßw§ÔçÉßöA¹Ãíáüé¼$²]Ä·T%ğ:­…ÚşÑ$ô„@ŒÕ¢@ÒÂ5ğu#Ò€ÖV€ìˆ•L:wnq¨@š` „ÚòHãªæ(e‰ü?ÉåïúN™
+¦Èú‰²õ=‚lJ¿¿¢?YÔÂªFûËaôÓ£ ù„‰[¿õõM°003cTotal 15 (delta 0), reused 15 (delta 0), pack-reused 0
+00060000,7:headers;410:29:6:server,16:GitHub Babel 2.0,]56:12:content-type,36:application/x-git-upload-pack-result,]58:23:content-security-policy,27:default-src 'none'; sandbox,]43:7:expires,29:Fri, 01 Jan 1980 00:00:00 GMT,]20:6:pragma,8:no-cache,]57:13:cache-control,36:no-cache, max-age=0, must-revalidate,]26:4:vary,15:Accept-Encoding,]26:15:x-frame-options,4:DENY,]59:19:x-github-request-id,32:E807:4AB6:26E3E1:2892A3:62055206,]]12:http_version;8:HTTP/2.0,}7:request;839:4:path;33:/ept/git-test.git/git-upload-pack,9:authority;10:github.com,6:scheme;5:https,6:method;4:POST,4:port;3:443#4:host;10:github.com;13:timestamp_end;16:1644515846.80741^15:timestamp_start;17:1644515846.806441^8:trailers;0:~7:content;308:0011command=fetch0014agent=git/2.35.10016object-format=sha10001000dthin-pack000finclude-tag000dofs-delta0032want 80c99afbbdde0f52286526f5e8d1552b21afdad6
+0032have a2de70e598189038e5cf2643b9995c80cf0b385e
+0032have 38080b87675b2367b2e10847a7b60fcc10c5d8a0
+0032have 1f41d040212fcffe69e000d1713bae5e0d508258
+0000,7:headers;246:28:10:user-agent,10:git/2.35.1,]36:15:accept-encoding,13:deflate, gzip,]57:12:content-type,37:application/x-git-upload-pack-request,]49:6:accept,36:application/x-git-upload-pack-result,]28:12:git-protocol,9:version=2,]24:14:content-length,3:308,]]12:http_version;8:HTTP/2.0,}7:comment;0:;8:metadata;0:}6:marked;0:;9:is_replay;0:~11:intercepted;5:false!4:type;4:http;11:server_conn;3869:4:via2;0:~11:cipher_list;0:]11:cipher_name;22:TLS_AES_128_GCM_SHA256;11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;3297:1801:-----BEGIN CERTIFICATE-----
+MIIFBjCCBK2gAwIBAgIQDovzdw2S0Zbwu2H5PEFmvjAKBggqhkjOPQQDAjBnMQsw
+CQYDVQQGEwJVUzEXMBUGA1UEChMORGlnaUNlcnQsIEluYy4xPzA9BgNVBAMTNkRp
+Z2lDZXJ0IEhpZ2ggQXNzdXJhbmNlIFRMUyBIeWJyaWQgRUNDIFNIQTI1NiAyMDIw
+IENBMTAeFw0yMTAzMjUwMDAwMDBaFw0yMjAzMzAyMzU5NTlaMGYxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2Nv
+MRUwEwYDVQQKEwxHaXRIdWIsIEluYy4xEzARBgNVBAMTCmdpdGh1Yi5jb20wWTAT
+BgcqhkjOPQIBBggqhkjOPQMBBwNCAASt9vd1sdNJVApdEHG93CUGSyIcoiNOn6H+
+udCMvTm8DCPHz5GmkFrYRasDE77BI3q5xMidR/aW4Ll2a1A2ZvcNo4IDOjCCAzYw
+HwYDVR0jBBgwFoAUUGGmoNI1xBEqII0fD6xC8M0pz0swHQYDVR0OBBYEFCexfp+7
+JplQ2PPDU1v+MRawux5yMCUGA1UdEQQeMByCCmdpdGh1Yi5jb22CDnd3dy5naXRo
+dWIuY29tMA4GA1UdDwEB/wQEAwIHgDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYB
+BQUHAwIwgbEGA1UdHwSBqTCBpjBRoE+gTYZLaHR0cDovL2NybDMuZGlnaWNlcnQu
+Y29tL0RpZ2lDZXJ0SGlnaEFzc3VyYW5jZVRMU0h5YnJpZEVDQ1NIQTI1NjIwMjBD
+QTEuY3JsMFGgT6BNhktodHRwOi8vY3JsNC5kaWdpY2VydC5jb20vRGlnaUNlcnRI
+aWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hBMjU2MjAyMENBMS5jcmwwPgYDVR0g
+BDcwNTAzBgZngQwBAgIwKTAnBggrBgEFBQcCARYbaHR0cDovL3d3dy5kaWdpY2Vy
+dC5jb20vQ1BTMIGSBggrBgEFBQcBAQSBhTCBgjAkBggrBgEFBQcwAYYYaHR0cDov
+L29jc3AuZGlnaWNlcnQuY29tMFoGCCsGAQUFBzAChk5odHRwOi8vY2FjZXJ0cy5k
+aWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hB
+MjU2MjAyMENBMS5jcnQwDAYDVR0TAQH/BAIwADCCAQUGCisGAQQB1nkCBAIEgfYE
+gfMA8QB2ACl5vvCeOTkh8FZzn2Old+W+V32cYAr4+U1dJlwlXceEAAABeGq/vRoA
+AAQDAEcwRQIhAJ7miER//DRFnDJNn6uUhgau3WMt4vVfY5dGigulOdjXAiBIVCfR
+xjK1v4F31+sVaKzyyO7JAa0fzDQM7skQckSYWQB3ACJFRQdZVSRWlj+hL/H3bYbg
+IyZjrcBLf13Gg1xu4g8CAAABeGq/vTkAAAQDAEgwRgIhAJgAEkoJQRivBlwo7x67
+3oVsf1ip096WshZqmRCuL/JpAiEA3cX4rb3waLDLq4C48NSoUmcw56PwO/m2uwnQ
+prb+yh0wCgYIKoZIzj0EAwIDRwAwRAIgK+Kv7G+/KkWkNZg3PcQFp866Z7G6soxo
+a4etSZ+SRlYCIBSiXS20Wc+yjD111nPzvQUCfsP4+DKZ3K+2GKsERD6d
+-----END CERTIFICATE-----
+,1484:-----BEGIN CERTIFICATE-----
+MIIEGzCCAwOgAwIBAgIQBmcDW7sU/WOvwNaoU07+FjANBgkqhkiG9w0BAQsFADBs
+MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
+d3cuZGlnaWNlcnQuY29tMSswKQYDVQQDEyJEaWdpQ2VydCBIaWdoIEFzc3VyYW5j
+ZSBFViBSb290IENBMB4XDTIwMTIxNzAwMDAwMFoXDTMwMTIxNjIzNTk1OVowZzEL
+MAkGA1UEBhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMT8wPQYDVQQDEzZE
+aWdpQ2VydCBIaWdoIEFzc3VyYW5jZSBUTFMgSHlicmlkIEVDQyBTSEEyNTYgMjAy
+MCBDQTEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARnvW/xPOudvtC252wTq9ef
+6fbdFeWPkOscfpRTkciuHj7UcumQSH3lzkPEIx0KpesWa8epsks7QwkZ4fU/Tkf9
+o4IBhzCCAYMwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUUGGmoNI1xBEq
+II0fD6xC8M0pz0swHwYDVR0jBBgwFoAUsT7DaQP4v0cB1JgmGggC72NkK8MwDgYD
+VR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjB/Bggr
+BgEFBQcBAQRzMHEwJAYIKwYBBQUHMAGGGGh0dHA6Ly9vY3NwLmRpZ2ljZXJ0LmNv
+bTBJBggrBgEFBQcwAoY9aHR0cDovL2NhY2VydHMuZGlnaWNlcnQuY29tL0RpZ2lD
+ZXJ0SGlnaEFzc3VyYW5jZUVWUm9vdENBLmNydDBLBgNVHR8ERDBCMECgPqA8hjpo
+dHRwOi8vY3JsMy5kaWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlRVZS
+b290Q0EuY3JsMDAGA1UdIAQpMCcwCAYGZ4EMAQICMAgGBmeBDAECAzAHBgVngQwB
+ATAIBgZngQwBAgEwDQYJKoZIhvcNAQELBQADggEBAHMQH8hhiBfNbxwEwxbbTAnu
+jPyUh/oi0JrfZI3u9JuiLqca720D6foS/AB5+4EIxpm7CMG4MdN/l7oAiDipaCPv
+mOmpYUpnT7A63Cr0q4g84rI1ZmdqA40lVUUf6qC6E34tC73qDQF8TJSrfscWFdCl
+RXR9J4QGrkZ2VNMSDzlDRzWCaA95MfO8x01l+ZdopdE8FvM78gGd4zxeWb8v991+
+mBxTDepqKuy/jF5Rm6Bhfxr33ADRs60s1t16dtZ3pOYLALBTPD5KhZ6a+/dk5dnh
+6c4PaeZQYBUAh+GuxfaBlU4qQ8EtjBMCQHreMIwXHYHW5FRYGjgR4NMuaIw2jD0=
+-----END CERTIFICATE-----
+,]3:tls;4:true!5:error;0:~5:state;1:3#3:via;0:~11:tls_version;7:TLSv1.3;15:tls_established;4:true!19:timestamp_tls_setup;17:1644515846.488947^19:timestamp_tcp_setup;17:1644515846.438915^15:timestamp_start;17:1644515846.411307^13:timestamp_end;0:~14:source_address;25:13:192.168.1.141;5:59399#]3:sni;10:github.com;10:ip_address;22:12:140.82.121.3;3:443#]2:id;36:af2e4b06-0cdf-41e8-a2ed-87431d88832c;4:alpn;2:h2,7:address;20:10:github.com;3:443#]}11:client_conn;492:11:cipher_list;0:]11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;0:]3:tls;4:true!5:error;0:~8:sockname;19:9:127.0.0.1;4:8888#]5:state;1:3#11:tls_version;7:TLSv1.2;14:tls_extensions;0:]15:tls_established;4:true!19:timestamp_tls_setup;16:1644515846.50983^15:timestamp_start;17:1644515846.407813^13:timestamp_end;0:~3:sni;10:github.com;8:mitmcert;0:~2:id;36:2cfd86a0-f616-45fc-a2fd-e2c9cc8559cc;11:cipher_name;27:ECDHE-RSA-AES128-GCM-SHA256;4:alpn;2:h2,7:address;20:9:127.0.0.1;5:59398#]}5:error;0:~2:id;36:e2dc0bb6-9a36-4237-9cee-1d6a2be3c906;}5594:7:version;2:14#4:mode;7:regular;9:websocket;0:~8:response;504:6:reason;0:,11:status_code;3:401#13:timestamp_end;17:1644515847.241747^15:timestamp_start;17:1644515847.240583^8:trailers;0:~7:content;26:No anonymous write access.,7:headers;297:29:6:server,16:GitHub Babel 2.0,]30:12:content-type,10:text/plain,]58:23:content-security-policy,27:default-src 'none'; sandbox,]23:14:content-length,2:26,]44:16:www-authenticate,20:Basic realm="GitHub",]26:15:x-frame-options,4:DENY,]59:19:x-github-request-id,32:E809:A366:274B76:28FC2D:62055207,]]12:http_version;8:HTTP/2.0,}7:request;459:4:path;52:/ept/git-test.git/info/refs?service=git-receive-pack,9:authority;10:github.com,6:scheme;5:https,6:method;3:GET,4:port;3:443#4:host;10:github.com;13:timestamp_end;17:1644515847.105933^15:timestamp_start;18:1644515847.1050508^8:trailers;0:~7:content;0:,7:headers;156:28:10:user-agent,10:git/2.35.1,]15:6:accept,3:*/*,]36:15:accept-encoding,13:deflate, gzip,]37:15:accept-language,14:en-GB, *;q=0.9,]20:6:pragma,8:no-cache,]]12:http_version;8:HTTP/2.0,}7:comment;0:;8:metadata;0:}6:marked;0:;9:is_replay;0:~11:intercepted;5:false!4:type;4:http;11:server_conn;3870:4:via2;0:~11:cipher_list;0:]11:cipher_name;22:TLS_AES_128_GCM_SHA256;11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;3297:1801:-----BEGIN CERTIFICATE-----
+MIIFBjCCBK2gAwIBAgIQDovzdw2S0Zbwu2H5PEFmvjAKBggqhkjOPQQDAjBnMQsw
+CQYDVQQGEwJVUzEXMBUGA1UEChMORGlnaUNlcnQsIEluYy4xPzA9BgNVBAMTNkRp
+Z2lDZXJ0IEhpZ2ggQXNzdXJhbmNlIFRMUyBIeWJyaWQgRUNDIFNIQTI1NiAyMDIw
+IENBMTAeFw0yMTAzMjUwMDAwMDBaFw0yMjAzMzAyMzU5NTlaMGYxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2Nv
+MRUwEwYDVQQKEwxHaXRIdWIsIEluYy4xEzARBgNVBAMTCmdpdGh1Yi5jb20wWTAT
+BgcqhkjOPQIBBggqhkjOPQMBBwNCAASt9vd1sdNJVApdEHG93CUGSyIcoiNOn6H+
+udCMvTm8DCPHz5GmkFrYRasDE77BI3q5xMidR/aW4Ll2a1A2ZvcNo4IDOjCCAzYw
+HwYDVR0jBBgwFoAUUGGmoNI1xBEqII0fD6xC8M0pz0swHQYDVR0OBBYEFCexfp+7
+JplQ2PPDU1v+MRawux5yMCUGA1UdEQQeMByCCmdpdGh1Yi5jb22CDnd3dy5naXRo
+dWIuY29tMA4GA1UdDwEB/wQEAwIHgDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYB
+BQUHAwIwgbEGA1UdHwSBqTCBpjBRoE+gTYZLaHR0cDovL2NybDMuZGlnaWNlcnQu
+Y29tL0RpZ2lDZXJ0SGlnaEFzc3VyYW5jZVRMU0h5YnJpZEVDQ1NIQTI1NjIwMjBD
+QTEuY3JsMFGgT6BNhktodHRwOi8vY3JsNC5kaWdpY2VydC5jb20vRGlnaUNlcnRI
+aWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hBMjU2MjAyMENBMS5jcmwwPgYDVR0g
+BDcwNTAzBgZngQwBAgIwKTAnBggrBgEFBQcCARYbaHR0cDovL3d3dy5kaWdpY2Vy
+dC5jb20vQ1BTMIGSBggrBgEFBQcBAQSBhTCBgjAkBggrBgEFBQcwAYYYaHR0cDov
+L29jc3AuZGlnaWNlcnQuY29tMFoGCCsGAQUFBzAChk5odHRwOi8vY2FjZXJ0cy5k
+aWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hB
+MjU2MjAyMENBMS5jcnQwDAYDVR0TAQH/BAIwADCCAQUGCisGAQQB1nkCBAIEgfYE
+gfMA8QB2ACl5vvCeOTkh8FZzn2Old+W+V32cYAr4+U1dJlwlXceEAAABeGq/vRoA
+AAQDAEcwRQIhAJ7miER//DRFnDJNn6uUhgau3WMt4vVfY5dGigulOdjXAiBIVCfR
+xjK1v4F31+sVaKzyyO7JAa0fzDQM7skQckSYWQB3ACJFRQdZVSRWlj+hL/H3bYbg
+IyZjrcBLf13Gg1xu4g8CAAABeGq/vTkAAAQDAEgwRgIhAJgAEkoJQRivBlwo7x67
+3oVsf1ip096WshZqmRCuL/JpAiEA3cX4rb3waLDLq4C48NSoUmcw56PwO/m2uwnQ
+prb+yh0wCgYIKoZIzj0EAwIDRwAwRAIgK+Kv7G+/KkWkNZg3PcQFp866Z7G6soxo
+a4etSZ+SRlYCIBSiXS20Wc+yjD111nPzvQUCfsP4+DKZ3K+2GKsERD6d
+-----END CERTIFICATE-----
+,1484:-----BEGIN CERTIFICATE-----
+MIIEGzCCAwOgAwIBAgIQBmcDW7sU/WOvwNaoU07+FjANBgkqhkiG9w0BAQsFADBs
+MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
+d3cuZGlnaWNlcnQuY29tMSswKQYDVQQDEyJEaWdpQ2VydCBIaWdoIEFzc3VyYW5j
+ZSBFViBSb290IENBMB4XDTIwMTIxNzAwMDAwMFoXDTMwMTIxNjIzNTk1OVowZzEL
+MAkGA1UEBhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMT8wPQYDVQQDEzZE
+aWdpQ2VydCBIaWdoIEFzc3VyYW5jZSBUTFMgSHlicmlkIEVDQyBTSEEyNTYgMjAy
+MCBDQTEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARnvW/xPOudvtC252wTq9ef
+6fbdFeWPkOscfpRTkciuHj7UcumQSH3lzkPEIx0KpesWa8epsks7QwkZ4fU/Tkf9
+o4IBhzCCAYMwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUUGGmoNI1xBEq
+II0fD6xC8M0pz0swHwYDVR0jBBgwFoAUsT7DaQP4v0cB1JgmGggC72NkK8MwDgYD
+VR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjB/Bggr
+BgEFBQcBAQRzMHEwJAYIKwYBBQUHMAGGGGh0dHA6Ly9vY3NwLmRpZ2ljZXJ0LmNv
+bTBJBggrBgEFBQcwAoY9aHR0cDovL2NhY2VydHMuZGlnaWNlcnQuY29tL0RpZ2lD
+ZXJ0SGlnaEFzc3VyYW5jZUVWUm9vdENBLmNydDBLBgNVHR8ERDBCMECgPqA8hjpo
+dHRwOi8vY3JsMy5kaWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlRVZS
+b290Q0EuY3JsMDAGA1UdIAQpMCcwCAYGZ4EMAQICMAgGBmeBDAECAzAHBgVngQwB
+ATAIBgZngQwBAgEwDQYJKoZIhvcNAQELBQADggEBAHMQH8hhiBfNbxwEwxbbTAnu
+jPyUh/oi0JrfZI3u9JuiLqca720D6foS/AB5+4EIxpm7CMG4MdN/l7oAiDipaCPv
+mOmpYUpnT7A63Cr0q4g84rI1ZmdqA40lVUUf6qC6E34tC73qDQF8TJSrfscWFdCl
+RXR9J4QGrkZ2VNMSDzlDRzWCaA95MfO8x01l+ZdopdE8FvM78gGd4zxeWb8v991+
+mBxTDepqKuy/jF5Rm6Bhfxr33ADRs60s1t16dtZ3pOYLALBTPD5KhZ6a+/dk5dnh
+6c4PaeZQYBUAh+GuxfaBlU4qQ8EtjBMCQHreMIwXHYHW5FRYGjgR4NMuaIw2jD0=
+-----END CERTIFICATE-----
+,]3:tls;4:true!5:error;0:~5:state;1:3#3:via;0:~11:tls_version;7:TLSv1.3;15:tls_established;4:true!19:timestamp_tls_setup;17:1644515847.093924^19:timestamp_tcp_setup;18:1644515847.0574331^15:timestamp_start;17:1644515847.031138^13:timestamp_end;0:~14:source_address;25:13:192.168.1.141;5:59401#]3:sni;10:github.com;10:ip_address;22:12:140.82.121.3;3:443#]2:id;36:00ded327-c047-47eb-9c1a-f223aa09970b;4:alpn;2:h2,7:address;20:10:github.com;3:443#]}11:client_conn;495:11:cipher_list;0:]11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;0:]3:tls;4:true!5:error;0:~8:sockname;19:9:127.0.0.1;4:8888#]5:state;1:3#11:tls_version;7:TLSv1.2;14:tls_extensions;0:]15:tls_established;4:true!19:timestamp_tls_setup;18:1644515847.1025631^15:timestamp_start;18:1644515847.0291798^13:timestamp_end;0:~3:sni;10:github.com;8:mitmcert;0:~2:id;36:d286f99e-e92f-45a4-a180-1870ec5499c7;11:cipher_name;27:ECDHE-RSA-AES128-GCM-SHA256;4:alpn;2:h2,7:address;20:9:127.0.0.1;5:59400#]}5:error;0:~2:id;36:e4e0412d-57bd-4098-84c2-a71dd907dddc;}6023:7:version;2:14#4:mode;7:regular;9:websocket;0:~8:response;843:6:reason;0:,11:status_code;3:200#13:timestamp_end;17:1644515847.441262^15:timestamp_start;17:1644515847.437912^8:trailers;0:~7:content;243:001f# service=git-receive-pack
+000000cc80c99afbbdde0f52286526f5e8d1552b21afdad6 refs/heads/main report-status report-status-v2 delete-refs side-band-64k quiet atomic ofs-delta push-options object-format=sha1 agent=git/github-gf33fef312227
+0000,7:headers;418:29:6:server,16:GitHub Babel 2.0,]64:12:content-type,44:application/x-git-receive-pack-advertisement,]58:23:content-security-policy,27:default-src 'none'; sandbox,]43:7:expires,29:Fri, 01 Jan 1980 00:00:00 GMT,]20:6:pragma,8:no-cache,]57:13:cache-control,36:no-cache, max-age=0, must-revalidate,]26:4:vary,15:Accept-Encoding,]26:15:x-frame-options,4:DENY,]59:19:x-github-request-id,32:E809:A366:274BA3:28FC51:62055207,]]12:http_version;8:HTTP/2.0,}7:request;549:4:path;52:/ept/git-test.git/info/refs?service=git-receive-pack,9:authority;10:github.com,6:scheme;5:https,6:method;3:GET,4:port;3:443#4:host;10:github.com;13:timestamp_end;17:1644515847.272375^15:timestamp_start;17:1644515847.271787^8:trailers;0:~7:content;0:,7:headers;247:87:13:authorization,66:Basic ZXB0OmdocF9MTFRYYkhtUXY3ajk0Zm1HTkphdUFUMTB2VGFkVlY0SGtMZ1M=,]28:10:user-agent,10:git/2.35.1,]15:6:accept,3:*/*,]36:15:accept-encoding,13:deflate, gzip,]37:15:accept-language,14:en-GB, *;q=0.9,]20:6:pragma,8:no-cache,]]12:http_version;8:HTTP/2.0,}7:comment;0:;8:metadata;0:}6:marked;0:;9:is_replay;0:~11:intercepted;5:false!4:type;4:http;11:server_conn;3870:4:via2;0:~11:cipher_list;0:]11:cipher_name;22:TLS_AES_128_GCM_SHA256;11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;3297:1801:-----BEGIN CERTIFICATE-----
+MIIFBjCCBK2gAwIBAgIQDovzdw2S0Zbwu2H5PEFmvjAKBggqhkjOPQQDAjBnMQsw
+CQYDVQQGEwJVUzEXMBUGA1UEChMORGlnaUNlcnQsIEluYy4xPzA9BgNVBAMTNkRp
+Z2lDZXJ0IEhpZ2ggQXNzdXJhbmNlIFRMUyBIeWJyaWQgRUNDIFNIQTI1NiAyMDIw
+IENBMTAeFw0yMTAzMjUwMDAwMDBaFw0yMjAzMzAyMzU5NTlaMGYxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2Nv
+MRUwEwYDVQQKEwxHaXRIdWIsIEluYy4xEzARBgNVBAMTCmdpdGh1Yi5jb20wWTAT
+BgcqhkjOPQIBBggqhkjOPQMBBwNCAASt9vd1sdNJVApdEHG93CUGSyIcoiNOn6H+
+udCMvTm8DCPHz5GmkFrYRasDE77BI3q5xMidR/aW4Ll2a1A2ZvcNo4IDOjCCAzYw
+HwYDVR0jBBgwFoAUUGGmoNI1xBEqII0fD6xC8M0pz0swHQYDVR0OBBYEFCexfp+7
+JplQ2PPDU1v+MRawux5yMCUGA1UdEQQeMByCCmdpdGh1Yi5jb22CDnd3dy5naXRo
+dWIuY29tMA4GA1UdDwEB/wQEAwIHgDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYB
+BQUHAwIwgbEGA1UdHwSBqTCBpjBRoE+gTYZLaHR0cDovL2NybDMuZGlnaWNlcnQu
+Y29tL0RpZ2lDZXJ0SGlnaEFzc3VyYW5jZVRMU0h5YnJpZEVDQ1NIQTI1NjIwMjBD
+QTEuY3JsMFGgT6BNhktodHRwOi8vY3JsNC5kaWdpY2VydC5jb20vRGlnaUNlcnRI
+aWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hBMjU2MjAyMENBMS5jcmwwPgYDVR0g
+BDcwNTAzBgZngQwBAgIwKTAnBggrBgEFBQcCARYbaHR0cDovL3d3dy5kaWdpY2Vy
+dC5jb20vQ1BTMIGSBggrBgEFBQcBAQSBhTCBgjAkBggrBgEFBQcwAYYYaHR0cDov
+L29jc3AuZGlnaWNlcnQuY29tMFoGCCsGAQUFBzAChk5odHRwOi8vY2FjZXJ0cy5k
+aWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hB
+MjU2MjAyMENBMS5jcnQwDAYDVR0TAQH/BAIwADCCAQUGCisGAQQB1nkCBAIEgfYE
+gfMA8QB2ACl5vvCeOTkh8FZzn2Old+W+V32cYAr4+U1dJlwlXceEAAABeGq/vRoA
+AAQDAEcwRQIhAJ7miER//DRFnDJNn6uUhgau3WMt4vVfY5dGigulOdjXAiBIVCfR
+xjK1v4F31+sVaKzyyO7JAa0fzDQM7skQckSYWQB3ACJFRQdZVSRWlj+hL/H3bYbg
+IyZjrcBLf13Gg1xu4g8CAAABeGq/vTkAAAQDAEgwRgIhAJgAEkoJQRivBlwo7x67
+3oVsf1ip096WshZqmRCuL/JpAiEA3cX4rb3waLDLq4C48NSoUmcw56PwO/m2uwnQ
+prb+yh0wCgYIKoZIzj0EAwIDRwAwRAIgK+Kv7G+/KkWkNZg3PcQFp866Z7G6soxo
+a4etSZ+SRlYCIBSiXS20Wc+yjD111nPzvQUCfsP4+DKZ3K+2GKsERD6d
+-----END CERTIFICATE-----
+,1484:-----BEGIN CERTIFICATE-----
+MIIEGzCCAwOgAwIBAgIQBmcDW7sU/WOvwNaoU07+FjANBgkqhkiG9w0BAQsFADBs
+MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
+d3cuZGlnaWNlcnQuY29tMSswKQYDVQQDEyJEaWdpQ2VydCBIaWdoIEFzc3VyYW5j
+ZSBFViBSb290IENBMB4XDTIwMTIxNzAwMDAwMFoXDTMwMTIxNjIzNTk1OVowZzEL
+MAkGA1UEBhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMT8wPQYDVQQDEzZE
+aWdpQ2VydCBIaWdoIEFzc3VyYW5jZSBUTFMgSHlicmlkIEVDQyBTSEEyNTYgMjAy
+MCBDQTEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARnvW/xPOudvtC252wTq9ef
+6fbdFeWPkOscfpRTkciuHj7UcumQSH3lzkPEIx0KpesWa8epsks7QwkZ4fU/Tkf9
+o4IBhzCCAYMwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUUGGmoNI1xBEq
+II0fD6xC8M0pz0swHwYDVR0jBBgwFoAUsT7DaQP4v0cB1JgmGggC72NkK8MwDgYD
+VR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjB/Bggr
+BgEFBQcBAQRzMHEwJAYIKwYBBQUHMAGGGGh0dHA6Ly9vY3NwLmRpZ2ljZXJ0LmNv
+bTBJBggrBgEFBQcwAoY9aHR0cDovL2NhY2VydHMuZGlnaWNlcnQuY29tL0RpZ2lD
+ZXJ0SGlnaEFzc3VyYW5jZUVWUm9vdENBLmNydDBLBgNVHR8ERDBCMECgPqA8hjpo
+dHRwOi8vY3JsMy5kaWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlRVZS
+b290Q0EuY3JsMDAGA1UdIAQpMCcwCAYGZ4EMAQICMAgGBmeBDAECAzAHBgVngQwB
+ATAIBgZngQwBAgEwDQYJKoZIhvcNAQELBQADggEBAHMQH8hhiBfNbxwEwxbbTAnu
+jPyUh/oi0JrfZI3u9JuiLqca720D6foS/AB5+4EIxpm7CMG4MdN/l7oAiDipaCPv
+mOmpYUpnT7A63Cr0q4g84rI1ZmdqA40lVUUf6qC6E34tC73qDQF8TJSrfscWFdCl
+RXR9J4QGrkZ2VNMSDzlDRzWCaA95MfO8x01l+ZdopdE8FvM78gGd4zxeWb8v991+
+mBxTDepqKuy/jF5Rm6Bhfxr33ADRs60s1t16dtZ3pOYLALBTPD5KhZ6a+/dk5dnh
+6c4PaeZQYBUAh+GuxfaBlU4qQ8EtjBMCQHreMIwXHYHW5FRYGjgR4NMuaIw2jD0=
+-----END CERTIFICATE-----
+,]3:tls;4:true!5:error;0:~5:state;1:3#3:via;0:~11:tls_version;7:TLSv1.3;15:tls_established;4:true!19:timestamp_tls_setup;17:1644515847.093924^19:timestamp_tcp_setup;18:1644515847.0574331^15:timestamp_start;17:1644515847.031138^13:timestamp_end;0:~14:source_address;25:13:192.168.1.141;5:59401#]3:sni;10:github.com;10:ip_address;22:12:140.82.121.3;3:443#]2:id;36:00ded327-c047-47eb-9c1a-f223aa09970b;4:alpn;2:h2,7:address;20:10:github.com;3:443#]}11:client_conn;495:11:cipher_list;0:]11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;0:]3:tls;4:true!5:error;0:~8:sockname;19:9:127.0.0.1;4:8888#]5:state;1:3#11:tls_version;7:TLSv1.2;14:tls_extensions;0:]15:tls_established;4:true!19:timestamp_tls_setup;18:1644515847.1025631^15:timestamp_start;18:1644515847.0291798^13:timestamp_end;0:~3:sni;10:github.com;8:mitmcert;0:~2:id;36:d286f99e-e92f-45a4-a180-1870ec5499c7;11:cipher_name;27:ECDHE-RSA-AES128-GCM-SHA256;4:alpn;2:h2,7:address;20:9:127.0.0.1;5:59400#]}5:error;0:~2:id;36:8a328e57-8460-4ab7-9a64-97dea52b96af;}9801:7:version;2:14#4:mode;7:regular;9:websocket;0:~8:response;770:6:reason;0:,11:status_code;3:200#13:timestamp_end;17:1644515847.963656^15:timestamp_start;17:1644515847.693857^8:trailers;0:~7:content;177:0013000eunpack ok
+001d0018ok refs/heads/main2
+0074
+Create a pull request for 'main2' on GitHub by visiting:
+     https://github.com/ept/git-test/pull/new/main2
+
+000900000000,7:headers;411:29:6:server,16:GitHub Babel 2.0,]57:12:content-type,37:application/x-git-receive-pack-result,]58:23:content-security-policy,27:default-src 'none'; sandbox,]43:7:expires,29:Fri, 01 Jan 1980 00:00:00 GMT,]20:6:pragma,8:no-cache,]57:13:cache-control,36:no-cache, max-age=0, must-revalidate,]26:4:vary,15:Accept-Encoding,]26:15:x-frame-options,4:DENY,]59:19:x-github-request-id,32:E809:A366:274BCE:28FC85:62055207,]]12:http_version;8:HTTP/2.0,}7:request;4399:4:path;34:/ept/git-test.git/git-receive-pack,9:authority;10:github.com,6:scheme;5:https,6:method;4:POST,4:port;3:443#4:host;10:github.com;13:timestamp_end;16:1644515847.53143^15:timestamp_start;17:1644515847.530676^8:trailers;0:~7:content;3804:00aa0000000000000000000000000000000000000000 a2de70e598189038e5cf2643b9995c80cf0b385e refs/heads/main2  report-status-v2 side-band-64k object-format=sha1 agent=git/2.35.10000PACK      	”xœ¥ÌA
+Ã @Ñ½§p_(N…º/=„qFZM{ÿ†BOĞ¿|‹?ºˆNœ#aXÄÄÅ€5Li*!L#9Ì#dµ§.mèâÑd†B9“°ã@^ìBXÄD
+¥ “M¢Ò{<¶®ï©µéÛKö½¦Öô¥~åúüÉ9ouÖà¸€ OæHZ×1ä…²ê]EŒ”xœ¥ÌM
+1@á}OÑ½ I¦i"ˆ¸Ñ¿ÁAÛJ½¿ƒà	|ËoñF/Å*©dF¤yf¥9GÏşsN¸“W¥IÄl¡—6ì¤ U¼p¤ÉK¤‚ N‚DsJ‰³0á=k·÷ĞÇÒìíU¶­†Öì¹~åúüÉ1­õbÑ;ÇÈêĞ`ÏìZ—1ÊCæ)íD3”xœ¥Ì=
+1@á>§H/Èä"öâ!f3Mv	ñş.‚'ğ•_ñæÑR2yµ"‡6;„Ì‘É‹uì8× 6Ò§NB&‘ÕÕÄ±¤¨.9GI#É¦L¸(zÏû:ôÆ|t}}É¶5ê]ŸÚW.ÏŸËÚÎÚDïƒ	è>ÀÚµ=æ”?Ê¨˜$F@­xœ340031Q¨`à|yzãWAõo{8öº,N(=(¿È> œÀ¸>xœèü?ÄØF{wu(ÇÉDs_œf£Õt{Ô9~o9ûÍùCÇcŒrop/Áâc2iÉZêéYiˆÆ3äâD-*—f$ÈJvhí;²•7{şÏüùÎ—víŒÿå©—xáàóÓ¨
+³àÕ–µ"TÍ¤ÃÓ~‡©tÌı—¤ÜĞ(UéiÍ.ffÏje4CT¯bè‘î‰2¦¬9E1+¨Äs9s7
+æ Í™5g \}@ƒòı)¸$&R9YOl4«b	¤@ƒì¤Û¤ú§Â–İR›Mo4¨³ú0ƒY¢#õÏsx·
+èÿ1Tÿªî"ÍZÁÔcÔíáŞKâô[ /Ã&«şgvªhkn¹G~
+M'…Gº¤”}İºˆ_Æ{^BĞñ—mö¤©=kó…YÅù4g”ãì¨'#„Ñ»RËlŞĞ3¿9›Yšq¯˜şªÙ_Hx\ã÷uä2 6U‰Yq	¢©Qœe$¨ 4îC)ö¦Âjˆº}H%˜Êw¨¹wiD¿ƒS¿Š€ˆ`Ğ/…¸B7á²¨53hB¶j`æí´7.#ö”¦
+QÙJ­—sØÂãIòİÇ±MN˜±Dõk›{g-õ…PnÏëä€õñulk°³Ğxí)´l½ÂœÍş®’³S¬k.é("È†ñï6'¬ÅÕ.[ÁßÆ¸ìP¯¸–›š³‰&LÊê¡Ô…êîmo„4¸ïÜ¯qŸR˜ÜwÕvÍQV©X“ä€=µÍÍ†+gj;¸0ÚÆ:£¿UàÏ2¡ü÷¾«0fà­Ú¨®î7üûª&¯
+_è2Á8u–PPoÕõì–óéÆïÀ& 2øÃ’mˆr¶–y­[D§¨W2 É¤Ÿç/R×ÈµpêP0ÛzN*Ê{‰@‚Ÿë·u¦,şÔİ.îÈÑ6õÆ€Lß»9ÄV†€‘¨51‰7ùÙÈ›_e„ÔŠ½Xˆ0i«#hÄ¤ÊòÙ±çjÇÚsûÈÓ–}Í~svN@ÙD× uvoBÀC R±F—g%~»BC¿£´“äğûÍ›DßAÖÕ}!›I¤; ÔÛÕE#YR¸é+ÍBVÖ¢œPî‹ô*Ó…ÃNáÕy›À(ˆJä§xMË§MH‘MÌçFÂ¯ŸÔÓºôæØœ~Îù[Mò&LVµe–¤:Hi~1ü-qìï*À‘äëÉ^ü4rdO|ÑŠº_h³-ûP•“’P`V˜çcêM-")VVY?Ñ÷yhíŒŞ(¦ÓÀâ,]kúBgóÛK´‚ ¾G	'Õ0 é ˜	ãÉ”LõÇ­xœ340031Q¨`¸Ÿ<{¯ Ó^fİÿzíM~µñüOş Ñ<¸>xœèü‚B` ¢L% –´#å¢LvwÑ-qq]v"ÀÕ¨è‹×2ÑW”Ã‰_ğ-Û¹!Iû™äMadHÌ®_ u¾CˆÄ‡æ(g«tTÓá[caèS9æå£OĞ,ÿİÀ"Ó\~70çrÃÕ3ÊÒğ}vd+cI.ƒsï¿TÃµDè€]×Ëµ³S6¥…ºœ†!cÓ¥äV+ Ë$ê°ı×è#w+•2Ş¢®D+âH¹«u²Æø&rN)D
+ÈOÉuƒH¡ÏÑñÔ}>DvpW1¾¡Ñ!È1ºNŸFL9Îº_Ô,’6ş-$Uú¢@Æ`ÿ8™ƒ¶~„Š¤¥y|XMSod<-@˜Ï%òò‹<ÅÄûbpa¡h,ûFGÊ}Y7€É¿Üë¸ÑÍNW~ÄĞ†AIİv++=VH?úÈ¢Ç<¼ÄÖ•0°#;"²07ĞÃáh4O×è‹ 3  ¼ƒg­Y±Êw|®àÊ§Å¢ş¹s™–¿2}›=À,®«_ÌûEğ”åî]q<ŠÊ¯®—ˆ–ßÙñxø®E[éóO-9j‚åÁ¡–Šæqàk˜…&—qØGÊAâìD!¿.gå;ÚéÌEò1â ĞãEJíüLºô¢~€40w‚ät«õ=^1†"•ŸÜú2¸º6JÄÊ6Ã½XòÌyŸrTNè³yÜKTûÀ.ğc»‘±V¹",1tRÊ›e(NÍË,£Ø&ƒúj¹ÇŠ˜AÇ4>|açŞÈ"•f«Î:íJKşpø#²tÚ¤ÒÖ5¿ëª'çÒs`‚û )ş$%†fo=áŠlÒ
+ş¯§ cñuø\›}ä4å°¡­o¥†€ƒ6ê³'1ò'1£÷1áû[¥=IçrĞ`•€€µà$e™€î:À©5ÊØçÄ•\¸\vv°êtª5¢R;Jô=£š× ‘ş¶; m2BìÙÄXot:P‘o¤!xk—›ı
+‰wT†L)U\ùjÃŠ]´ï&H%¬éâƒ½ˆs—ı+$Zù\”fánÓ"„ÓFLÚÓ<‡%À—lg ÜOÁ”êZaSøŞyôİZ¤”=÷2\'FÕö•÷‰÷^f€3İàĞÛ„nß™Ï±)Ú6~é¦~`8ªí¡[€wÖmF¯Š^3Ær‰“øúÜwJ<ëÖëŞÌqNÕÙyíÑcî>Aw}]Y6Îœ„Î!òè4N«¦ıô(4ÓX‰ô`İè>W¨×³iÈÓSƒ-	ËR°Ç@×L­â‚ÕÙè©œ°ØÄôğî„­xœ340031Q¨`Ğy–ó„msYò¥/oŒ·nÅÉù ›î^¸>xœèüL_Ÿ"8M!¥\»ëğƒ8ßëğ@AÇñé4v5YÕ7:›ºÆNà©ã¢J>=¼ıæĞNí¼´´2SÈ7ÈYèqõÕ,Ì$/û×+9© —•®úv»¡˜Ôav¯l% PX¥ÊTÖÅÏØCê/½şÇ³cãYœŸcrCoz0*ÕØtMı‚‰KÍz&	Cù)\ëHO» ª87÷\ƒ€U	å››×Iö”0h¬¬3O´ñŞl1¯Y˜„áØT—ÄåAğïxêäNe>Ù6I xæõ7"„Ì×™“]®âÜÌt®Òøj@ğ¤uÅ£ìÇNBaÂmiá‰»‘F¾m˜CötìFåpakšÑSÇ`‡á¥£\FT¨µ‹8ü´ƒÄË¿0ó:&ÊÑéLÉu›àü÷+:ç§N«Ã°Sù²ht
+,WÜ=½Ø†NŞ¡&¦+ë¹üWKµêÉè!ƒQv¨èØK›(£Á—ø‡ìHÓ¸Uã¸Ñ®¹I¹">•èûgĞĞ/Eø£¹{~È@o`rÎyŸP<HĞ¥ëf×0¤Wf—#üR»Àx½t¹”òUº7½j`Îsİ’Bßöcõ(šb#„wE°åÏì\Qr/[½FL½¶
+ËO®oû&)@Ì¢Õ
+3ımAbvÆe)ƒ@¸DÓDØ£Óı†ÔÙjÍ¶ÿÅŸR±´[ø#¯l~©§•GıØŒÄ–èk°BúÅ3›x³×¾×¶»÷2²_Úí6·VWˆ	À	íMâØÊj¬´CY°”g&‘_+fŠùşÌV¿ÔY“¶U;jøÌV­+ØÀµÎš™gá×¯rŒ¬1Ìs¡ğËä«~H‚!w› ä6(“Ò©æQ.ÓêŸĞ!k!}Ûš+\grt;¥_wy&	l6?XÖuf¾'eí)Õ(¡üä}>—8òÃ6v$¹f¯¹[Û€XÆÄ_+)ÈPÔ®‡Ô'K
+†[aÑ;’€êÇéä@UÉäòTÄõ±ìÃ8XÅÖó!1£ÎÙ2Æ+ßjK$P(UÁ‡7…a„Óïí¦ĞHxq/Hò¯éD/A–f[œ¢‚şÙ§“,<s@?^„³³³¹Ozó4:Ã{¥ä{¡„²€³j\wçNo=©:÷½RµªdaCÙÇ©D¢%M½$(ÿZÙ‹/†ö_&L<¢dAÛÁ6ô6ŸÁ6¯,}åˆêòk¾,—&µ*³ÿçÏö•ÈëêL<WÄhŸ\p@:¤í˜³ÓõÈÓ»ôÈ5É©I¬Hšš9B·’µ
+ÊJ…ÖˆQò$#V´O¥„0Y&GoÃˆEUZu,7:headers;308:87:13:authorization,66:Basic ZXB0OmdocF9MTFRYYkhtUXY3ajk0Zm1HTkphdUFUMTB2VGFkVlY0SGtMZ1M=,]28:10:user-agent,10:git/2.35.1,]36:15:accept-encoding,13:deflate, gzip,]58:12:content-type,38:application/x-git-receive-pack-request,]50:6:accept,37:application/x-git-receive-pack-result,]25:14:content-length,4:3804,]]12:http_version;8:HTTP/2.0,}7:comment;0:;8:metadata;0:}6:marked;0:;9:is_replay;0:~11:intercepted;5:false!4:type;4:http;11:server_conn;3870:4:via2;0:~11:cipher_list;0:]11:cipher_name;22:TLS_AES_128_GCM_SHA256;11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;3297:1801:-----BEGIN CERTIFICATE-----
+MIIFBjCCBK2gAwIBAgIQDovzdw2S0Zbwu2H5PEFmvjAKBggqhkjOPQQDAjBnMQsw
+CQYDVQQGEwJVUzEXMBUGA1UEChMORGlnaUNlcnQsIEluYy4xPzA9BgNVBAMTNkRp
+Z2lDZXJ0IEhpZ2ggQXNzdXJhbmNlIFRMUyBIeWJyaWQgRUNDIFNIQTI1NiAyMDIw
+IENBMTAeFw0yMTAzMjUwMDAwMDBaFw0yMjAzMzAyMzU5NTlaMGYxCzAJBgNVBAYT
+AlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2Nv
+MRUwEwYDVQQKEwxHaXRIdWIsIEluYy4xEzARBgNVBAMTCmdpdGh1Yi5jb20wWTAT
+BgcqhkjOPQIBBggqhkjOPQMBBwNCAASt9vd1sdNJVApdEHG93CUGSyIcoiNOn6H+
+udCMvTm8DCPHz5GmkFrYRasDE77BI3q5xMidR/aW4Ll2a1A2ZvcNo4IDOjCCAzYw
+HwYDVR0jBBgwFoAUUGGmoNI1xBEqII0fD6xC8M0pz0swHQYDVR0OBBYEFCexfp+7
+JplQ2PPDU1v+MRawux5yMCUGA1UdEQQeMByCCmdpdGh1Yi5jb22CDnd3dy5naXRo
+dWIuY29tMA4GA1UdDwEB/wQEAwIHgDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYB
+BQUHAwIwgbEGA1UdHwSBqTCBpjBRoE+gTYZLaHR0cDovL2NybDMuZGlnaWNlcnQu
+Y29tL0RpZ2lDZXJ0SGlnaEFzc3VyYW5jZVRMU0h5YnJpZEVDQ1NIQTI1NjIwMjBD
+QTEuY3JsMFGgT6BNhktodHRwOi8vY3JsNC5kaWdpY2VydC5jb20vRGlnaUNlcnRI
+aWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hBMjU2MjAyMENBMS5jcmwwPgYDVR0g
+BDcwNTAzBgZngQwBAgIwKTAnBggrBgEFBQcCARYbaHR0cDovL3d3dy5kaWdpY2Vy
+dC5jb20vQ1BTMIGSBggrBgEFBQcBAQSBhTCBgjAkBggrBgEFBQcwAYYYaHR0cDov
+L29jc3AuZGlnaWNlcnQuY29tMFoGCCsGAQUFBzAChk5odHRwOi8vY2FjZXJ0cy5k
+aWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlVExTSHlicmlkRUNDU0hB
+MjU2MjAyMENBMS5jcnQwDAYDVR0TAQH/BAIwADCCAQUGCisGAQQB1nkCBAIEgfYE
+gfMA8QB2ACl5vvCeOTkh8FZzn2Old+W+V32cYAr4+U1dJlwlXceEAAABeGq/vRoA
+AAQDAEcwRQIhAJ7miER//DRFnDJNn6uUhgau3WMt4vVfY5dGigulOdjXAiBIVCfR
+xjK1v4F31+sVaKzyyO7JAa0fzDQM7skQckSYWQB3ACJFRQdZVSRWlj+hL/H3bYbg
+IyZjrcBLf13Gg1xu4g8CAAABeGq/vTkAAAQDAEgwRgIhAJgAEkoJQRivBlwo7x67
+3oVsf1ip096WshZqmRCuL/JpAiEA3cX4rb3waLDLq4C48NSoUmcw56PwO/m2uwnQ
+prb+yh0wCgYIKoZIzj0EAwIDRwAwRAIgK+Kv7G+/KkWkNZg3PcQFp866Z7G6soxo
+a4etSZ+SRlYCIBSiXS20Wc+yjD111nPzvQUCfsP4+DKZ3K+2GKsERD6d
+-----END CERTIFICATE-----
+,1484:-----BEGIN CERTIFICATE-----
+MIIEGzCCAwOgAwIBAgIQBmcDW7sU/WOvwNaoU07+FjANBgkqhkiG9w0BAQsFADBs
+MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
+d3cuZGlnaWNlcnQuY29tMSswKQYDVQQDEyJEaWdpQ2VydCBIaWdoIEFzc3VyYW5j
+ZSBFViBSb290IENBMB4XDTIwMTIxNzAwMDAwMFoXDTMwMTIxNjIzNTk1OVowZzEL
+MAkGA1UEBhMCVVMxFzAVBgNVBAoTDkRpZ2lDZXJ0LCBJbmMuMT8wPQYDVQQDEzZE
+aWdpQ2VydCBIaWdoIEFzc3VyYW5jZSBUTFMgSHlicmlkIEVDQyBTSEEyNTYgMjAy
+MCBDQTEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARnvW/xPOudvtC252wTq9ef
+6fbdFeWPkOscfpRTkciuHj7UcumQSH3lzkPEIx0KpesWa8epsks7QwkZ4fU/Tkf9
+o4IBhzCCAYMwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUUGGmoNI1xBEq
+II0fD6xC8M0pz0swHwYDVR0jBBgwFoAUsT7DaQP4v0cB1JgmGggC72NkK8MwDgYD
+VR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjB/Bggr
+BgEFBQcBAQRzMHEwJAYIKwYBBQUHMAGGGGh0dHA6Ly9vY3NwLmRpZ2ljZXJ0LmNv
+bTBJBggrBgEFBQcwAoY9aHR0cDovL2NhY2VydHMuZGlnaWNlcnQuY29tL0RpZ2lD
+ZXJ0SGlnaEFzc3VyYW5jZUVWUm9vdENBLmNydDBLBgNVHR8ERDBCMECgPqA8hjpo
+dHRwOi8vY3JsMy5kaWdpY2VydC5jb20vRGlnaUNlcnRIaWdoQXNzdXJhbmNlRVZS
+b290Q0EuY3JsMDAGA1UdIAQpMCcwCAYGZ4EMAQICMAgGBmeBDAECAzAHBgVngQwB
+ATAIBgZngQwBAgEwDQYJKoZIhvcNAQELBQADggEBAHMQH8hhiBfNbxwEwxbbTAnu
+jPyUh/oi0JrfZI3u9JuiLqca720D6foS/AB5+4EIxpm7CMG4MdN/l7oAiDipaCPv
+mOmpYUpnT7A63Cr0q4g84rI1ZmdqA40lVUUf6qC6E34tC73qDQF8TJSrfscWFdCl
+RXR9J4QGrkZ2VNMSDzlDRzWCaA95MfO8x01l+ZdopdE8FvM78gGd4zxeWb8v991+
+mBxTDepqKuy/jF5Rm6Bhfxr33ADRs60s1t16dtZ3pOYLALBTPD5KhZ6a+/dk5dnh
+6c4PaeZQYBUAh+GuxfaBlU4qQ8EtjBMCQHreMIwXHYHW5FRYGjgR4NMuaIw2jD0=
+-----END CERTIFICATE-----
+,]3:tls;4:true!5:error;0:~5:state;1:3#3:via;0:~11:tls_version;7:TLSv1.3;15:tls_established;4:true!19:timestamp_tls_setup;17:1644515847.093924^19:timestamp_tcp_setup;18:1644515847.0574331^15:timestamp_start;17:1644515847.031138^13:timestamp_end;0:~14:source_address;25:13:192.168.1.141;5:59401#]3:sni;10:github.com;10:ip_address;22:12:140.82.121.3;3:443#]2:id;36:00ded327-c047-47eb-9c1a-f223aa09970b;4:alpn;2:h2,7:address;20:10:github.com;3:443#]}11:client_conn;495:11:cipher_list;0:]11:alpn_offers;16:2:h2,8:http/1.1,]16:certificate_list;0:]3:tls;4:true!5:error;0:~8:sockname;19:9:127.0.0.1;4:8888#]5:state;1:3#11:tls_version;7:TLSv1.2;14:tls_extensions;0:]15:tls_established;4:true!19:timestamp_tls_setup;18:1644515847.1025631^15:timestamp_start;18:1644515847.0291798^13:timestamp_end;0:~3:sni;10:github.com;8:mitmcert;0:~2:id;36:d286f99e-e92f-45a4-a180-1870ec5499c7;11:cipher_name;27:ECDHE-RSA-AES128-GCM-SHA256;4:alpn;2:h2,7:address;20:9:127.0.0.1;5:59400#]}5:error;0:~2:id;36:6823755b-5b22-4632-972f-69d2428fd78f;}
