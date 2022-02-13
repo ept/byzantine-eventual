@@ -102,12 +102,11 @@ Such a system requires neither proof-of-work nor the central control of permissi
 
 Our contributions in this paper are as follows:
 \begin{enumerate}
-    \item We show that causal broadcast can be achieved in systems with arbitrary numbers of Byzantine-faulty nodes by defining an algorithm for \emph{Byzantine causal broadcast}, a mechanism for reliably disseminating messages to a group of nodes, and proving its correctness.
-    \item We evaluate the performance of a prototype implementation of our algorithms, and demonstrate that our optimized algorithm incurs only a small communication overhead, making it viable for use in practical systems.
-    \item We show how Byzantine causal broadcast can be used to implement replicated storage systems and distributed applications that are immune to Sybil attacks.
+    \item We show that causal broadcast can be achieved in systems with arbitrary numbers of Byzantine-faulty nodes by defining an algorithm for \emph{Byzantine causal broadcast} (Section~\ref{sec:algorithm}), a mechanism for reliably disseminating messages to a group of nodes, and proving its correctness (Appendix~\ref{sec:proof}).
+    \item We experimentally evaluate the performance of our algorithm, and demonstrate that it incurs significantly lower communication costs (in terms of round trips and message size) than existing algorithms (Section~\ref{sec:evaluation}).
+    \item We highlight how Byzantine causal broadcast can be used to implement replicated storage systems and distributed applications that are immune to Sybil attacks (Section~\ref{sec:applications}).
 \end{enumerate}
 
-% TODO: Replace the cut text with a paragraph addressing the fact that BEC is not suitable for cypto but is still useful
 
 \section{Background}
 
@@ -432,7 +431,7 @@ We do this by adding the following instruction after line~\ref{line:update-m} of
 which updates a key-value store in stable storage, associating the value $\mathrm{heads}(\mathcal{M}_\mathsf{conn} \cup \mathit{recvd})$ with the key $q$ (overwriting any previous value for that key if appropriate).
 We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``on connecting'' and ``on receiving heads'' functions of Algorithm~\ref{fig:algorithm}, while leaving the rest of Algorithm~\ref{fig:algorithm} unchanged.
 
-\begin{algorithm*}
+\begin{algorithm}
     \begin{algorithmic}[1]
     \On{connecting to node $q$, and periodically}\Comment{Replaces lines \ref{line:connect-begin}--\ref{line:connect-end} of Algorithm \ref{fig:algorithm}}
         \State $\mathit{sent} := \{\};\; \mathit{recvd} := \{\};\; \mathit{missing} := \{\};\; \mathcal{M}_\mathsf{conn} := \mathcal{M}$ \Comment{connection-local variables}
@@ -457,7 +456,7 @@ We use this information in Algorithm~\ref{fig:algorithm2}, which replaces the ``
     \EndFunction\label{line:msg-since-end}
     \end{algorithmic}
     \caption{Optimizing Algorithm~\ref{fig:algorithm} to reduce the number of round-trips.}\label{fig:algorithm2}
-\end{algorithm*}
+\end{algorithm}
 
 First, when node $p$ establishes a connection with node $q$, $p$ calls $\textsc{LoadHeads}(q)$ to load the heads from the previous reconciliation with $q$ from the key-value store (Algorithm~\ref{fig:algorithm2}, line~\ref{line:load-heads}).
 This function returns the empty set if this is the first reconciliation with $q$.
@@ -577,58 +576,69 @@ The alternative \emph{skipping} algorithm in Git, enabled by the option \texttt{
 For small $n$, \texttt{git fetch} takes 3 round trips and \texttt{git push} another 2 round trips.
 With $n=1000$ this grows to 8 round trips for \texttt{fetch} and 3 round trips for \texttt{push} in the case of the default algorithm; with the skipping algorithm the cost of the \texttt{fetch} remains at 3 round trips.
 
-In contrast, with our Algorithm~\ref{fig:algorithm2}, a reconciliation requires a constant 1.03 round trips on average, regardless of the number of messages since the last reconciliation.
+In contrast, with our Algorithm~\ref{fig:algorithm2}, a reconciliation requires a constant 1.02 round trips on average, regardless of the number of messages since the last reconciliation.
 97.7\% of reconciliations with our algorithm complete in one round trip, 2.3\% require two round trips, and 0.02\% require three or more round trips.
 These figures are based on using Bloom filters with 10 bits per entry and 7 hash functions, and 32-byte hashes (SHA-256).
 
 In terms of protocol overhead, our algorithm also achieves considerably better results than the alternatives: around 1~kB, growing slowly to 3~kB with $n=1000$ (most of which is the Bloom filters).
 Git's default algorithm and OldBlue have a similar overhead of 464~kB and 528~kB respectively at $n=1000$; Git's skipping algorithm has the highest overhead of 905~kB since the server unnecessarily sends the client some messages that the client already has.
 With a 1,000-byte message size, this is a 45\% overhead; with a smaller message size, the percentage overhead would be greater.
-For comparison, a 3~kB overhead is 0.15\%.
-Thus, we can see that in terms of network performance, our Algorithm~\ref{fig:algorithm2} is close to the optimum (one round trip and zero overhead).
+For comparison, the 3~kB overhead of our algorithm is 0.15\% with 1,000-byte messages.
+Thus, we can see that in terms of network performance, our Algorithm~\ref{fig:algorithm2} is close to the optimum of one round trip and zero overhead.
 
 In our evaluation, all nodes correctly follow the protocol.
-Adding faulty nodes may alter the shape of the predecessor graph (e.g.\ resulting in more concurrent updates than there are nodes), but we believe that this would not fundamentally alter our results.
+Adding Byzantine-faulty nodes may alter the shape of the predecessor graph (e.g.\ resulting in more concurrent updates than there are nodes), but we believe that this would not fundamentally alter our results.
 We leave an evaluation of other metrics (e.g.\ CPU or memory use) for future work.
 
 
-\section{Applications of Byzantine Causal Broadcast}\label{sec:crdts}
+\section{Applications of Byzantine Causal Broadcast}\label{sec:applications}
 
-TODO: in this section, explain how we can use causal broadcast to implement replicated storage systems, distributed applications, distributed ledgers
+Recent years have seen a surge in interest in decentralized peer-to-peer applications under the umbrella of ``Web3''.
+Such systems aim to enable different parties to cooperate in a distributed computation without having to trust one another.
+At present, these applications are typically built upon distributed ledgers (blockchains), which provide Byzantine fault tolerant total order broadcast, as explained in Section~\ref{sec:broadcast}.
+However, application logic is often executed \emph{off-chain} to avoid the high costs and long delays inherent in today's blockchains.
+Users have to simply trust that such off-chain computations are performed correctly, since they do not undergo the same validation process as on-chain state.
 
-Recent years have seen a surge in interest in decentralized peer-to-peer applications, under the umbrella of `web 3'. Such systems aim to enable a collection of different parties to cooperate in the distribution of computation without also distributing their trust to one another. At the time of writing, these applications are being built upon public distributed ledgers (blockchains) which provide a total ordering over events in a byzantine fault tolerant manner, however, application logic is often executed \emph{off-chain} to avoid the high costs and long delays inherent in today's blockchains. 
-Byzantine causal broadcast offers a low-cost, lightweight alternative to distributed ledges and the Byzantine atomic broadcast they provide. For some applications, such as cryptocurrencies, causal broadcast alone is not a substitute for atomic broadcast, however, for many other applications, such as group messaging or social media platforms, causal broadcast is sufficient. 
+Byzantine causal broadcast offers a low-cost, lightweight alternative to distributed ledgers and total order broadcast.
+For some applications, such as cryptocurrencies, causal broadcast alone is not sufficient, because it would allow the same coin to be spent in two concurrent operations, violating the rule against double-spending.
+However, for many other applications, such as group communication or collaboration, and decentralized social media, causal broadcast is sufficient, and total order broadcast is unnecessarily heavyweight.
+We believe that causal broadcast can be a mechanism for making off-chain computations Byzantine fault tolerant without incurring the cost of putting them on-chain.
 
-% Eventual consistency is usually defined as: ``If no further updates are made, then eventually all nodes will be in the same state~\cite{Vogels:2009ca}.''
-% This is a very weak model: it does not specify when the consistent state will be reached, and the premise ``if no further updates are made'' may never be true in a system in which updates happen continuously.
-% To strengthen this model, Shapiro et al.~\cite{Shapiro:2011} introduce \emph{strong eventual consistency} (SEC), which requires that:
+As an example, Algorithm~\ref{fig:key-value} shows how to implement a causally consistent~\cite{Ahamad:1995}, Byzantine fault-tolerant key-value store on top of Byzantine causal broadcast.
+Every write operation is broadcast as a message (line~\ref{line:set-key}); when a message is delivered (line~\ref{line:kv-deliver}), we decide how to update the delivering node's local state $S$.
+If the key does not already exist in $S$, we add the key-value mapping, along with the hash of the message, to $S$ (line~\ref{line:first-update}).
+If the key already exists, and the update that last set the key is a predecessor of the current message, then we overwrite the key with the new value (line~\ref{line:overwrite}).
+Moreover, if the last update and the current message are concurrent (i.e.\ neither is a predecessor of the other), we also overwrite the value if the current message has a hash that is lexicographically greater than the hash of the last update.
+This ensures that when two updates to the same key are concurrent, and therefore might be delivered in either order by causal broadcast, all nodes nevertheless converge to the same state $S$ regardless of the message delivery order.
 
-% \begin{description}
-% \item[Eventual update:] If an update is applied by a correct node, then all correct nodes will eventually apply that update.
-% \item[Convergence:] Any two correct nodes that have applied the same set of updates are in the same state (even if the updates were applied in a different order).
-% \end{description}
+\begin{algorithm}[t]
+    \begin{algorithmic}[1]
+    \On{request to read value for key $k$}
+        \State \textbf{if} $\exists v,h.\; (k,v,h) \in S$ \textbf{then return} $v$ \textbf{else return} $\bot$ \textbf{end}
+    \EndOn
+    \State
+    \On{request to set key $k$ to value $v$}
+        \State \textbf{broadcast} $(k,v)$ by causal broadcast\label{line:set-key}
+    \EndOn
+    \State
+    \On{delivering $m$ by causal broadcast}\label{line:kv-deliver}
+        \State $((k, v), \mathit{hs}, \mathit{sig}) := m$
+        \If{$\nexists v', h'.\; (k,v',h') \in S$}
+            \State $S := S \,\cup\, \{(k,v,H(m))\}$\label{line:first-update}
+        \ElsIf{$\exists v', h'.\; (k,v',h') \in S \,\wedge\, (h' \in \{H(m') \mid m' \in \mathrm{pred}^*(\mathcal{M}, m)\} \,\vee\, h' < H(m))$}
+            \State $S := S \,\setminus\, \{(k,v',h')\} \,\cup\, \{(k,v,H(m))\}$\label{line:overwrite}
+        \EndIf
+    \EndOn
+    \end{algorithmic}
+    \caption{Creating a causally consistent key-value store using Byzantine causal broadcast}\label{fig:key-value}
+\end{algorithm}
 
-% Read operations can be performed on any node at any time, and they return that node's current state at that point in time.
-
-% In the context of replicated databases, one way of achieving SEC is by executing a transaction at one node, disseminating the updates from the transaction to the other nodes using a reliable broadcast protocol (e.g.\ a gossip protocol~\cite{Leitao:2009fi}), and applying the updates to each node's state using a commutative function.
-% Let $S' = \mathrm{apply}(S, u)$ be the function that applies the set of updates $u$ to the node state $S$, resulting in an updated node state $S'$.
-% Then two sets of updates $u_1$ and $u_2$ commute if
-% \[ \forall S.\; \mathrm{apply}(\mathrm{apply}(S, u_1), u_2) = \mathrm{apply}(\mathrm{apply}(S, u_2), u_1). \]
-% Two nodes can apply the same commutative sets of updates in a different order, and still converge to the same state.
-
-% One technique for implementing such commutativity is to use \emph{Conflict-free Replicated Data Types} (\emph{CRDTs})~\cite{Shapiro:2011}.
-% These abstract datatypes are designed such that concurrent updates to their state commute, with built-in resolution policies for conflicting updates.
-% CRDTs have been used to implement a range of applications, such as key-value stores~\cite{Akkoorath2016Cure,Zawirski2015SwiftCloud}, multi-user collaborative text editors~\cite{Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd}, project management tools~\cite{Kleppmann2019localfirst}, and many others.
-% Several papers present techniques for achieving commutativity in different datatypes~\cite{Kleppmann:2017,Preguica:2018gi,Shapiro:2011wy,Weiss:2009ht}.
-
+Causally consistent key-value stores are important building blocks for many applications~\cite{Lloyd:2011,Lloyd:2013,Akkoorath2016Cure,Zawirski2015SwiftCloud}, and our approach makes it possible for those applications to tolerate Byzantine faults.
+Besides key-value stores, our technique can also add Byzantine tolerance to collaborative software using Conflict-free Replicated Data Types~\cite{Shapiro:2011,Sanjuan:2020}, and other distributed databases that do not need the strict ordering of total order broadcast.
+Such applications include multi-user collaborative text editors~\cite{Weiss:2009ht}, note-taking tools~\cite{vanHardenberg2020PushPin}, games~\cite{vanderLinde:2017fu}, CAD applications~\cite{Lv:2018ie}, distributed filesystems~\cite{Najafzadeh:2018bw,Tao:2015gd,Kleppmann:2021}, project management tools~\cite{Kleppmann2019localfirst}, and many others.
 
 
 \section{Related Work}\label{sec:relwork}
-
-Hash chaining is widely used: in Git repositories~\cite{GitHTTP}, Merkle trees~\cite{Merkle:1987}, blockchains~\cite{Bano:2019}, and peer-to-peer storage systems such as IPLD~\cite{IPLD}.
-Our Algorithm~\ref{fig:algorithm} has similarities to the protocol used by \texttt{git fetch} and \texttt{git push}; to reduce the number of round trips, Git's ``smart'' transfer protocol sends the most recent 32 hashes rather than just the heads~\cite{GitHTTP}.
-Git also supports an experimental ``skipping'' reconciliation algorithm~\cite{GitSkipping} in which the search for common ancestors skips some vertices in the predecessor graph, with exponentially growing skip sizes; this algorithm ensures a logarithmic number of round-trips, but may end up unnecessarily transmitting commits that the recipient already has.
-Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs but do not present efficient reconciliation algorithms for bringing nodes up-to-date.
 
 Byzantine agreement has been the subject of extensive research and has seen a recent renewal of interest due to its application in blockchains~\cite{Bano:2019}.
 To tolerate $f$ faults, Byzantine agreement algorithms typically require $3f+1$ nodes~\cite{Castro:1999,Kotla:2007,Bessani:2014}, and some even require $5f+1$ nodes~\cite{Abd:2005,Martin:2006}.
@@ -645,7 +655,7 @@ We were not able to compare our algorithms to Depot because the available public
 Depot's consistency model (fork-join-causal) is specific to a key-value data model.
 Mahajan et al.\ have also shown that no system that tolerates Byzantine failures can enforce fork causal~\cite{Mahajan:2011} or stronger consistency in an always available, one-way convergent system~\cite{Mahajan:2011cac}. 
 
-% Merkle-CRDTs~\cite{Sanjuan:2020} use a graph reconciliation algorithm equivalent to our unoptimized Algorithm~\ref{fig:algorithm}.
+% TODO: source code of Depot is here: https://www.cs.utexas.edu/depot/
 
 Van der Linde et al.~\cite{vanderLinde:2020} consider causally consistent replication in the face of Byzantine faults, taking a very different approach to ours: detecting cryptographic proof of faulty behavior, and banning nodes found to be misbehaving.
 This approach relies on a trusted central server and trusted hardware such as Intel SGX, whereas we do not assume any trusted components.
@@ -657,6 +667,11 @@ Our reconciliation algorithm is related to the problem of computing the differen
 This problem has been studied in various domains, including peer-to-peer systems, deduplication of backups, and error-correction.
 Approaches include using Bloom filters~\cite{Skjegstad:2011}, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2003}.
 However, these approaches are not designed to tolerate Byzantine faults.
+
+Hash chaining is widely used: in Git repositories~\cite{GitHTTP}, Merkle trees~\cite{Merkle:1987}, blockchains~\cite{Bano:2019}, and peer-to-peer storage systems such as IPLD~\cite{IPLD}.
+Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs but do not present efficient reconciliation algorithms for bringing nodes up-to-date.
+Merkle-CRDTs~\cite{Sanjuan:2020} use a graph reconciliation algorithm equivalent to our unoptimized Algorithm~\ref{fig:algorithm}.
+
 
 % \I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} in the context of non-Byzantine systems.
 % It is closely related to the concept of logical monotonicity~\cite{Conway:2012} and the CALM theorem~\cite{Ameloot:2013,Hellerstein:2010}, which states that coordination can be avoided for programs that are monotonic.
@@ -713,7 +728,7 @@ Many peer-to-peer systems tolerate only a bounded number of Byzantine-faulty nod
 In this work, we have demonstrated that some applications that can tolerate arbitrary numbers of Byzantine faults by utilizing Byzantine causal broadcast. 
 
 % TODO: revise this paragraph
-As discussed in Section~\ref{sec:crdts}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
+As discussed in Section~\ref{sec:applications}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
 Adopting our approach will allow those systems to gain robustness against Byzantine faults.
 For systems that currently require all nodes to be trusted, and hence can only be deployed in trusted datacenter networks, adding Byzantine fault tolerance opens up new opportunities for deployment in untrusted peer-to-peer settings.
 
@@ -734,7 +749,7 @@ This work was funded in part by EP/T022493/1.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
-\appendix\newpage
+\appendix
 
 \section{Proof of Correctness}\label{sec:proof}
 
