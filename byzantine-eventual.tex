@@ -525,10 +525,8 @@ Thus, when we load the heads from the previous reconciliation on line~\ref{line:
 This does not affect the correctness of the algorithm.
 
 
-% TODO: evaluation should compare to libp2p, Git, Depot, OldBlue
-% Also Matrix? https://matrix.org/docs/guides/implementing-stateres
-% https://ieeexplore.ieee.org/document/9351908
-% (see also email from Jamie Brandon)
+% TODO: evaluation should compare to libp2p/IPLD, Depot, Matrix
+% (see also email from Jamie Brandon dated 28 April 2021)
 
 \section{Experimental Evaluation}\label{sec:evaluation}
 
@@ -647,15 +645,18 @@ Most algorithms also require at least one round of communication with at least $
 Some algorithms instead take a different approach to bounding the number of failures: for example, Upright~\cite{Clement:2009} separates the number of crash failures ($u$) and Byzantine failures ($r$) and uses $2u+r+1$ nodes.
 Byzantine quorum systems~\cite{Malkhi:1998} generalize from a threshold $f$ of failures to a set of possible failures.
 Zeno~\cite{Singh:2009} makes progress with just $f+1$ nodes, but safety depends on less than $\frac{1}{3}$ of nodes being Byzantine-faulty.
-Previous work on Byzantine fault tolerant CRDTs~\cite{Chai:2014,Shoker:2017,Zhao:2016}, Secure Reliable Multicast~\cite{Malki:1996,Malkhi:2000}, Secure Causal Atomic Broadcast~\cite{Cachin:2001cj,Duan:2017} and Byzantine Lattice Agreement~\cite{DiLuna:2020} also assumes $3f+1$ nodes.
+
+Previous work on Secure Reliable Multicast~\cite{Malki:1996,Malkhi:2000}, Byzantine reliable broadcast~\cite{Guerraoui:2020}, Secure Causal Atomic Broadcast~\cite{Cachin:2001cj,Duan:2017}, Byzantine Lattice Agreement~\cite{DiLuna:2020}, and Byzantine fault tolerant CRDTs~\cite{Chai:2014,Shoker:2017,Zhao:2016} also assumes $3f+1$ nodes.
+Byz-GentleRain~\cite{Huang:2021} and Alg Byz-RCM~\cite{Tseng:2019jb} provide causal consistency with $3f+1$ nodes.
+Auvolat et al.~\cite{Auvolat:2021} provide a stronger variant of causal broadcast, which again requires $3f+1$ nodes.
 All of these algorithms require Sybil countermeasures, such as central control over the participating nodes' identities; moreover, many algorithms ignore the problem of reconfiguring the system to change the set of nodes.
 
-Little prior work tolerates arbitrary numbers of Byzantine-faulty nodes. Depot~\cite{Mahajan:2011} and OldBlue~\cite{VanGundy:2012} provide causal broadcast in this model: OldBlue's algorithm is similar to our Algorithm~\ref{fig:algorithm}, while Depot uses a more complex replication algorithm involving a combination of logical clocks and hash chains to detect and recover from inconsistencies.
-We were not able to compare our algorithms to Depot because the available publications~\cite{Mahajan:2010,Mahajan:2011,Mahajan:2012} do not describe Depot's algorithm in sufficient detail to reproduce it.
-Depot's consistency model (fork-join-causal) is specific to a key-value data model.
-Mahajan et al.\ have also shown that no system that tolerates Byzantine failures can enforce fork causal~\cite{Mahajan:2011} or stronger consistency in an always available, one-way convergent system~\cite{Mahajan:2011cac}. 
+% Tseng et al. also claim that Byzantine causal memory requires a minimum of $3f+1$ processes
 
-% TODO: source code of Depot is here: https://www.cs.utexas.edu/depot/
+Very few algorithms target a system model with arbitrary numbers of Byzantine-faulty nodes: we are aware of OldBlue~\cite{VanGundy:2012} and Depot~\cite{Mahajan:2011}.
+OldBlue is similar to our Algorithm~\ref{fig:algorithm}, and we evaluate it in Section~\ref{sec:evaluation}.
+Depot uses a more complex replication algorithm involving a combination of logical clocks and hash chains to detect and recover from inconsistencies.
+We attempted to include Depot in our evaluation, but we were not able to get the source code~\cite{DepotSource} running, and the available publications~\cite{Mahajan:2010,Mahajan:2011,Mahajan:2012} do not describe Depot's algorithm in sufficient detail to reproduce it.
 
 Van der Linde et al.~\cite{vanderLinde:2020} consider causally consistent replication in the face of Byzantine faults, taking a very different approach to ours: detecting cryptographic proof of faulty behavior, and banning nodes found to be misbehaving.
 This approach relies on a trusted central server and trusted hardware such as Intel SGX, whereas we do not assume any trusted components.
@@ -668,38 +669,27 @@ This problem has been studied in various domains, including peer-to-peer systems
 Approaches include using Bloom filters~\cite{Skjegstad:2011}, invertible Bloom filters~\cite{Goodrich:2011,Eppstein:2011} and polynomial encoding~\cite{Minsky:2003}.
 However, these approaches are not designed to tolerate Byzantine faults.
 
-Hash chaining is widely used: in Git repositories~\cite{GitHTTP}, Merkle trees~\cite{Merkle:1987}, blockchains~\cite{Bano:2019}, and peer-to-peer storage systems such as IPLD~\cite{IPLD}.
+The idea of referring to some data item using a cryptographic hash of its content, also known as \emph{content addressing}, is used in many systems, including Git~\cite{ProGit}, BitTorrent~\cite{Pouwelse:2005}, and IPFS~\cite{Benet:2014}.
+Similarly, hash graphs are widely used: in Git~\cite{GitHTTP}, Matrix~\cite{Jacob:2021b}, Merkle trees~\cite{Merkle:1987}, blockchains~\cite{Bano:2019}, and peer-to-peer storage systems such as IPLD~\cite{IPLD}.
 Other authors~\cite{Baird:2016tq,Kang:2003} also discuss replicated hash graphs but do not present efficient reconciliation algorithms for bringing nodes up-to-date.
 Merkle-CRDTs~\cite{Sanjuan:2020} use a graph reconciliation algorithm equivalent to our unoptimized Algorithm~\ref{fig:algorithm}.
 
-
-% \I-confluence was introduced by Bailis et al.~\cite{Bailis:2014} in the context of non-Byzantine systems.
-% It is closely related to the concept of logical monotonicity~\cite{Conway:2012} and the CALM theorem~\cite{Ameloot:2013,Hellerstein:2010}, which states that coordination can be avoided for programs that are monotonic.
-COPS~\cite{Lloyd:2011} is an example of a non-Byzantine system that achieves causal consistency while avoiding coordination.
 Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:1991el}.
+There are many non-Byzantine systems that provide causal consistency, including COPS~\cite{Lloyd:2011}, Eiger~\cite{Lloyd:2013}, Cure~\cite{Akkoorath2016Cure}, and SwiftCloud~\cite{Zawirski2015SwiftCloud}.
+These systems eschew linearizability and total ordering for the sake of availability or performance; our work shows that in a Byzantine context, system designers can make a similar trade-off, forsaking total order to gain the ability to tolerate an unbounded number of Byzantine nodes.
 
-
-% Byzantine-tolerant causal broadcast https://doi.org/10.1016/j.tcs.2021.06.021
-% Also by Alex Auvolat: https://hal.inria.fr/hal-02303490/document
-
+% This one is confusing
 % https://arxiv.org/abs/2112.11337
 
+% Decentralized Collaborative Version Control
 % https://dl.acm.org/doi/abs/10.1145/3493426.3493824
-
-% Compare to Matrix https://ieeexplore.ieee.org/document/9351908
-
-% Secure Scuttlebutt~\cite{Kermarrec:2020} also uses hash chains, but it relies on vector clocks for replication, so it suffers from the problem illustrated in Figure~\ref{fig:vectorclocks}.
-
-% Some more suggestions for related work in this thread: https://news.ycombinator.com/item?id=25278128
-
-% Snapdoc~\cite{Kollmann:2019hf} provides cryptographic integrity checks for CRDTs, but its approach (using RSA accumulators) incurs large overheads.
-% Truong et al.~\cite{Truong:2012et} present another scheme for authenticating CRDT history, but do not include a reconciliation protocol.
 
 % BAR Gossip uses a model of "rational" nodes that are assumed to maximise a given loss function
 % Harry C. Li, Allen Clement, et al. BAR Gossip. OSDI 2006 https://static.usenix.org/event/osdi06/tech/full_papers/li/li.pdf
 
-% Tseng et al.~\cite{Tseng:2019jb} prove that Byzantine causal memory can only be done with $3f+1$ processes?!
+% Secure Scuttlebutt~\cite{Kermarrec:2020} also uses hash chains, but it relies on vector clocks for replication, so it suffers from the problem illustrated in Figure~\ref{fig:vectorclocks}.
 
+% Some more suggestions for related work (including Minisketch) in this thread: https://news.ycombinator.com/item?id=25278128
 % https://github.com/sipa/minisketch
 % Minisketch is proposed for gossip in Bitcoin: https://arxiv.org/abs/1905.10518
 % See email from Greg Maxwell on 10 Nov 2021
@@ -715,30 +705,23 @@ Non-Byzantine causal broadcast was introduced by the ISIS system~\cite{Birman:19
 % https://github.com/mirage/irmin/blob/master/src/irmin/sync_ext.ml#L86-L123
 % Send paper to Irmin authors?
 
-% Dynamic Byzantine Reliable Broadcast from OPODIS 2020
-% Assumes at most 1/3 are honest
-% https://arxiv.org/pdf/2001.06271.pdf
-
-% Byz-GentleRain: causal consistency with 3f+1
-% https://hengxin.github.io/papers/2021-SSS-BA-ByzGentleRain.pdf
 
 \section{Conclusions}\label{sec:conc}
 
 Many peer-to-peer systems tolerate only a bounded number of Byzantine-faulty nodes, and therefore need to employ expensive countermeasures against Sybil attacks, such as proof-of-work, or centrally controlled permissions for joining the system.
-In this work, we have demonstrated that some applications that can tolerate arbitrary numbers of Byzantine faults by utilizing Byzantine causal broadcast. 
+In this work, we have demonstrated that some applications can tolerate arbitrary numbers of Byzantine faults by utilizing Byzantine causal broadcast, and are therefore immune to Sybil attacks.
+We highlighted some of those applications in Section~\ref{sec:applications}.
 
-% TODO: revise this paragraph
-As discussed in Section~\ref{sec:applications}, many existing systems and applications use CRDTs to achieve strong eventual consistency in a non-Byzantine model.
-Adopting our approach will allow those systems to gain robustness against Byzantine faults.
+We believe that our approach will make it viable to use Byzantine fault tolerance in applications where the cost of using on-chain operations in a totally ordered distributed ledger is currently prohibitive.
 For systems that currently require all nodes to be trusted, and hence can only be deployed in trusted datacenter networks, adding Byzantine fault tolerance opens up new opportunities for deployment in untrusted peer-to-peer settings.
+Our algorithm is fairly simple, and it provides considerably better performance than the alternatives we evaluated in Section~\ref{sec:evaluation}.
 
 We hope that this work will inspire further research to ensure the correctness of decentralized systems in the presence of arbitrary numbers of Byzantine faults.
 Some open questions include:
 \begin{itemize}
     \item How can we best ensure that correct nodes form a connected component, as assumed in Section~\ref{sec:system-model}?
     Connecting each node to every other is the simplest solution, but it can be expensive if the number of nodes is large.
-    % \item How can we formalize Table~\ref{tab:safety}, i.e.\ the process of checking whether an update is safe with regard to an invariant?
-    \item Is it generally true that a problem can be solved without coordination in a non-Byzantine system if and only if it is immune to Sybil attacks in a Byzantine context?
+    \item Can we take existing non-Byzantine distributed applications and retrofit Byzantine fault tolerance using the protocols described in this paper?
 \end{itemize}
 
 \begin{acks}
