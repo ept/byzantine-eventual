@@ -73,8 +73,6 @@ Our algorithm can be used to implement replicated storage systems, such as some 
 \end{abstract}
 \maketitle
 
-% TODO: Frame our protocol as a type of distributed ledger?
-
 \section{Introduction}
 
 Peer-to-peer systems are of interest to many communities for a number of reasons: their lack of central control by a single party can make them more resilient, and less susceptible to censorship and denial-of-service attacks than centralized services.
@@ -623,7 +621,7 @@ This ensures that when two updates to the same key are concurrent, and therefore
         \State $((k, v), \mathit{hs}, \mathit{sig}) := m$
         \If{$\nexists v', h'.\; (k,v',h') \in S$}
             \State $S := S \,\cup\, \{(k,v,H(m))\}$\label{line:first-update}
-        \ElsIf{$\exists v', h'.\; (k,v',h') \in S \,\wedge\, (h' \in \{H(m') \mid m' \in \mathrm{pred}^*(\mathcal{M}, m)\} \,\vee\, h' < H(m))$}
+        \ElsIf{$\exists v', h'.\; (k,v',h') \in S \,\wedge\, (h' \in \{H(m') \mid m' \in \mathrm{pred}^*(\mathcal{M}, m)\} \,\vee\, h' < H(m))$}\label{line:if-overwrite}
             \State $S := S \,\setminus\, \{(k,v',h')\} \,\cup\, \{(k,v,H(m))\}$\label{line:overwrite}
         \EndIf
     \EndOn
@@ -734,7 +732,7 @@ This work was funded in part by EP/T022493/1.
 \bibliography{references}
 \appendix
 
-\section{Proof of Correctness}\label{sec:proof}
+\section{Proof of Correctness for Byzantine Causal Broadcast}\label{sec:proof}
 
 In this appendix we show that Algorithms~\ref{fig:algorithm} and \ref{fig:algorithm2} implement causal broadcast, as defined in Section~\ref{sec:broadcast}, in the Byzantine system model of Section~\ref{sec:system-model}.
 Where a lemma does not specify which of the two algorithms it applies to, it holds for both.
